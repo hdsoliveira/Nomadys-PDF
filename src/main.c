@@ -66,6 +66,7 @@ static Window *window_new(View *v)
     update_size(w);
     w->tabs[w->ntabs++] = v;
     init_zoom(w, v);
+    w->show_tabs = cfg.show_tabs;
     w->redraw = true;
     SDL_StartTextInput(w->win);
     windows[nwindows++] = w;

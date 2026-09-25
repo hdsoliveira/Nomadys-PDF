@@ -44,7 +44,7 @@ nomadys-pdf file.pdf [other.pdf ...]    # each file opens in a tab
 | in a field | type; `Space` toggles a checkbox; `Ctrl-a` `Ctrl-z` `Ctrl-v`; `Esc` leaves |
 | `v` | caret mode: `h j k l w b 0 $`, `v` selects, `H` highlights, `y` copies, `Esc` leaves |
 | `/` `n` `N` | search / next / previous (`Esc` clears) |
-| `t` | show/hide tabs |
+| `t` | show/hide tabs (initial state: `show_tabs` in the config) |
 | `Ctrl-,` `Ctrl-.` | previous / next tab |
 | `:e file` | open in a new tab (`Tab` completes the path) |
 | `Ctrl-n` | new window on the same document (shared edits) |
@@ -71,6 +71,7 @@ theme = dark              # dark | light
 autosave = true
 autosave_delay_ms = 1000
 subpixel_text = false     # true: sharper text on LCD monitors (RGB subpixels)
+show_tabs = false         # true: tab bar always visible (t still toggles it)
 highlight_color = #FFE14D
 zoom = fit-width          # or a percentage, e.g. 125
 background_light = #D9D9D9

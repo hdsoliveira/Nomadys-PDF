@@ -75,6 +75,8 @@ void config_load(void)
             cfg.dark = !strcmp(v, "dark");
         else if (!strcmp(k, "autosave"))
             cfg.autosave = parse_bool(v);
+        else if (!strcmp(k, "show_tabs"))
+            cfg.show_tabs = parse_bool(v);
         else if (!strcmp(k, "subpixel_text"))
             cfg.subpixel_text = parse_bool(v);
         else if (!strcmp(k, "autosave_delay_ms"))

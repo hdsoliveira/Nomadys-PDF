@@ -3,6 +3,7 @@ theme = light              # dark | light
 autosave = true            # false: save only with Ctrl-s or :w
 autosave_delay_ms = 1000
 subpixel_text = false      # true: sharper text on LCD monitors (RGB subpixels)
+show_tabs = false          # true: tab bar always visible (t still toggles it)
 highlight_color = #FFE14D
 zoom = fit-width           # or a percentage, e.g. 125
 background_light = #D9D9D9
