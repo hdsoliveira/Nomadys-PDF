@@ -37,6 +37,7 @@ View *view_clone(View *src)
     v->fit_width = src->fit_width;
     v->dual = src->dual;
     v->dark = src->dark;
+    v->rotation = src->rotation;
     v->sx = src->sx;
     v->sy = src->sy;
     v->pending_pos = (Pos){-1, 0};
@@ -86,6 +87,20 @@ void view_free(View *v)
     free(v);
 }
 
+float view_page_w(View *v, int page) { return v->rotation & 1 ? v->doc->ph[page] : v->doc->pw[page]; }
+float view_page_h(View *v, int page) { return v->rotation & 1 ? v->doc->pw[page] : v->doc->ph[page]; }
+
+/* Turns the view (not the file); keeps the reading position. */
+void view_rotate(View *v, int quarter_turns)
+{
+    Pos p = v->lay_w ? view_pos(v) : v->pending_pos;
+    v->rotation = ((v->rotation + quarter_turns) % 4 + 4) % 4;
+    view_invalidate_cache(v);
+    v->lay_w = 0;
+    v->content_h = 0;
+    v->pending_pos = p;
+}
+
 void view_layout(View *v, int W, int H, int top)
 {
     (void)H, (void)top;
@@ -94,7 +109,7 @@ void view_layout(View *v, int W, int H, int top)
     if (v->fit_width) {
         float widest = 1;
         for (int i = 0; i < d->npages; i += step) {
-            float w = d->pw[i] + (v->dual && i + 1 < d->npages ? d->pw[i + 1] : 0);
+            float w = view_page_w(v, i) + (v->dual && i + 1 < d->npages ? view_page_w(v, i + 1) : 0);
             widest = SDL_max(widest, w);
         }
         int avail = W - 2 * GAP - (v->dual ? GAP : 0);
@@ -110,8 +125,8 @@ void view_layout(View *v, int W, int H, int top)
     for (int i = 0; i < d->npages; i += step) {
         int n = (v->dual && i + 1 < d->npages) ? 2 : 1, roww = 0, rowh = 0;
         for (int k = 0; k < n; k++) {
-            v->pwpx[i + k] = (int)lround(d->pw[i + k] * v->zoom);
-            v->phpx[i + k] = (int)lround(d->ph[i + k] * v->zoom);
+            v->pwpx[i + k] = (int)lround(view_page_w(v, i + k) * v->zoom);
+            v->phpx[i + k] = (int)lround(view_page_h(v, i + k) * v->zoom);
             roww += v->pwpx[i + k] + (k ? GAP : 0);
             rowh = SDL_max(rowh, v->phpx[i + k]);
         }
@@ -195,7 +210,7 @@ void page_to_screen(View *v, int page, float x, float y, float *sx, float *sy, i
     int dx = 0, dy = 0;
     FPDF_PAGE p = doc_page(v->doc, page);
     if (p)
-        FPDF_PageToDevice(p, 0, 0, v->pwpx[page], v->phpx[page], 0, x, y, &dx, &dy);
+        FPDF_PageToDevice(p, 0, 0, v->pwpx[page], v->phpx[page], v->rotation, x, y, &dx, &dy);
     *sx = (float)(v->px[page] + dx + offset_x(v, layout_W(v)));
     *sy = (float)(v->py[page] + dy - v->sy + top);
 }
@@ -209,7 +224,7 @@ bool screen_to_page(View *v, float sx, float sy, int top, int *page, double *x, 
             if (!p)
                 return false;
             *page = i;
-            return FPDF_DeviceToPage(p, 0, 0, v->pwpx[i], v->phpx[i], 0, (int)(cx - v->px[i]),
+            return FPDF_DeviceToPage(p, 0, 0, v->pwpx[i], v->phpx[i], v->rotation, (int)(cx - v->px[i]),
                                      (int)(cy - v->py[i]), x, y);
         }
     }
@@ -254,7 +269,7 @@ static void darken(uint8_t *px, int w, int h, int stride, const uint8_t *keep)
     }
 }
 
-static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w, int h, int pw, int ph)
+static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w, int h, int pw, int ph, int rot)
 {
     doc_page_images(d, page);
     PageSlot *s = &d->slots[page];
@@ -264,8 +279,8 @@ static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w,
     for (int k = 0; k < s->nimages; k++) {
         PRect r = s->images[k];
         int x0, y0, x1, y1;
-        FPDF_PageToDevice(p, -cx, -cy, pw, ph, 0, r.l, r.t, &x0, &y0);
-        FPDF_PageToDevice(p, -cx, -cy, pw, ph, 0, r.r, r.b, &x1, &y1);
+        FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, r.l, r.t, &x0, &y0);
+        FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, r.r, r.b, &x1, &y1);
         int l = SDL_max(0, SDL_min(x0, x1)), rr = SDL_min(w, SDL_max(x0, x1) + 1);
         int t = SDL_max(0, SDL_min(y0, y1)), b = SDL_min(h, SDL_max(y0, y1) + 1);
         if (l >= rr || t >= b)
@@ -292,12 +307,12 @@ static SDL_Texture *render_page(Window *win, View *v, int page, int cx, int cy, 
     FPDF_BITMAP bmp = FPDFBitmap_CreateEx(w, h, FPDFBitmap_BGRA, buf, stride);
     FPDFBitmap_FillRect(bmp, 0, 0, w, h, 0xFFFFFFFF);
     int flags = FPDF_ANNOT | (cfg.subpixel_text ? FPDF_LCD_TEXT : 0);
-    FPDF_RenderPageBitmap(bmp, p, -cx, -cy, pw, ph, 0, flags);
+    FPDF_RenderPageBitmap(bmp, p, -cx, -cy, pw, ph, v->rotation, flags);
     if (d->form)
-        FPDF_FFLDraw(d->form, bmp, p, -cx, -cy, pw, ph, 0, flags);
+        FPDF_FFLDraw(d->form, bmp, p, -cx, -cy, pw, ph, v->rotation, flags);
     FPDFBitmap_Destroy(bmp);
     if (v->dark) {
-        uint8_t *keep = image_mask(d, page, p, cx, cy, w, h, pw, ph);
+        uint8_t *keep = image_mask(d, page, p, cx, cy, w, h, pw, ph, v->rotation);
         darken(buf, w, h, stride, keep);
         free(keep);
     }

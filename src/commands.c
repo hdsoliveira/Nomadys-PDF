@@ -98,6 +98,18 @@ static void c_help(Window *w, View *v, const char *a)
     w->mode = MODE_HELP;
 }
 
+/* :rotate 90, :rotate -90, :rotate 180 ... relative to the current view. */
+static void c_rotate(Window *w, View *v, const char *a)
+{
+    int deg = atoi(a);
+    if (!*a || deg % 90) {
+        ui_message(w, "uso: :rotate 90  (múltiplos de 90, negativo = anti-horário)");
+        return;
+    }
+    view_rotate(v, deg / 90);
+    ui_message(w, "rotação: %d°", v->rotation * 90);
+}
+
 static void c_page(Window *w, View *v, const char *a) { goto_page(w, v, atoi(a) - 1); }
 
 static const Command commands[] = {
@@ -109,6 +121,7 @@ static const Command commands[] = {
     {"e", ARG_FILE, c_edit, "abrir um PDF em nova aba"},
     {"page", ARG_NUMBER, c_page, "ir para a página (também :42)"},
     {"zoom", ARG_NUMBER, c_zoom, "zoom em porcentagem, ex. :zoom 150"},
+    {"rotate", ARG_NUMBER, c_rotate, "girar a vista: :rotate 90, -90, 180"},
     {"dark", ARG_NONE, c_dark, "modo escuro"},
     {"light", ARG_NONE, c_light, "modo claro"},
     {"marks", ARG_NONE, c_panel, "painel de marcas, destaques e sumário"},

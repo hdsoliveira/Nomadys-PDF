@@ -355,6 +355,12 @@ void area_enter(Window *w, View *v)
 void area_move(Window *w, View *v, float dx, float dy)
 {
     Doc *d = v->doc;
+    /* screen directions -> page directions on a rotated view */
+    for (int r = 0; r < v->rotation; r++) {
+        float t = dx;
+        dx = dy;
+        dy = -t;
+    }
     v->area_x = SDL_clamp(v->area_x + dx * AREA_STEP, 0, d->pw[v->area_page]);
     v->area_y -= dy * AREA_STEP; /* page y grows upwards */
     if (!v->area_selecting && v->area_y < 0 && v->area_page + 1 < d->npages) {

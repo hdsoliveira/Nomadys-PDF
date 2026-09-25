@@ -44,6 +44,7 @@ It is generated from the keymaps in `input.c`, so it is always up to date.
 | `gg` `G` `42G` (or `:42`) | first page / last page / page 42 |
 | `+` `-` `=` `z` | zoom / fit width / fit page (also `Ctrl` + wheel) |
 | `d` | two pages side by side |
+| `r` / `R` | rotate the view 90° clockwise / counter-clockwise (the file is not changed) |
 | `i` | dark mode (images keep their colours) |
 | `/` `n` `N` | search / next / previous (`Esc` clears) |
 
@@ -137,6 +138,7 @@ listed above the line and `Tab` / `Shift-Tab` cycle through them (`:` then
 | `:e file` | open a PDF in a new tab |
 | `:42`, `:page 42` | go to page 42 |
 | `:zoom 150` | zoom in percent |
+| `:rotate 90`, `:rotate -90`, `:rotate 180` | rotate the view, relative to the current angle |
 | `:dark` / `:light` | dark / light mode |
 | `:marks`, `:notes` | the panel |
 | `:noh` | clear the search highlight |

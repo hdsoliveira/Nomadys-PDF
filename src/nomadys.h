@@ -211,6 +211,7 @@ typedef struct {
     bool fit_width;
     bool dual;
     bool dark;
+    int rotation;            /* quarter turns clockwise, 0-3 (view only) */
     double sx, sy;           /* scroll offsets in pixels */
     Pos pending_pos;         /* applied at the first layout, page -1 = none */
     /* layout */
@@ -252,6 +253,9 @@ void view_draw(Window *w, View *v, int top);
 bool view_prefetch(Window *w, View *v, int top);
 void view_invalidate_cache(View *v);
 void view_doc_reloaded(View *v);                         /* page count/sizes changed */
+void view_rotate(View *v, int quarter_turns);
+float view_page_w(View *v, int page);                    /* points, after rotation */
+float view_page_h(View *v, int page);
 int view_top_page(View *v);
 void view_goto_page(View *v, int page);
 Pos view_pos(View *v);

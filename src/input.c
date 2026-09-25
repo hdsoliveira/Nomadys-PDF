@@ -106,9 +106,9 @@ static void a_fit_page(Window *w, View *v, int c, const char *a)
 {
     (void)c, (void)a;
     int top = top_of(w), p = view_top_page(v);
-    float pw = v->doc->pw[p] + (v->dual && p + 1 < v->doc->npages ? v->doc->pw[p + 1] : 0);
+    float pw = view_page_w(v, p) + (v->dual && p + 1 < v->doc->npages ? view_page_w(v, p + 1) : 0);
     v->fit_width = false;
-    v->zoom = SDL_min((w->W - 30.0) / pw, (w->H - top - 20.0) / v->doc->ph[p]);
+    v->zoom = SDL_min((w->W - 30.0) / pw, (w->H - top - 20.0) / view_page_h(v, p));
     view_layout(v, w->W, w->H, top);
     view_goto_page(v, p);
     view_clamp(v, w->W, w->H, top);
@@ -125,6 +125,8 @@ static void a_dual(Window *w, View *v, int c, const char *a)
     ui_message(w, v->dual ? "duas páginas" : "uma página");
 }
 
+static void a_rotate_cw(Window *w, View *v, int c, const char *a) { (void)a; view_rotate(v, n1(c)); ui_message(w, "rotação: %d°", v->rotation * 90); }
+static void a_rotate_ccw(Window *w, View *v, int c, const char *a) { (void)a; view_rotate(v, -n1(c)); ui_message(w, "rotação: %d°", v->rotation * 90); }
 static void a_dark(Window *w, View *v, int c, const char *a) { (void)w, (void)c, (void)a; v->dark = !v->dark; }
 static void a_tabs(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; w->show_tabs = !w->show_tabs; }
 static void a_caret(Window *w, View *v, int c, const char *a) { (void)c, (void)a; caret_enter(w, v); }
@@ -409,6 +411,7 @@ static const Binding normal_map[] = {
     {"+", a_zoom_in, "zoom"}, {"-", a_zoom_out, "zoom"}, {"=", a_fit_width, "ajustar à largura"},
     {"z", a_fit_page, "página inteira na tela"}, {"<C-=>", a_zoom_in, NULL}, {"<C-->", a_zoom_out, NULL},
     {"d", a_dual, "duas páginas lado a lado"}, {"i", a_dark, "modo escuro"},
+    {"r", a_rotate_cw, "girar 90° no sentido horário"}, {"R", a_rotate_ccw, "girar 90° no sentido anti-horário"},
     {"t", a_tabs, "mostrar/esconder abas"},
     {"v", a_caret, "cursor de texto: destacar, comentar, copiar"},
     {"<C-v>", a_area, "cursor livre: marcar figuras e áreas"},
