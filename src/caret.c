@@ -443,7 +443,9 @@ void cursor_draw(Window *w, View *v, int top, bool blink_on)
             float x0, y0, x1, y1;
             page_to_screen(v, v->caret.page, r.l, r.t, &x0, &y0, top);
             page_to_screen(v, v->caret.page, r.r, r.b, &x1, &y1, top);
-            ui_fill(w, SDL_min(x0, x1) - th / 2, SDL_min(y0, y1), th, SDL_fabsf(y1 - y0), t->caret, 255);
+            /* block over the character, translucent so the letter stays readable */
+            ui_fill(w, SDL_min(x0, x1), SDL_min(y0, y1), SDL_max(SDL_fabsf(x1 - x0), th),
+                    SDL_fabsf(y1 - y0), t->caret, 150);
         }
     } else if (m == MODE_AREA) {
         if (v->area_selecting) {
@@ -451,10 +453,10 @@ void cursor_draw(Window *w, View *v, int top, bool blink_on)
             fill_page_rect(v, v->area_page, area_rect(v), &c);
         }
         if (blink_on) {
-            float x, y, arm = 9 * w->density;
+            float x, y, arm = 14 * w->density, bar = 4 * w->density;
             page_to_screen(v, v->area_page, v->area_x, v->area_y, &x, &y, top);
-            ui_fill(w, x - arm, y - th / 2, 2 * arm, th, t->caret, 255);
-            ui_fill(w, x - th / 2, y - arm, th, 2 * arm, t->caret, 255);
+            ui_fill(w, x - arm, y - bar / 2, 2 * arm, bar, t->caret, 255);
+            ui_fill(w, x - bar / 2, y - arm, bar, 2 * arm, t->caret, 255);
         }
     } else {
         return;
