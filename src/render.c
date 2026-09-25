@@ -5,7 +5,7 @@
 
 #include "nomadys.h"
 
-#define GAP 10
+#define GAP 18
 #define FULL_PAGE_MAX_PIXELS (12 * 1024 * 1024)
 #define FULL_PAGE_MAX_SIDE 8192
 
@@ -246,16 +246,18 @@ void view_show_rect(View *v, int page, PRect r, int W, int H, int top)
 }
 
 /* ---------- dark mode ---------- */
-static void darken(uint8_t *px, int w, int h, int stride, const uint8_t *keep)
+/* Recolours a rendered page with the theme's paper and ink, outside images.
+ * Dark mode first inverts lightness (keeping hue: c + 255 - max - min), so
+ * white paper becomes 0; light mode keeps it at 255. Each channel then maps
+ * linearly: paper value -> page_bg, ink value -> page_fg. */
+static void recolor(uint8_t *px, int w, int h, int stride, const uint8_t *keep, bool dark)
 {
-    /* after the inversion, 0 (black paper) maps to page_bg and 255 (white
-     * ink) to page_fg, per channel: themed paper, e.g. gruvbox brown */
-    const Theme *t = theme_of(true);
+    const Theme *t = theme_of(dark);
     uint8_t lut[3][256];
     for (int c = 0; c < 3; c++) {
-        int lo = (t->page_bg >> (8 * c)) & 0xFF, hi = (t->page_fg >> (8 * c)) & 0xFF;
+        int paper = (t->page_bg >> (8 * c)) & 0xFF, ink = (t->page_fg >> (8 * c)) & 0xFF;
         for (int i = 0; i < 256; i++)
-            lut[c][i] = (uint8_t)(lo + i * (hi - lo) / 255);
+            lut[c][i] = (uint8_t)(dark ? paper + i * (ink - paper) / 255 : ink + i * (paper - ink) / 255);
     }
     for (int y = 0; y < h; y++) {
         uint8_t *p = px + (size_t)y * stride;
@@ -263,16 +265,19 @@ static void darken(uint8_t *px, int w, int h, int stride, const uint8_t *keep)
         for (int x = 0; x < w; x++, p += 4) {
             if (k && k[x])
                 continue;
-            /* invert HSL lightness, keep hue and saturation: c + 255 - max - min */
             int b = p[0], g = p[1], r = p[2];
-            int mx = SDL_max(r, SDL_max(g, b)), mn = SDL_min(r, SDL_min(g, b));
-            int dlt = 255 - mx - mn;
-            p[0] = lut[0][b + dlt];
-            p[1] = lut[1][g + dlt];
-            p[2] = lut[2][r + dlt];
+            if (dark) {
+                int dlt = 255 - SDL_max(r, SDL_max(g, b)) - SDL_min(r, SDL_min(g, b));
+                b += dlt, g += dlt, r += dlt;
+            }
+            p[0] = lut[0][b];
+            p[1] = lut[1][g];
+            p[2] = lut[2][r];
         }
     }
 }
+
+static bool plain_paper(const Theme *t) { return t->page_bg == 0xFFFFFF && t->page_fg == 0x000000; }
 
 static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w, int h, int pw, int ph, int rot)
 {
@@ -316,9 +321,9 @@ static SDL_Texture *render_page(Window *win, View *v, int page, int cx, int cy, 
     if (d->form)
         FPDF_FFLDraw(d->form, bmp, p, -cx, -cy, pw, ph, v->rotation, flags);
     FPDFBitmap_Destroy(bmp);
-    if (v->dark) {
+    if (v->dark || !plain_paper(theme_of(false))) {
         uint8_t *keep = image_mask(d, page, p, cx, cy, w, h, pw, ph, v->rotation);
-        darken(buf, w, h, stride, keep);
+        recolor(buf, w, h, stride, keep, v->dark);
         free(keep);
     }
     SDL_Texture *t = SDL_CreateTexture(win->ren, SDL_PIXELFORMAT_BGRA32, SDL_TEXTUREACCESS_STATIC, w, h);
@@ -375,10 +380,68 @@ static bool big_page(View *v, int page)
     return pw * ph > FULL_PAGE_MAX_PIXELS || pw > FULL_PAGE_MAX_SIDE || ph > FULL_PAGE_MAX_SIDE;
 }
 
+/* A soft drop shadow drawn as nine slices of a small texture: gaussian
+ * corners, edges stretched along the page, and a solid centre. */
+#define SHADOW_RADIUS 14
+
+static SDL_Texture *shadow_texture(Window *win, int r, float strength)
+{
+    int key = r * 1000 + (int)(strength * 100);
+    if (win->shadow && win->shadow_key == key)
+        return win->shadow;
+    if (win->shadow)
+        SDL_DestroyTexture(win->shadow);
+    int n = 2 * r + 2;
+    uint32_t *px = malloc((size_t)n * n * 4);
+    for (int y = 0; y < n; y++) {
+        for (int x = 0; x < n; x++) {
+            /* distance outside the 2x2 core, per axis */
+            float dx = (float)SDL_max(0, SDL_max(r - x, x - (r + 1)));
+            float dy = (float)SDL_max(0, SDL_max(r - y, y - (r + 1)));
+            float s = 0.45f * r;
+            float a = strength * SDL_expf(-(dx * dx + dy * dy) / (s * s));
+            px[y * n + x] = (uint32_t)(a * 255 + 0.5f) << 24 | 0xFFFFFF;
+        }
+    }
+    win->shadow = SDL_CreateTexture(win->ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, n, n);
+    SDL_UpdateTexture(win->shadow, NULL, px, n * 4);
+    SDL_SetTextureBlendMode(win->shadow, SDL_BLENDMODE_BLEND);
+    SDL_SetTextureScaleMode(win->shadow, SDL_SCALEMODE_LINEAR);
+    win->shadow_key = key;
+    free(px);
+    return win->shadow;
+}
+
+static void draw_shadow(Window *win, View *v, float x, float y, float w, float h)
+{
+    int r = (int)(SHADOW_RADIUS * win->density);
+    SDL_Texture *t = shadow_texture(win, r, v->dark ? 0.6f : 0.3f);
+    uint32_t c = theme_of(v->dark)->shadow;
+    SDL_SetTextureColorMod(t, c >> 16, (c >> 8) & 0xFF, c & 0xFF);
+    float R = (float)r, sx = x - R, sy = y - R + 3 * win->density; /* dropped a little */
+    float xs[3] = {sx, sx + R, sx + R + w}, ws[3] = {R, w, R};
+    float ys[3] = {sy, sy + R, sy + R + h}, hs[3] = {R, h, R};
+    float us[3] = {0, R, R + 2}, uw[3] = {R, 2, R};
+    for (int j = 0; j < 3; j++)
+        for (int i = 0; i < 3; i++) {
+            SDL_FRect src = {us[i], us[j], uw[i], uw[j]}, dst = {xs[i], ys[j], ws[i], hs[j]};
+            SDL_RenderTexture(win->ren, t, &src, &dst);
+        }
+}
+
 void view_draw(Window *win, View *v, int top)
 {
     int W = win->W, H = win->H;
     double ox = offset_x(v, W);
+    /* shadows first, so one page's shadow never covers its neighbour */
+    for (int i = 0; cfg.page_shadow && i < v->doc->npages; i++) {
+        double sy = v->py[i] - v->sy + top, sx = v->px[i] + ox;
+        if (sy >= H + GAP)
+            break;
+        if (sy + v->phpx[i] + GAP > top && sx < W + GAP && sx + v->pwpx[i] + GAP > 0)
+            draw_shadow(win, v, floorf((float)sx + 0.5f), floorf((float)sy + 0.5f), (float)v->pwpx[i],
+                        (float)v->phpx[i]);
+    }
     for (int i = 0; i < v->doc->npages; i++) {
         double sy = v->py[i] - v->sy + top, sx = v->px[i] + ox;
         if (sy >= H)

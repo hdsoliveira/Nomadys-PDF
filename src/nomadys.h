@@ -50,7 +50,8 @@ typedef struct {
     uint32_t panel_bg, panel_fg, panel_selected_bg, panel_selected_fg, panel_header;
     uint32_t comment_bg, comment_fg, comment_marker;
     uint32_t selection, search_match, caret, form_focus;
-    uint32_t page_bg, page_fg;           /* dark mode: page paper and ink colours */
+    uint32_t page_bg, page_fg;           /* page paper and ink colours (white/black: untouched) */
+    uint32_t shadow;                     /* soft shadow around pages */
 } Theme;
 
 typedef struct {
@@ -59,6 +60,7 @@ typedef struct {
     int autosave_delay_ms;
     bool subpixel_text;
     bool show_tabs;
+    bool page_shadow;        /* draw a soft shadow around pages */
     bool restore_position;   /* reopen a file where it was left */
     uint32_t highlights[5];  /* colours of new highlights for C V B N M, 0xRRGGBB */
     bool area_frame;         /* areas: frame around instead of a highlight */
@@ -280,6 +282,8 @@ struct Window {
     SDL_Window *win;
     SDL_Renderer *ren;
     Font *font;
+    SDL_Texture *shadow;     /* 9-slice drop shadow (render.c) */
+    int shadow_key;
     View *tabs[MAX_TABS];
     int ntabs, cur;
     bool show_tabs;

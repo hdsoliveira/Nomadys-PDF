@@ -87,6 +87,8 @@ static void window_destroy(Window *w)
     for (int i = 0; i < w->ntabs; i++)
         view_free(w->tabs[i]); /* textures first: they belong to the renderer */
     font_close(w->font);
+    if (w->shadow)
+        SDL_DestroyTexture(w->shadow);
     free(w->items);
     SDL_DestroyRenderer(w->ren);
     SDL_DestroyWindow(w->win);

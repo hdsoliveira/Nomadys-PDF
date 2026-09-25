@@ -10,6 +10,7 @@ autosave = true            # false: save only with Ctrl-s or :w
 autosave_delay_ms = 1000
 restore_position = true    # reopen a file where you stopped reading
 show_tabs = false          # true: tab bar always visible (t toggles it)
+page_shadow = true         # soft shadow around pages
 subpixel_text = false      # true: sharper text on LCD monitors
 zoom = fit-width           # or a percentage, e.g. 125
 # highlight colours for C V B N M (pastel yellow, red, green, pink, blue)
@@ -49,6 +50,9 @@ selection = #3C8CE7
 search_match = #FF9D00
 caret = #E64B35
 form_focus = #4DBBD5
+page_bg = #FFFFFF          # page paper (white + black ink = pages untouched)
+page_fg = #000000          # page ink
+shadow = #000000
 
 [dark]
 background = #101010
@@ -76,3 +80,4 @@ caret = #F39B7F
 form_focus = #4DBBD5
 page_bg = #1C1C1C          # dark mode: page paper colour
 page_fg = #E4E4E4          # dark mode: page ink colour
+shadow = #000000

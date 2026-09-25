@@ -199,7 +199,10 @@ theme = dark        # start in dark mode
 `make install` copies them to `~/.local/share/nomadys-pdf/themes/`. To make
 your own, copy one to `~/.config/nomadys-pdf/themes/mine.conf` and use
 `include = mine`; any key can also be overridden in the config after the
-include line. In dark mode `page_bg` / `page_fg` colour the pages themselves.
+include line. `page_bg` / `page_fg` are the paper and ink of the pages
+themselves (in light mode too: gruvbox pages are cream); figures keep their
+colours. `page_shadow = false` removes the soft shadow around pages; the
+`shadow` key sets its colour.
 
 ![themes](docs/themes.png)
 
