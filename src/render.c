@@ -242,9 +242,10 @@ static SDL_Texture *render_page(Window *win, View *v, int page, int cx, int cy, 
         return NULL;
     FPDF_BITMAP bmp = FPDFBitmap_CreateEx(w, h, FPDFBitmap_BGRA, buf, stride);
     FPDFBitmap_FillRect(bmp, 0, 0, w, h, 0xFFFFFFFF);
-    FPDF_RenderPageBitmap(bmp, p, -cx, -cy, pw, ph, 0, FPDF_ANNOT);
+    int flags = FPDF_ANNOT | (cfg.subpixel_text ? FPDF_LCD_TEXT : 0);
+    FPDF_RenderPageBitmap(bmp, p, -cx, -cy, pw, ph, 0, flags);
     if (d->form)
-        FPDF_FFLDraw(d->form, bmp, p, -cx, -cy, pw, ph, 0, FPDF_ANNOT);
+        FPDF_FFLDraw(d->form, bmp, p, -cx, -cy, pw, ph, 0, flags);
     FPDFBitmap_Destroy(bmp);
     if (v->dark) {
         uint8_t *keep = image_mask(d, page, p, cx, cy, w, h, pw, ph);
@@ -254,7 +255,7 @@ static SDL_Texture *render_page(Window *win, View *v, int page, int cx, int cy, 
     SDL_Texture *t = SDL_CreateTexture(win->ren, SDL_PIXELFORMAT_BGRA32, SDL_TEXTUREACCESS_STATIC, w, h);
     if (t) {
         SDL_UpdateTexture(t, NULL, buf, stride);
-        SDL_SetTextureScaleMode(t, SDL_SCALEMODE_LINEAR);
+        SDL_SetTextureScaleMode(t, SDL_SCALEMODE_NEAREST); /* drawn 1:1, never resampled */
     }
     free(buf);
     return t;
@@ -335,7 +336,9 @@ void view_draw(Window *win, View *v, int top)
         }
         if (!e)
             continue;
-        SDL_FRect dst = {(float)(sx + e->x), (float)(sy + e->y), (float)e->w, (float)e->h};
+        /* whole-pixel position: a fractional offset would blur the page */
+        SDL_FRect dst = {floorf((float)(sx + e->x) + 0.5f), floorf((float)(sy + e->y) + 0.5f),
+                         (float)e->w, (float)e->h};
         SDL_RenderTexture(win->ren, e->tex, NULL, &dst);
     }
 }

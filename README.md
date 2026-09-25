@@ -70,6 +70,7 @@ for confirmation.
 theme = dark              # dark | light
 autosave = true
 autosave_delay_ms = 1000
+subpixel_text = false     # true: sharper text on LCD monitors (RGB subpixels)
 highlight_color = #FFE14D
 zoom = fit-width          # or a percentage, e.g. 125
 background_light = #D9D9D9

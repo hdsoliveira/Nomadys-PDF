@@ -28,6 +28,7 @@ typedef struct { float l, t, r, b; } PRect; /* page space: y up, t > b */
 typedef struct {
     bool dark;               /* initial theme */
     bool autosave;           /* save automatically after edits */
+    bool subpixel_text;      /* LCD (RGB subpixel) text antialiasing */
     uint32_t highlight;      /* 0xRRGGBB */
     double zoom;             /* 0 = fit width, otherwise pixels per point / density */
     uint8_t dark_lo, dark_hi;/* dark-mode luminance range */
