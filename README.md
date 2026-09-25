@@ -123,6 +123,29 @@ The editor command for inverse search is `synctex_editor` in the config
 
 A number before a command repeats it (`5j`, `3n`).
 
+### Commands (`:`)
+
+`Tab` completes command names and file paths; with several options they are
+listed above the line and `Tab` / `Shift-Tab` cycle through them (`:` then
+`Tab` lists every command).
+
+| Command | Action |
+|---|---|
+| `:w` | save |
+| `:q` / `:q!` | close the tab / close it discarding changes |
+| `:wq`, `:x` | save and close the tab |
+| `:e file` | open a PDF in a new tab |
+| `:42`, `:page 42` | go to page 42 |
+| `:zoom 150` | zoom in percent |
+| `:dark` / `:light` | dark / light mode |
+| `:marks`, `:notes` | the panel |
+| `:noh` | clear the search highlight |
+| `:reload` | reload the PDF from disk |
+| `:help` | every key |
+
+Commands live in one table in `commands.c` (name, argument, action,
+description); the help screen and the completion list are built from it.
+
 ## Saving
 
 By default, form entries and highlights are saved automatically about 1 s
@@ -182,6 +205,7 @@ One feature per file in `src/`; `nomadys.h` has the shared types and a module ma
 | `annot.c` | highlights and comments |
 | `marks.c` | marks, jump history, last position |
 | `search.c` | text search |
+| `commands.c` | the `:` commands and their Tab completion |
 | `synctex.c` | LaTeX forward/inverse search through the `synctex` tool |
 | `ipc.c` | socket for VimTeX requests, inotify for auto-reload |
 | `panel.c` | the marks / notes / contents panel |

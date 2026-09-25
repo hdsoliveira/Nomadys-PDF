@@ -287,6 +287,8 @@ struct Window {
     int cmdlen;
     PromptFn prompt_done;
     int prompt_arg;
+    char **comp;             /* completion candidates (commands.c) */
+    int ncomp, comp_at, comp_start;
     /* key sequences */
     char pending[64];
     int count;
@@ -328,6 +330,15 @@ int input_wait_ms(uint64_t now);                           /* pending ambiguous 
 void input_expire(uint64_t now);
 void prompt_open(Window *w, const char *label, const char *initial, PromptFn done, int arg);
 void scroll(Window *w, double dx, double dy);
+void goto_page(Window *w, View *v, int page);            /* a jump: Ctrl-o returns */
+
+/* ---------- ':' commands (commands.c) ---------- */
+void command_run(Window *w, const char *line);
+void command_complete(Window *w, int dir);               /* Tab (+1) / Shift-Tab (-1) */
+void command_complete_reset(Window *w);
+int command_count(void);
+void command_describe(int i, char *keys, size_t cap, const char **text);
+const char *command_help_for(const char *name);
 
 /* ---------- forms (forms.c) ---------- */
 void form_step(Window *w, int dir);

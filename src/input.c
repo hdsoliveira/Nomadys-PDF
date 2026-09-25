@@ -40,7 +40,7 @@ void scroll(Window *w, double dx, double dy)
     w->redraw = true;
 }
 
-static void goto_page(Window *w, View *v, int page)
+void goto_page(Window *w, View *v, int page)
 {
     page = SDL_clamp(page, 0, v->doc->npages - 1);
     jump_to(w, v, (Pos){page, 0});
@@ -206,70 +206,6 @@ static void a_mark_set(Window *w, View *v, int c, const char *a)
 }
 
 /* ---------- prompt line: commands, search, comments ---------- */
-static void complete_path(Window *w)
-{
-    if (strncmp(w->cmd, "e ", 2))
-        return;
-    char pattern[CMD_MAX + 8];
-    const char *arg = w->cmd + 2, *home = getenv("HOME");
-    if (arg[0] == '~' && home)
-        snprintf(pattern, sizeof pattern, "%s%s*", home, arg + 1);
-    else
-        snprintf(pattern, sizeof pattern, "%s*", arg);
-    glob_t g;
-    if (glob(pattern, GLOB_MARK, NULL, &g) || !g.gl_pathc) {
-        globfree(&g);
-        return;
-    }
-    size_t common = strlen(g.gl_pathv[0]);
-    for (size_t i = 1; i < g.gl_pathc; i++) {
-        size_t k = 0;
-        while (k < common && g.gl_pathv[i][k] == g.gl_pathv[0][k])
-            k++;
-        common = k;
-    }
-    if (common + 3 < CMD_MAX) {
-        snprintf(w->cmd, CMD_MAX, "e %.*s", (int)common, g.gl_pathv[0]);
-        w->cmdlen = (int)strlen(w->cmd);
-    }
-    if (g.gl_pathc > 1)
-        ui_message(w, "%zu opções", g.gl_pathc);
-    globfree(&g);
-}
-
-static void run_command(Window *w, const char *line)
-{
-    View *v = cur_view(w);
-    while (*line == ' ')
-        line++;
-    char c[CMD_MAX];
-    snprintf(c, sizeof c, "%s", line);
-    if (!strcmp(c, "w")) {
-        save(w, v);
-    } else if (!strcmp(c, "q") || !strcmp(c, "q!") || !strcmp(c, "wq") || !strcmp(c, "x")) {
-        if (c[0] == 'w' || c[0] == 'x')
-            save(w, v);
-        if (c[1] == '!' || c[0] == 'w' || c[0] == 'x' || confirm_close(w, v))
-            close_tab(w, w->cur);
-    } else if (!strncmp(c, "e ", 2)) {
-        char path[CMD_MAX + 256];
-        const char *arg = c + 2, *home = getenv("HOME");
-        if (arg[0] == '~' && home)
-            snprintf(path, sizeof path, "%s%s", home, arg + 1);
-        else
-            snprintf(path, sizeof path, "%s", arg);
-        open_tab(w, path);
-    } else if (!strcmp(c, "marks") || !strcmp(c, "notes")) {
-        panel_open(w);
-    } else if (!strcmp(c, "noh")) {
-        v->match_page = -1;
-    } else if (c[0] >= '0' && c[0] <= '9') {
-        goto_page(w, v, atoi(c) - 1);
-    } else if (*c) {
-        ui_message(w, "comando desconhecido: %s", c);
-    }
-}
-
 static void run_search(Window *w, const char *text)
 {
     View *v = cur_view(w);
@@ -280,7 +216,7 @@ static void run_search(Window *w, const char *text)
 static void a_command(Window *w, View *v, int c, const char *a)
 {
     (void)v, (void)c, (void)a;
-    prompt_open(w, ":", "", run_command, 0);
+    prompt_open(w, ":", "", command_run, 0);
 }
 
 static void a_search(Window *w, View *v, int c, const char *a)
@@ -303,6 +239,7 @@ void prompt_open(Window *w, const char *label, const char *initial, PromptFn don
 
 static void prompt_insert(Window *w, const char *t)
 {
+    command_complete_reset(w);
     size_t n = strlen(t);
     if (w->cmdlen + n < CMD_MAX - 1) {
         memcpy(w->cmd + w->cmdlen, t, n + 1);
@@ -312,6 +249,12 @@ static void prompt_insert(Window *w, const char *t)
 
 static void prompt_special(Window *w, const char *tok)
 {
+    bool completing = w->prompt_done == command_run && (!strcmp(tok, "<Tab>") || !strcmp(tok, "<S-Tab>"));
+    if (completing) {
+        command_complete(w, tok[1] == 'S' ? -1 : 1);
+        return;
+    }
+    command_complete_reset(w);
     if (!strcmp(tok, "<Esc>")) {
         w->mode = w->prompt_return;
     } else if (!strcmp(tok, "<Enter>")) {
@@ -320,7 +263,7 @@ static void prompt_special(Window *w, const char *tok)
         snprintf(text, sizeof text, "%s", w->cmd);
         w->prompt_done(w, text);
     } else if (!strcmp(tok, "<BS>")) {
-        if (w->cmdlen == 0 && (w->prompt_done == run_command || w->prompt_done == run_search)) {
+        if (w->cmdlen == 0 && (w->prompt_done == command_run || w->prompt_done == run_search)) {
             w->mode = w->prompt_return; /* backspace on an empty ':' or '/' line */
             return;
         }
@@ -329,8 +272,6 @@ static void prompt_special(Window *w, const char *tok)
         w->cmd[w->cmdlen] = 0;
     } else if (!strcmp(tok, "<C-u>")) {
         w->cmd[w->cmdlen = 0] = 0;
-    } else if (!strcmp(tok, "<Tab>") && w->prompt_done == run_command) {
-        complete_path(w);
     }
 }
 
@@ -786,6 +727,12 @@ int help_lines(HelpLine **out)
     char panel_title[48];
     snprintf(panel_title, sizeof panel_title, "Painel (%sl)", leader_label());
     help_section(&lines, &n, &cap, panel_title, panel_map, SDL_arraysize(panel_map), false);
+    snprintf(help_add(&lines, &n, &cap)->keys, sizeof lines->keys, "Comandos (:, Tab completa)");
+    lines[n - 1].header = true;
+    for (int i = 0; i < command_count(); i++) {
+        HelpLine *l = help_add(&lines, &n, &cap);
+        command_describe(i, l->keys, sizeof l->keys, &l->text);
+    }
     snprintf(help_add(&lines, &n, &cap)->keys, sizeof lines->keys, "Formulário (dentro de um campo)");
     lines[n - 1].header = true;
     for (size_t i = 0; i < SDL_arraysize(form); i++) {

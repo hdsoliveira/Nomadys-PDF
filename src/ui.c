@@ -74,12 +74,62 @@ static void draw_tabbar(Window *w)
     }
 }
 
+/* How a completion option is listed: files by name, directories as "name/". */
+static const char *option_label(const char *s)
+{
+    size_t n = strlen(s);
+    const char *end = n && s[n - 1] == '/' ? s + n - 1 : s + n, *start = end;
+    while (start > s && start[-1] != '/')
+        start--;
+    return start;
+}
+
+/* Completion options above the prompt, the current one highlighted. */
+static void draw_wildmenu(Window *w)
+{
+    const Theme *t = wtheme(w);
+    int h = ui_bar_height(w), p = pad(w), gap = 2 * p;
+    float y = (float)(w->H - 2 * h);
+    ui_fill(w, 0, y, (float)w->W, (float)h, t->panel_bg, 250);
+    int first = 0, used = 0; /* scroll so that the current option is visible */
+    for (int i = SDL_max(0, w->comp_at); i >= 0; i--) {
+        used += font_width(w->font, option_label(w->comp[i])) + gap;
+        if (used > w->W * 3 / 4)
+            break;
+        first = i;
+    }
+    float x = (float)p;
+    for (int i = first; i < w->ncomp && x < w->W - p; i++) {
+        const char *s = option_label(w->comp[i]);
+        int tw = font_width(w->font, s);
+        bool cur = i == w->comp_at;
+        if (cur)
+            ui_fill(w, x - p / 2.0f, y, (float)(tw + p), (float)h, t->panel_selected_bg, 255);
+        font_draw(w->font, x, y + p / 2.0f, s, cur ? t->panel_selected_fg : t->panel_fg);
+        x += tw + gap;
+    }
+    const char *about = w->comp_at >= 0 && w->comp_start == 0 ? command_help_for(w->comp[w->comp_at]) : NULL;
+    if (about && x + font_width(w->font, about) + gap < w->W)
+        font_draw(w->font, (float)(w->W - font_width(w->font, about) - p), y + p / 2.0f, about, t->panel_header);
+}
+
 static void draw_prompt(Window *w)
 {
     const Theme *t = wtheme(w);
     int h = ui_bar_height(w), p = pad(w);
+    if (w->ncomp > 1)
+        draw_wildmenu(w);
     char line[CMD_MAX + 80];
     snprintf(line, sizeof line, "%s%s", w->prompt_label, w->cmd);
+    /* too long: keep the end, where the cursor is */
+    const char *shown = line;
+    while (*shown && font_width(w->font, shown) > w->W - 3 * p)
+        utf8_next(&shown);
+    if (shown != line) {
+        char tail[CMD_MAX + 80] = "\u2026";
+        SDL_strlcat(tail, shown, sizeof tail);
+        SDL_strlcpy(line, tail, sizeof line);
+    }
     ui_fill(w, 0, (float)(w->H - h), (float)w->W, (float)h, t->bar_bg, 250);
     font_draw(w->font, (float)p, (float)(w->H - h + p / 2), line, t->bar_fg);
     float cx = (float)(p + font_width(w->font, line));
