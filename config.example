@@ -1,12 +1,68 @@
 # Nomadys-PDF: copy to ~/.config/nomadys-pdf/config
-theme = light              # dark | light
+# '#' starts a comment. Colours are #RRGGBB.
+
+theme = light              # dark | light (i toggles while reading)
 autosave = true            # false: save only with Ctrl-s or :w
 autosave_delay_ms = 1000
-subpixel_text = false      # true: sharper text on LCD monitors (RGB subpixels)
-show_tabs = false          # true: tab bar always visible (t still toggles it)
-highlight_color = #FFE14D
+restore_position = true    # reopen a file where you stopped reading
+show_tabs = false          # true: tab bar always visible (t toggles it)
+subpixel_text = false      # true: sharper text on LCD monitors
 zoom = fit-width           # or a percentage, e.g. 125
-background_light = #D9D9D9
-background_dark = #101010
-dark_contrast_low = 28
-dark_contrast_high = 228
+highlight_color = #FFE14D  # colour of new highlights
+leader = \                 # leader key: \ , ; or "space"
+
+# UI font (tabs, command line, messages, panel): any installed font
+font = monospace           # e.g. JetBrains Mono, DejaVu Sans, Go Mono
+font_size = 10.5           # points
+
+[light]
+background = #D9D9D9       # around the pages
+tab_bg = #ECECEC
+tab_fg = #5A5A5A
+tab_active_bg = #FFFFFF
+tab_active_fg = #1E1E1E
+tab_accent = #3C5488
+bar_bg = #F4F4F4           # ':' and '/' line, comment prompt
+bar_fg = #1E1E1E
+bar_cursor = #3C5488
+message_bg = #333333
+message_fg = #FAFAFA
+panel_bg = #FAFAFA
+panel_fg = #222222
+panel_selected_bg = #3C5488
+panel_selected_fg = #FFFFFF
+panel_header = #8A8A8A
+comment_bg = #FFF8C4
+comment_fg = #222222
+comment_marker = #E64B35   # dot on highlights that have a comment
+selection = #3C8CE7
+search_match = #FF9D00
+caret = #E64B35
+form_focus = #4DBBD5
+
+[dark]
+background = #101010
+tab_bg = #1A1A1A
+tab_fg = #8A8A8A
+tab_active_bg = #2E2E2E
+tab_active_fg = #ECECEC
+tab_accent = #4DBBD5
+bar_bg = #1E1E1E
+bar_fg = #ECECEC
+bar_cursor = #4DBBD5
+message_bg = #2A2A2A
+message_fg = #ECECEC
+panel_bg = #1C1C1C
+panel_fg = #DADADA
+panel_selected_bg = #2F4F6F
+panel_selected_fg = #FFFFFF
+panel_header = #7A7A7A
+comment_bg = #2B2A1E
+comment_fg = #F2EBC0
+comment_marker = #F39B7F
+selection = #3C8CE7
+search_match = #FF9D00
+caret = #F39B7F
+form_focus = #4DBBD5
+page_low = 28              # page luminance range in dark mode (0-255)
+page_high = 228

@@ -1,4 +1,14 @@
-/* Nomadys-PDF: minimal, fast, keyboard-driven PDF reader. */
+/* Nomadys-PDF: minimal, fast, keyboard-driven PDF reader.
+ *
+ * Module map (one feature per file):
+ *   main.c    windows, tabs, event loop          input.c   key tokens, keymaps, actions
+ *   config.c  config file and colour themes      font.c    UI text via fontconfig + FreeType
+ *   doc.c     PDFium document, pages, saving     render.c  layout, page rendering, dark mode
+ *   forms.c   form field navigation and typing   caret.c   text caret and free (area) cursor
+ *   annot.c   highlights and comments            marks.c   marks, jump list, last position
+ *   search.c  text search                        panel.c   list of marks, notes and contents
+ *   ui.c      tab bar, prompt, messages, drawing helpers
+ */
 #pragma once
 
 #include <stdbool.h>
@@ -21,32 +31,64 @@
 #define CACHE_SLOTS 16
 #define LOADED_PAGE_CAP 48
 #define CMD_MAX 1024
+#define NMARKS 26
+#define JUMPS_MAX 100
 
 typedef struct { float l, t, r, b; } PRect; /* page space: y up, t > b */
 
-/* ---------- configuration ---------- */
+typedef struct Window Window;
+
+/* A reading position independent of zoom: page and fraction of its height. */
+typedef struct { int page; float y; } Pos;
+
+/* ---------- configuration and themes (config.c) ---------- */
 typedef struct {
-    bool dark;               /* initial theme */
-    bool autosave;           /* save automatically after edits */
-    bool subpixel_text;      /* LCD (RGB subpixel) text antialiasing */
-    bool show_tabs;          /* tab bar visible when a window opens */
-    uint32_t highlight;      /* 0xRRGGBB */
-    double zoom;             /* 0 = fit width, otherwise pixels per point / density */
-    uint8_t dark_lo, dark_hi;/* dark-mode luminance range */
-    uint32_t bg_light, bg_dark;
+    uint32_t background;                 /* around the pages */
+    uint32_t tab_bg, tab_fg, tab_active_bg, tab_active_fg, tab_accent;
+    uint32_t bar_bg, bar_fg, bar_cursor; /* ':' command line and '/' search */
+    uint32_t message_bg, message_fg;
+    uint32_t panel_bg, panel_fg, panel_selected_bg, panel_selected_fg, panel_header;
+    uint32_t comment_bg, comment_fg, comment_marker;
+    uint32_t selection, search_match, caret, form_focus;
+    uint8_t page_low, page_high;         /* dark mode: page luminance range */
+} Theme;
+
+typedef struct {
+    bool dark;               /* start in dark mode */
+    bool autosave;
     int autosave_delay_ms;
+    bool subpixel_text;
+    bool show_tabs;
+    bool restore_position;   /* reopen a file where it was left */
+    uint32_t highlight;      /* colour of new highlights, 0xRRGGBB */
+    double zoom;             /* 0 = fit width, otherwise 1.0 = 100 % */
+    char font[128];          /* UI font family (fontconfig pattern) */
+    double font_size;        /* UI font size in points */
+    char leader[8];          /* leader key token, e.g. "\\" */
+    Theme light, dark_theme;
 } Config;
 
 extern Config cfg;
 void config_load(void);
+const Theme *theme_of(bool dark);
+const char *leader_label(void);
 
-/* ---------- document ---------- */
+/* ---------- document (doc.c) ---------- */
 typedef struct Doc Doc;
 
 typedef struct {
     int idx;                 /* annotation index on the page */
     PRect r;
 } Widget;
+
+typedef struct {
+    int idx;                 /* annotation index on the page */
+    int subtype;
+    PRect r;
+    PRect *quads;            /* highlight areas, or just the rect */
+    int nquads;
+    bool has_comment;
+} Note;
 
 typedef struct {
     FPDF_PAGE page;
@@ -59,6 +101,9 @@ typedef struct {
     Widget *widgets;
     int nwidgets;
     bool widgets_ready;
+    Note *notes;             /* markup annotations (highlights, comments) */
+    int nnotes;
+    unsigned notes_version;  /* page version the list was built for, +1 */
     /* caret support */
     int nchars;
     PRect *boxes;
@@ -79,6 +124,12 @@ typedef struct {
     Doc *doc;
 } FormInfo;
 
+typedef struct {
+    bool set;
+    Pos pos;
+    char name[96];
+} Mark;
+
 struct Doc {
     char *path;
     FPDF_DOCUMENT pdf;
@@ -93,9 +144,13 @@ struct Doc {
     uint64_t changed_at;
     FormTimer timers[MAX_TIMERS];
     int next_timer_id;
-    /* focused form field */
-    int focus_page;          /* -1 = none */
+    int focus_page;          /* focused form field, -1 = none */
     int focus_widget;        /* index into slots[focus_page].widgets */
+    /* marks.c */
+    char *marks_path;
+    Mark marks[NMARKS];
+    Pos last;                /* last reading position, page -1 = none */
+    int notes_scanned;       /* pages whose notes were listed in the background */
 };
 
 Doc *doc_open(const char *path, char *err, size_t errlen);
@@ -103,7 +158,6 @@ void doc_ref(Doc *d);
 void doc_unref(Doc *d);
 FPDF_PAGE doc_page(Doc *d, int i);
 FPDF_TEXTPAGE doc_text(Doc *d, int i);
-void doc_touch_pages(Doc *d);
 void doc_mark_changed(Doc *d, int page);
 bool doc_save(Doc *d, char *err, size_t errlen);
 void doc_page_images(Doc *d, int i);
@@ -117,7 +171,16 @@ extern Doc *docs[MAX_DOCS];
 extern int ndocs;
 extern bool need_redraw_all;
 
-/* ---------- views / tabs ---------- */
+/* ---------- annotations (annot.c) ---------- */
+void notes_page(Doc *d, int page);                       /* fills slots[page].notes */
+bool notes_scan(Doc *d, int pages);                      /* background listing; true if more remain */
+int note_at(Doc *d, int page, float x, float y);         /* index into notes, or -1 */
+bool note_create(Doc *d, int page, const PRect *quads, int n, const char *comment);
+char *note_comment(Doc *d, int page, int note);          /* malloc'd UTF-8, or NULL */
+bool note_set_comment(Doc *d, int page, int note, const char *comment);
+bool note_delete(Doc *d, int page, int note);
+
+/* ---------- views / tabs (render.c) ---------- */
 typedef struct {
     int page;
     int x, y, w, h;          /* clip in page pixel space */
@@ -128,11 +191,9 @@ typedef struct {
     uint64_t used;
 } CacheEntry;
 
-typedef enum { MODE_NORMAL, MODE_FORM, MODE_CARET, MODE_COMMAND, MODE_SEARCH } Mode;
+typedef enum { MODE_NORMAL, MODE_FORM, MODE_CARET, MODE_AREA, MODE_PANEL, MODE_PROMPT } Mode;
 
-typedef struct {
-    int page, ch;            /* caret position */
-} TextPos;
+typedef struct { int page, ch; } TextPos;
 
 typedef struct {
     Doc *doc;
@@ -141,47 +202,31 @@ typedef struct {
     bool dual;
     bool dark;
     double sx, sy;           /* scroll offsets in pixels */
+    Pos pending_pos;         /* applied at the first layout, page -1 = none */
     /* layout */
-    int lay_w, lay_h;
+    int lay_w;
     double lay_zoom;
     bool lay_dual;
     int *px, *py;            /* page position in content space */
     int *pwpx, *phpx;        /* page pixel sizes */
     int content_w, content_h;
     CacheEntry cache[CACHE_SLOTS];
-    /* caret / selection */
+    /* caret.c: text caret, free cursor and selections */
     TextPos caret;
     bool selecting;
     TextPos anchor;
     double caret_x;          /* preferred x for vertical motion */
-    /* search */
+    int area_page;
+    float area_x, area_y, area_ax, area_ay;
+    bool area_selecting;
+    /* marks.c: jump list */
+    Pos jumps[JUMPS_MAX];
+    int njumps, jump_at;
+    Pos previous;            /* for "mm": position before the last jump */
+    /* search.c */
     char query[CMD_MAX];
     int match_page, match_start, match_len;
 } View;
-
-typedef struct {
-    SDL_Window *win;
-    SDL_Renderer *ren;
-    SDL_Texture *font;
-    View *tabs[MAX_TABS];
-    int ntabs, cur;
-    bool show_tabs;
-    uint64_t tabs_flash_until;
-    Mode mode;
-    char cmd[CMD_MAX];
-    int cmdlen;
-    char msg[256];
-    uint64_t msg_until;
-    int count;
-    bool pending_g;
-    uint64_t quit_warned;    /* close confirmation valid until this time */
-    bool redraw;
-    int W, H;                /* pixel size */
-    float density;
-} Window;
-
-extern Window *windows[MAX_WINDOWS];
-extern int nwindows;
 
 View *view_new(Doc *d);
 View *view_clone(View *v);
@@ -193,26 +238,139 @@ bool view_prefetch(Window *w, View *v, int top);
 void view_invalidate_cache(View *v);
 int view_top_page(View *v);
 void view_goto_page(View *v, int page);
+Pos view_pos(View *v);
+void view_set_pos(View *v, Pos p);
 void view_show_rect(View *v, int page, PRect r, int W, int H, int top);
 void page_to_screen(View *v, int page, float x, float y, float *sx, float *sy, int top);
 bool screen_to_page(View *v, float sx, float sy, int top, int *page, double *x, double *y);
 
-/* ---------- text: caret, selection, search, highlights ---------- */
-void caret_enter(Window *w, View *v);
-bool caret_key(Window *w, View *v, SDL_Keycode key, SDL_Keymod mod, const char *text);
-void caret_draw(Window *w, View *v, int top, bool blink_on);
+/* ---------- windows ---------- */
+typedef struct Font Font;
+typedef void (*PromptFn)(Window *w, const char *text);
+
+typedef struct {
+    int kind;                /* 0 header, 1 mark, 2 note, 3 contents entry */
+    char text[256];
+    int depth;
+    Pos pos;
+    int page, note, mark;
+} PanelItem;
+
+struct Window {
+    SDL_Window *win;
+    SDL_Renderer *ren;
+    Font *font;
+    View *tabs[MAX_TABS];
+    int ntabs, cur;
+    bool show_tabs;
+    uint64_t tabs_flash_until;
+    Mode mode, prompt_return;
+    /* prompt line (commands, search, comments, names) */
+    char prompt_label[64];
+    char cmd[CMD_MAX];
+    int cmdlen;
+    PromptFn prompt_done;
+    int prompt_arg;
+    /* key sequences */
+    char pending[64];
+    int count;
+    /* messages */
+    char msg[512];
+    uint64_t msg_until;
+    uint64_t quit_warned;    /* close confirmation valid until this time */
+    /* panel */
+    PanelItem *items;
+    int nitems, sel, first;
+    bool redraw;
+    int W, H;                /* pixel size */
+    float density;
+};
+
+extern Window *windows[MAX_WINDOWS];
+extern int nwindows;
+View *cur_view(Window *w);
+int top_of(Window *w);
+const Theme *wtheme(Window *w);
+void window_new_from(Window *w);
+bool open_tab(Window *w, const char *path);
+void close_tab(Window *w, int i);
+void close_window(Window *w);
+bool confirm_close(Window *w, View *only);
+void save(Window *w, View *v);
+void update_title(Window *w);
+
+/* ---------- input (input.c) ---------- */
+void input_token(Window *w, const char *tok);            /* "<Esc>", "<C-j>", "a", ... */
+bool input_key_event(Window *w, const SDL_KeyboardEvent *e);
+void input_text_event(Window *w, const char *text);
+int input_wait_ms(uint64_t now);                           /* pending ambiguous key, or -1 */
+void input_expire(uint64_t now);
+void prompt_open(Window *w, const char *label, const char *initial, PromptFn done, int arg);
+void scroll(Window *w, double dx, double dy);
+
+/* ---------- forms (forms.c) ---------- */
+void form_step(Window *w, int dir);
+void form_leave(Window *w);
+void form_special(Window *w, const char *tok);
+void form_text(Window *w, const char *text);
+void form_click(Window *w, float x, float y, bool down);
+void form_draw_focus(Window *w, View *v, int top);
+
+/* ---------- caret and free cursor (caret.c) ---------- */
+bool caret_enter(Window *w, View *v);
+void caret_move(Window *w, View *v, char motion, int count);
+void caret_toggle_select(Window *w, View *v);
+void caret_mark(Window *w, View *v, bool comment);    /* highlight selection */
+void caret_copy(Window *w, View *v);
+void area_enter(Window *w, View *v);
+void area_move(Window *w, View *v, float dx, float dy);
+void area_toggle_select(Window *w, View *v);
+void area_mark(Window *w, View *v, bool comment);
+bool cursor_note(Window *w, View *v, int *page, int *note); /* note under the cursor */
+void cursor_draw(Window *w, View *v, int top, bool blink_on);
+
+/* ---------- marks and jumps (marks.c) ---------- */
+void marks_load(Doc *d);
+void marks_save(Doc *d);
+void mark_set(Window *w, View *v, int m);
+void mark_jump(Window *w, View *v, int m);
+void jump_to(Window *w, View *v, Pos p);                 /* records the jump */
+void jump_back(Window *w, View *v);                      /* "mm" */
+void jump_history(Window *w, View *v, int dir);          /* Ctrl-o / Ctrl-i */
+
+/* ---------- search (search.c) ---------- */
 bool search_run(Window *w, View *v, int dir, bool from_current);
 void search_draw(Window *w, View *v, int top);
 
-/* ---------- ui ---------- */
-void ui_init(Window *w);
-void ui_text(Window *w, float x, float y, const char *s, uint32_t rgb, int scale);
-int ui_text_width(const char *s, int scale);
+/* ---------- panel (panel.c) ---------- */
+void panel_open(Window *w);
+void panel_close(Window *w);
+void panel_move(Window *w, int delta);
+void panel_activate(Window *w);
+void panel_delete(Window *w);
+void panel_rename(Window *w);
+void panel_draw(Window *w);
+
+/* ---------- UI text (font.c) ---------- */
+Font *font_open(SDL_Renderer *ren, const char *family, double points, float density);
+void font_close(Font *f);
+int font_height(Font *f);
+int font_width(Font *f, const char *s);
+void font_fit(Font *f, char *s, int maxw);         /* ellipsis; s needs 3 spare bytes */
+void font_draw(Font *f, float x, float y, const char *s, uint32_t rgb);   /* y = top */
+
+/* ---------- drawing helpers and overlays (ui.c) ---------- */
 void ui_fill(Window *w, float x, float y, float wd, float ht, uint32_t rgb, uint8_t a);
+void ui_frame(Window *w, float x, float y, float wd, float ht, float t, uint32_t rgb);
 void ui_message(Window *w, const char *fmt, ...);
+void ui_message_long(Window *w, int ms, const char *fmt, ...);
+int ui_bar_height(Window *w);
 int ui_tabbar_height(Window *w);
 void ui_draw_overlays(Window *w, uint64_t now);
+void ui_draw_notes(Window *w, View *v, int top);
+void ui_draw_comment(Window *w, const char *text);
 
-/* ---------- utilities ---------- */
+/* ---------- utilities (ui.c) ---------- */
 int utf8_to_utf16(const char *s, unsigned short *out, int cap);
 char *utf16_to_utf8(const unsigned short *s, int n);
+unsigned utf8_next(const char **s);

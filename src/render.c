@@ -18,6 +18,8 @@ View *view_new(Doc *d)
     v->fit_width = cfg.zoom <= 0;
     v->dark = cfg.dark;
     v->match_page = -1;
+    v->previous.page = -1;
+    v->pending_pos = cfg.restore_position ? d->last : (Pos){-1, 0};
     int n = d->npages ? d->npages : 1;
     v->px = calloc(n, sizeof *v->px);
     v->py = calloc(n, sizeof *v->py);
@@ -36,6 +38,7 @@ View *view_clone(View *src)
     v->dark = src->dark;
     v->sx = src->sx;
     v->sy = src->sy;
+    v->pending_pos = (Pos){-1, 0};
     memcpy(v->query, src->query, sizeof v->query);
     return v;
 }
@@ -51,6 +54,8 @@ void view_invalidate_cache(View *v)
 
 void view_free(View *v)
 {
+    if (v->lay_w)
+        v->doc->last = view_pos(v);
     view_invalidate_cache(v);
     doc_unref(v->doc);
     free(v->px);
@@ -111,6 +116,28 @@ void view_layout(View *v, int W, int H, int top)
     /* keep the relative scroll position across zoom/layout changes */
     if (old_h > 0)
         v->sy = v->sy * v->content_h / old_h;
+    if (v->pending_pos.page >= 0) {
+        view_set_pos(v, v->pending_pos);
+        v->pending_pos.page = -1;
+    }
+}
+
+Pos view_pos(View *v)
+{
+    int page = view_top_page(v);
+    if (page < 0 || !v->phpx[page])
+        return (Pos){0, 0};
+    return (Pos){page, (float)((v->sy - v->py[page]) / v->phpx[page])};
+}
+
+void view_set_pos(View *v, Pos p)
+{
+    if (!v->lay_w) {
+        v->pending_pos = p;
+        return;
+    }
+    p.page = SDL_clamp(p.page, 0, v->doc->npages - 1);
+    v->sy = v->py[p.page] + (double)p.y * v->phpx[p.page];
 }
 
 void view_clamp(View *v, int W, int H, int top)
@@ -185,9 +212,10 @@ void view_show_rect(View *v, int page, PRect r, int W, int H, int top)
 /* ---------- dark mode ---------- */
 static void darken(uint8_t *px, int w, int h, int stride, const uint8_t *keep)
 {
+    const Theme *t = theme_of(true);
     uint8_t lut[256];
     for (int i = 0; i < 256; i++)
-        lut[i] = (uint8_t)(cfg.dark_lo + i * (cfg.dark_hi - cfg.dark_lo) / 255);
+        lut[i] = (uint8_t)(t->page_low + i * (t->page_high - t->page_low) / 255);
     for (int y = 0; y < h; y++) {
         uint8_t *p = px + (size_t)y * stride;
         const uint8_t *k = keep ? keep + (size_t)y * w : NULL;

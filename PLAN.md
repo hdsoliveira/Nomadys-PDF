@@ -66,3 +66,27 @@ form navigation/typing/checkbox, autosave (valid PDF per `mutool`, values
 persisted), caret mode, selection, highlight annotation saved, search, tabs,
 second window. 644-page PDF: open + first frame 0.15 s; ~12 ms per page flip.
 Not yet tested in a real sway window by the user.
+
+## v0.2.0 (2026-09-26)
+
+User requests: keyboard-only highlights with comments (text and free areas
+such as figures), marks for jumping around while reading, colour themes for
+dark and light, UI font choice, and maintainable code.
+
+- Marks: user's design, leader-based — `\ma` sets, `ma` jumps (the frequent
+  action gets the short key); `mm` toggles back; `Ctrl-o`/`Ctrl-i` jump list;
+  `\l` panel. Stored outside the PDF (~/.local/share/nomadys-pdf/marks/),
+  keyed by the PDF file ID; also restores the last reading position.
+- Highlights/comments: standard Highlight annotations with /Contents, so
+  other readers show them. Text cursor (`v`) or free cursor (`Ctrl-v`).
+- Themes: [light]/[dark] sections, 25 colour keys; UI font through
+  fontconfig + FreeType (the embedded bitmap font was removed).
+- Code: one feature per file; all keys in tables in input.c; ambiguous
+  sequences (space leader vs Space) wait 700 ms like vim's timeoutlen.
+- Verified headless: regression (forms, dark, dual, search, tabs), text and
+  area highlights with comments saved as /Contents, comment box, panel with a
+  real 644-page book's contents, rename/delete, marks/mm/Ctrl-o/Ctrl-i,
+  restore position, custom theme/font, space leader. Panel opens in ~0.1 s
+  after background annotation listing (was ~0.9 s). Speed unchanged.
+- Open: area highlights use the standard multiply blend, which darkens
+  colourful figures; a frame style could be offered.

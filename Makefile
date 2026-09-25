@@ -4,8 +4,8 @@ PREFIX  ?= $(HOME)/.local
 CC      ?= cc
 CFLAGS  ?= -O2 -g
 CFLAGS  += -std=c11 -D_GNU_SOURCE -Wall -Wextra -Wno-unused-parameter \
-           -I$(PDFIUM)/include $(shell pkg-config --cflags sdl3)
-LDLIBS  += -L$(PDFIUM)/lib -lpdfium $(shell pkg-config --libs sdl3) -lm \
+           -I$(PDFIUM)/include $(shell pkg-config --cflags sdl3 freetype2 fontconfig)
+LDLIBS  += -L$(PDFIUM)/lib -lpdfium $(shell pkg-config --libs sdl3 freetype2 fontconfig) -lm \
            -Wl,-rpath,'$$ORIGIN/$(PDFIUM)/lib:$$ORIGIN/../lib/nomadys-pdf'
 
 SRC := $(wildcard src/*.c)
@@ -14,7 +14,7 @@ OBJ := $(SRC:src/%.c=build/%.o)
 nomadys-pdf: $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $(OBJ) $(LDLIBS)
 
-build/%.o: src/%.c src/nomadys.h src/font.h | build
+build/%.o: src/%.c src/nomadys.h | build
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 build:

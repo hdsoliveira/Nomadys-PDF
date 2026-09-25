@@ -167,6 +167,8 @@ Doc *doc_open(const char *path, char *err, size_t errlen)
         FPDF_SetFormFieldHighlightColor(d->form, 0, 0xFFE8DD); /* 0xBBGGRR */
         FPDF_SetFormFieldHighlightAlpha(d->form, 110);
     }
+    d->last.page = -1;
+    marks_load(d);
     docs[ndocs++] = d;
     return d;
 }
@@ -199,6 +201,7 @@ void doc_unref(Doc *d)
 {
     if (--d->refs > 0)
         return;
+    marks_save(d);
     doc_kill_focus(d); /* commits a field being edited */
     if (d->modified && cfg.autosave) {
         char err[256];
@@ -209,6 +212,9 @@ void doc_unref(Doc *d)
         close_slot(d, i);
         free(d->slots[i].images);
         free(d->slots[i].widgets);
+        for (int k = 0; k < d->slots[i].nnotes; k++)
+            free(d->slots[i].notes[k].quads);
+        free(d->slots[i].notes);
     }
     if (d->form)
         FPDFDOC_ExitFormFillEnvironment(d->form);
@@ -222,6 +228,7 @@ void doc_unref(Doc *d)
     free(d->pw);
     free(d->ph);
     free(d->slots);
+    free(d->marks_path);
     free(d->path);
     free(d);
 }
