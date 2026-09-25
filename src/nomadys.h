@@ -61,6 +61,7 @@ typedef struct {
     bool subpixel_text;
     bool show_tabs;
     bool page_shadow;        /* draw a soft shadow around pages */
+    int dark_images;         /* DARK_IMAGES_*: how dark mode treats images */
     bool restore_position;   /* reopen a file where it was left */
     uint32_t highlights[5];  /* colours of new highlights for C V B N M, 0xRRGGBB */
     bool area_frame;         /* areas: frame around instead of a highlight */
@@ -72,6 +73,7 @@ typedef struct {
     Theme light, dark_theme;
 } Config;
 
+enum { DARK_IMAGES_SMART, DARK_IMAGES_KEEP, DARK_IMAGES_INVERT };
 extern Config cfg;
 void config_load(void);
 const Theme *theme_of(bool dark);

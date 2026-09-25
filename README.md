@@ -208,10 +208,12 @@ pages themselves (figures keep their colours); in light mode pages stay white. `
 
 ## Dark mode
 
-Inverts lightness while keeping hue (red stays red), except in raster image
-and gradient regions, which are left untouched. An image covering almost the
-whole page (a scanned PDF) is inverted as well. Vector figures (plots saved as
-PDF) darken with the background but keep their hues.
+Inverts lightness while keeping hue (red stays red), with the theme's
+`page_bg` / `page_fg` as paper and ink. Images are judged one by one
+(`dark_images = smart`, the default): **photos** keep their colours, while
+**figures drawn on white** (plots, diagrams, schematics, most scientific
+figures) are recoloured with the page, so no white blocks glare in the dark.
+`dark_images = keep` leaves every image untouched; `invert` recolours all.
 
 ## Code layout
 

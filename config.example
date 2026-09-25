@@ -11,6 +11,7 @@ autosave_delay_ms = 1000
 restore_position = true    # reopen a file where you stopped reading
 show_tabs = false          # true: tab bar always visible (t toggles it)
 page_shadow = true         # soft shadow around pages
+dark_images = smart        # dark mode: smart (photos kept, figures on white recoloured), keep, invert
 subpixel_text = false      # true: sharper text on LCD monitors
 zoom = fit-width           # or a percentage, e.g. 125
 # highlight colours for C V B N M (pastel yellow, red, green, pink, blue)

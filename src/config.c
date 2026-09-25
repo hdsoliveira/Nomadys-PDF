@@ -140,7 +140,16 @@ static bool set_global_key(const char *k, const char *v)
         cfg.autosave_delay_ms = atoi(v);
     else if (!strcmp(k, "subpixel_text"))
         cfg.subpixel_text = parse_bool(v);
-    else if (!strcmp(k, "page_shadow"))
+    else if (!strcmp(k, "dark_images")) {
+        if (!strcmp(v, "smart"))
+            cfg.dark_images = DARK_IMAGES_SMART;
+        else if (!strcmp(v, "keep"))
+            cfg.dark_images = DARK_IMAGES_KEEP;
+        else if (!strcmp(v, "invert"))
+            cfg.dark_images = DARK_IMAGES_INVERT;
+        else
+            return false;
+    } else if (!strcmp(k, "page_shadow"))
         cfg.page_shadow = parse_bool(v);
     else if (!strcmp(k, "show_tabs"))
         cfg.show_tabs = parse_bool(v);

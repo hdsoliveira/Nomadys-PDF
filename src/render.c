@@ -277,8 +277,29 @@ static void recolor(uint8_t *px, int w, int h, int stride, const uint8_t *keep, 
     }
 }
 
-static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w, int h, int pw, int ph, int rot)
+/* A photo keeps its colours in dark mode; a figure drawn on white (plots,
+ * diagrams, schematics) is recoloured with the page so it does not glare.
+ * Tell them apart by the share of near-white pixels. */
+static bool looks_like_photo(const uint8_t *px, int stride, int l, int t, int r, int b)
 {
+    long white = 0, total = 0;
+    int step = SDL_max(1, SDL_min(r - l, b - t) / 64);
+    for (int y = t; y < b; y += step) {
+        const uint8_t *row = px + (size_t)y * stride;
+        for (int x = l; x < r; x += step, total++) {
+            const uint8_t *q = row + 4 * x;
+            white += q[0] > 225 && q[1] > 225 && q[2] > 225;
+        }
+    }
+    return total && white * 100 < total * 30;
+}
+
+/* Pixels to leave untouched in dark mode (see dark_images in the config). */
+static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w, int h, int pw, int ph, int rot,
+                           const uint8_t *px, int stride)
+{
+    if (cfg.dark_images == DARK_IMAGES_INVERT)
+        return NULL;
     doc_page_images(d, page);
     PageSlot *s = &d->slots[page];
     if (!s->nimages)
@@ -292,6 +313,8 @@ static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w,
         int l = SDL_max(0, SDL_min(x0, x1)), rr = SDL_min(w, SDL_max(x0, x1) + 1);
         int t = SDL_max(0, SDL_min(y0, y1)), b = SDL_min(h, SDL_max(y0, y1) + 1);
         if (l >= rr || t >= b)
+            continue;
+        if (cfg.dark_images == DARK_IMAGES_SMART && !looks_like_photo(px, stride, l, t, rr, b))
             continue;
         if (!m)
             m = calloc((size_t)w * h, 1);
@@ -320,7 +343,7 @@ static SDL_Texture *render_page(Window *win, View *v, int page, int cx, int cy, 
         FPDF_FFLDraw(d->form, bmp, p, -cx, -cy, pw, ph, v->rotation, flags);
     FPDFBitmap_Destroy(bmp);
     if (v->dark) { /* light mode shows pages as they are */
-        uint8_t *keep = image_mask(d, page, p, cx, cy, w, h, pw, ph, v->rotation);
+        uint8_t *keep = image_mask(d, page, p, cx, cy, w, h, pw, ph, v->rotation, buf, stride);
         recolor(buf, w, h, stride, keep, v->dark);
         free(keep);
     }
