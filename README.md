@@ -31,6 +31,9 @@ make uninstall
 nomadys-pdf file.pdf [other.pdf ...]    # each file opens in a tab
 ```
 
+Press `\c` for a help screen with every key (`\c` again or `Esc` closes it).
+It is generated from the keymaps in `input.c`, so it is always up to date.
+
 ### Reading
 
 | Key | Action |
@@ -157,8 +160,9 @@ One feature per file in `src/`; `nomadys.h` has the shared types and a module ma
 | `font.c` | UI text through fontconfig and FreeType |
 | `ui.c` | tab bar, prompt, messages, comment box |
 
-To add or change a key, edit a line in the tables at the end of `input.c`,
-e.g. `{"<leader>l", a_panel}`. To add a colour, add a field to `Theme`
+To add or change a key, edit a line in the keymap tables of `input.c`,
+e.g. `{"<leader>l", a_panel, "painel: marcas, destaques e sumário"}`; the
+third field is the description on the help screen (`\c`), `NULL` hides it. To add a colour, add a field to `Theme`
 (`nomadys.h`), its defaults and one `COLOR(name)` line in `config.c`.
 
 ## Tests

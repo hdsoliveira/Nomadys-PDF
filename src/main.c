@@ -386,9 +386,10 @@ static void usage(void)
            "  t            mostrar abas    Ctrl-, Ctrl-.  aba anterior/seguinte\n"
            "  Ctrl-n       nova janela     Ctrl-s / :w    salvar\n"
            "  :q           fechar aba      q              fechar janela\n"
+           "  %sc          todos os atalhos (de novo fecha)\n"
            "\n"
            "config: ~/.config/nomadys-pdf/config\n",
-           leader_label(), leader_label());
+           leader_label(), leader_label(), leader_label());
 }
 
 int main(int argc, char **argv)

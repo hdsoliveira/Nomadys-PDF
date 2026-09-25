@@ -193,7 +193,7 @@ typedef struct {
     uint64_t used;
 } CacheEntry;
 
-typedef enum { MODE_NORMAL, MODE_FORM, MODE_CARET, MODE_AREA, MODE_PANEL, MODE_PROMPT } Mode;
+typedef enum { MODE_NORMAL, MODE_FORM, MODE_CARET, MODE_AREA, MODE_PANEL, MODE_PROMPT, MODE_HELP } Mode;
 
 typedef struct { int page, ch; } TextPos;
 
@@ -280,6 +280,9 @@ struct Window {
     char msg[512];
     uint64_t msg_until;
     uint64_t quit_warned;    /* close confirmation valid until this time */
+    /* help screen */
+    Mode help_return;
+    int help_first;
     /* panel */
     PanelItem *items;
     int nitems, sel, first;
@@ -302,6 +305,8 @@ void save(Window *w, View *v);
 void update_title(Window *w);
 
 /* ---------- input (input.c) ---------- */
+typedef struct { char keys[64]; const char *text; bool header; } HelpLine;
+int help_lines(HelpLine **out);                          /* generated from the keymaps */
 void input_token(Window *w, const char *tok);            /* "<Esc>", "<C-j>", "a", ... */
 bool input_key_event(Window *w, const SDL_KeyboardEvent *e);
 void input_text_event(Window *w, const char *text);
@@ -372,6 +377,7 @@ int ui_tabbar_height(Window *w);
 void ui_draw_overlays(Window *w, uint64_t now);
 void ui_draw_notes(Window *w, View *v, int top);
 void ui_draw_comment(Window *w, const char *text);
+void ui_draw_help(Window *w);
 
 /* ---------- utilities (ui.c) ---------- */
 int utf8_to_utf16(const char *s, unsigned short *out, int cap);

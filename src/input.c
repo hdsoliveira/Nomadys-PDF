@@ -17,7 +17,8 @@
 #include "nomadys.h"
 
 typedef void (*ActionFn)(Window *w, View *v, int count, const char *arg);
-typedef struct { const char *keys; ActionFn fn; } Binding;
+/* keys, action, and the description shown on the help screen (\c); NULL hides it */
+typedef struct { const char *keys; ActionFn fn; const char *help; } Binding;
 
 #define TOKENS_MAX 8
 #define TOKEN_LEN 16
@@ -398,50 +399,100 @@ static void a_panel_uncomment(Window *w, View *v, int c, const char *a) { (void)
 static void a_panel_rename(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_rename(w); }
 static void a_panel_close(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_close(w); }
 
-/* ---------- keymaps ---------- */
-#define SCROLL_KEYS                                                                          \
-    {"<C-d>", a_half_down}, {"<C-u>", a_half_up}, {"<C-f>", a_page_down}, {"<C-b>", a_page_up}, \
-    {"<PageDown>", a_page_down}, {"<PageUp>", a_page_up}, {"<Down>", a_down}, {"<Up>", a_up},  \
-    {"<Left>", a_left}, {"<Right>", a_right}
+/* ---------- help screen actions ---------- */
+static void a_help(Window *w, View *v, int c, const char *a)
+{
+    (void)v, (void)c, (void)a;
+    w->help_return = w->mode;
+    w->help_first = 0;
+    w->mode = MODE_HELP;
+}
 
-/* Marks, jumps and the panel work in every reading mode. */
-#define MARK_KEYS                                                                             \
-    {"mm", a_jump_back}, {"m*", a_mark_jump}, {"<leader>m*", a_mark_set}, {"<leader>l", a_panel}, \
-    {"<C-o>", a_jump_older}, {"<C-i>", a_jump_newer}
+static void a_help_close(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; w->mode = w->help_return; }
+static void a_help_down(Window *w, View *v, int c, const char *a) { (void)v, (void)a; w->help_first += n1(c); }
+static void a_help_up(Window *w, View *v, int c, const char *a) { (void)v, (void)a; w->help_first = SDL_max(0, w->help_first - n1(c)); }
+static void a_help_page_down(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; w->help_first += 15; }
+static void a_help_page_up(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; w->help_first = SDL_max(0, w->help_first - 15); }
+static void a_help_top(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; w->help_first = 0; }
+static void a_help_bottom(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; w->help_first = 1 << 20; }
+
+/* ---------- keymaps ---------- */
+#define SCROLL_KEYS                                                                              \
+    {"<C-d>", a_half_down, "meia tela abaixo"}, {"<C-u>", a_half_up, "meia tela acima"},          \
+    {"<C-f>", a_page_down, "tela inteira abaixo"}, {"<C-b>", a_page_up, "tela inteira acima"},     \
+    {"<PageDown>", a_page_down, NULL}, {"<PageUp>", a_page_up, NULL}, {"<Down>", a_down, NULL},    \
+    {"<Up>", a_up, NULL}, {"<Left>", a_left, NULL}, {"<Right>", a_right, NULL}
+
+/* Marks, jumps, the panel and this help work in every reading mode. */
+#define MARK_KEYS                                                                                \
+    {"<leader>m*", a_mark_set, "gravar a posição na marca (a-z)"},                                \
+    {"m*", a_mark_jump, "saltar para a marca"}, {"mm", a_jump_back, "voltar ao ponto anterior"},   \
+    {"<C-o>", a_jump_older, "posição anterior no histórico"},                                      \
+    {"<C-i>", a_jump_newer, "próxima posição no histórico"},                                       \
+    {"<leader>l", a_panel, "painel: marcas, destaques e sumário"},                                 \
+    {"<leader>c", a_help, "esta ajuda (de novo fecha)"}
 
 static const Binding normal_map[] = {
-    {"j", a_down}, {"k", a_up}, {"h", a_left}, {"l", a_right}, {" ", a_page_down},
-    SCROLL_KEYS, {"<Home>", a_first}, {"<End>", a_last},
-    {"J", a_next_page}, {"K", a_prev_page}, {"gg", a_first}, {"G", a_last},
-    {"+", a_zoom_in}, {"-", a_zoom_out}, {"=", a_fit_width}, {"z", a_fit_page},
-    {"<C-=>", a_zoom_in}, {"<C-->", a_zoom_out},
-    {"d", a_dual}, {"i", a_dark}, {"t", a_tabs},
-    {"v", a_caret}, {"<C-v>", a_area},
-    {":", a_command}, {"/", a_search}, {"n", a_search_next}, {"N", a_search_prev},
-    {"<C-j>", a_form_next}, {"<C-k>", a_form_prev}, {"<Tab>", a_form_next}, {"<S-Tab>", a_form_prev},
-    {"<C-n>", a_new_window}, {"<C-s>", a_save},
-    {"<C-,>", a_tab_prev}, {"<C-.>", a_tab_next},
-    MARK_KEYS, {"<Esc>", a_clear}, {"q", a_quit},
+    {"j", a_down, "rolar"}, {"k", a_up, "rolar"}, {"h", a_left, "rolar"}, {"l", a_right, "rolar"},
+    {" ", a_page_down, "tela inteira abaixo"}, SCROLL_KEYS,
+    {"<Home>", a_first, NULL}, {"<End>", a_last, NULL},
+    {"J", a_next_page, "próxima página"}, {"K", a_prev_page, "página anterior"},
+    {"gg", a_first, "início (42gg: página 42)"}, {"G", a_last, "fim (42G: página 42)"},
+    {"+", a_zoom_in, "zoom"}, {"-", a_zoom_out, "zoom"}, {"=", a_fit_width, "ajustar à largura"},
+    {"z", a_fit_page, "página inteira na tela"}, {"<C-=>", a_zoom_in, NULL}, {"<C-->", a_zoom_out, NULL},
+    {"d", a_dual, "duas páginas lado a lado"}, {"i", a_dark, "modo escuro"},
+    {"t", a_tabs, "mostrar/esconder abas"},
+    {"v", a_caret, "cursor de texto: destacar, comentar, copiar"},
+    {"<C-v>", a_area, "cursor livre: marcar figuras e áreas"},
+    {"/", a_search, "buscar"}, {"n", a_search_next, "próximo resultado"},
+    {"N", a_search_prev, "resultado anterior"},
+    {":", a_command, "comando: :w salvar, :q fechar aba, :e arquivo, :42 página"},
+    {"<C-j>", a_form_next, "próximo campo de formulário"}, {"<C-k>", a_form_prev, "campo anterior"},
+    {"<Tab>", a_form_next, NULL}, {"<S-Tab>", a_form_prev, NULL},
+    {"<C-,>", a_tab_prev, "aba anterior"}, {"<C-.>", a_tab_next, "próxima aba"},
+    {"<C-n>", a_new_window, "nova janela do mesmo PDF"}, {"<C-s>", a_save, "salvar"},
+    MARK_KEYS, {"<Esc>", a_clear, "limpar a busca"}, {"q", a_quit, "fechar a janela"},
 };
 
 static const Binding caret_map[] = {
-    {"h", a_caret_move}, {"j", a_caret_move}, {"k", a_caret_move}, {"l", a_caret_move},
-    {"w", a_caret_move}, {"b", a_caret_move}, {"0", a_caret_move}, {"$", a_caret_move},
-    {"v", a_caret_select}, {"H", a_caret_mark}, {"c", a_caret_comment}, {"y", a_caret_copy},
-    {"x", a_note_delete}, {"<C-v>", a_area}, {"<Esc>", a_leave}, SCROLL_KEYS, MARK_KEYS,
+    {"h", a_caret_move, "mover"}, {"j", a_caret_move, "mover"}, {"k", a_caret_move, "mover"},
+    {"l", a_caret_move, "mover"}, {"w", a_caret_move, "palavra seguinte / anterior"},
+    {"b", a_caret_move, "palavra seguinte / anterior"}, {"0", a_caret_move, "início / fim da linha"},
+    {"$", a_caret_move, "início / fim da linha"}, {"v", a_caret_select, "começar / parar a seleção"},
+    {"H", a_caret_mark, "destacar a seleção"},
+    {"c", a_caret_comment, "destacar com comentário, ou editar o comentário"},
+    {"y", a_caret_copy, "copiar a seleção"}, {"x", a_note_delete, "apagar o destaque sob o cursor"},
+    {"<C-v>", a_area, "trocar para o cursor livre"}, {"<Esc>", a_leave, "cancelar a seleção / sair"},
+    SCROLL_KEYS, MARK_KEYS,
 };
 
 static const Binding area_map[] = {
-    {"h", a_area_move}, {"j", a_area_move}, {"k", a_area_move}, {"l", a_area_move},
-    {"w", a_area_move}, {"b", a_area_move}, {"J", a_area_move}, {"K", a_area_move},
-    {"v", a_area_select}, {"H", a_area_mark}, {"c", a_area_comment}, {"x", a_note_delete},
-    {"<C-v>", a_to_caret}, {"<Esc>", a_leave}, SCROLL_KEYS, MARK_KEYS,
+    {"h", a_area_move, "mover"}, {"j", a_area_move, "mover"}, {"k", a_area_move, "mover"},
+    {"l", a_area_move, "mover"}, {"w", a_area_move, "mover rápido"}, {"b", a_area_move, "mover rápido"},
+    {"J", a_area_move, "mover rápido"}, {"K", a_area_move, "mover rápido"},
+    {"v", a_area_select, "começar / parar o retângulo"}, {"H", a_area_mark, "destacar a área"},
+    {"c", a_area_comment, "destacar com comentário, ou editar o comentário"},
+    {"x", a_note_delete, "apagar o destaque sob o cursor"},
+    {"<C-v>", a_to_caret, "voltar ao cursor de texto"}, {"<Esc>", a_leave, "cancelar / sair"},
+    SCROLL_KEYS, MARK_KEYS,
 };
 
 static const Binding panel_map[] = {
-    {"j", a_panel_down}, {"k", a_panel_up}, {"<Down>", a_panel_down}, {"<Up>", a_panel_up},
-    {"gg", a_panel_top}, {"G", a_panel_bottom}, {"<Enter>", a_panel_go}, {"x", a_panel_delete}, {"d", a_panel_uncomment},
-    {"r", a_panel_rename}, {"<Esc>", a_panel_close}, {"q", a_panel_close},
+    {"j", a_panel_down, "mover"}, {"k", a_panel_up, "mover"}, {"<Down>", a_panel_down, NULL},
+    {"<Up>", a_panel_up, NULL}, {"gg", a_panel_top, "primeiro / último"},
+    {"G", a_panel_bottom, "primeiro / último"}, {"<Enter>", a_panel_go, "ir até o item"},
+    {"r", a_panel_rename, "renomear a marca / editar o comentário"},
+    {"d", a_panel_uncomment, "apagar só o comentário"},
+    {"x", a_panel_delete, "apagar o destaque (com comentário) ou a marca"},
+    {"<leader>c", a_help, NULL}, {"<Esc>", a_panel_close, "fechar"}, {"q", a_panel_close, "fechar"},
+};
+
+static const Binding help_map[] = {
+    {"j", a_help_down, NULL}, {"k", a_help_up, NULL}, {"<Down>", a_help_down, NULL},
+    {"<Up>", a_help_up, NULL}, {"<C-d>", a_help_page_down, NULL}, {"<C-u>", a_help_page_up, NULL},
+    {"<PageDown>", a_help_page_down, NULL}, {"<PageUp>", a_help_page_up, NULL},
+    {"gg", a_help_top, NULL}, {"G", a_help_bottom, NULL},
+    {"<leader>c", a_help_close, NULL}, {"<Esc>", a_help_close, NULL}, {"q", a_help_close, NULL},
 };
 
 static const Binding *keymap(Mode m, int *n)
@@ -451,6 +502,7 @@ static const Binding *keymap(Mode m, int *n)
     case MODE_CARET: *n = SDL_arraysize(caret_map); return caret_map;
     case MODE_AREA: *n = SDL_arraysize(area_map); return area_map;
     case MODE_PANEL: *n = SDL_arraysize(panel_map); return panel_map;
+    case MODE_HELP: *n = SDL_arraysize(help_map); return help_map;
     default: *n = 0; return NULL;
     }
 }
@@ -611,6 +663,102 @@ void input_token(Window *w, const char *tok)
         else
             w->count = 0;
     }
+}
+
+/* ---------- help screen content, generated from the keymaps ---------- */
+
+/* "<leader>m*" -> "\\m<letra>", "<C-j>" -> "Ctrl-j", " " -> "Espaço". */
+static void key_label(const char *pattern, char *out, size_t cap)
+{
+    char t[TOKENS_MAX][TOKEN_LEN];
+    int n = pattern_tokens(pattern, t);
+    out[0] = 0;
+    for (int i = 0; i < n; i++) {
+        char part[40];
+        if (!strcmp(t[i], "*"))
+            snprintf(part, sizeof part, "<letra>");
+        else if (!strcmp(t[i], " ") && i == 0 && !strncmp(pattern, "<leader>", 8))
+            snprintf(part, sizeof part, "espaço ");
+        else if (!strcmp(t[i], " "))
+            snprintf(part, sizeof part, "Espaço");
+        else if (!strncmp(t[i], "<C-", 3))
+            snprintf(part, sizeof part, "Ctrl-%.*s", (int)strlen(t[i]) - 4, t[i] + 3);
+        else if (t[i][0] == '<' && t[i][1])
+            snprintf(part, sizeof part, "%.*s", (int)strlen(t[i]) - 2, t[i] + 1);
+        else
+            snprintf(part, sizeof part, "%s", t[i]);
+        SDL_strlcat(out, part, cap);
+    }
+}
+
+static HelpLine *help_add(HelpLine **lines, int *n, int *cap)
+{
+    if (*n == *cap) {
+        *cap = *cap ? *cap * 2 : 64;
+        *lines = realloc(*lines, *cap * sizeof **lines);
+    }
+    HelpLine *l = &(*lines)[(*n)++];
+    memset(l, 0, sizeof *l);
+    return l;
+}
+
+static bool in_normal_map(const Binding *b)
+{
+    for (size_t i = 0; i < SDL_arraysize(normal_map); i++)
+        if (!strcmp(normal_map[i].keys, b->keys) && normal_map[i].help && b->help &&
+            !strcmp(normal_map[i].help, b->help))
+            return true;
+    return false;
+}
+
+static void help_section(HelpLine **lines, int *n, int *cap, const char *title, const Binding *map, size_t count,
+                         bool skip_shared)
+{
+    snprintf(help_add(lines, n, cap)->keys, sizeof (*lines)->keys, "%s", title);
+    (*lines)[*n - 1].header = true;
+    for (size_t i = 0; i < count; i++) {
+        const Binding *b = &map[i];
+        if (!b->help || (skip_shared && in_normal_map(b)))
+            continue;
+        char label[48];
+        key_label(b->keys, label, sizeof label);
+        HelpLine *prev = *n ? &(*lines)[*n - 1] : NULL;
+        if (prev && !prev->header && prev->text && !strcmp(prev->text, b->help)) {
+            /* same description as the previous key: list them together */
+            SDL_strlcat(prev->keys, " ", sizeof prev->keys);
+            SDL_strlcat(prev->keys, label, sizeof prev->keys);
+            continue;
+        }
+        HelpLine *l = help_add(lines, n, cap);
+        snprintf(l->keys, sizeof l->keys, "%s", label);
+        l->text = b->help;
+    }
+}
+
+int help_lines(HelpLine **out)
+{
+    static const struct { const char *keys, *text; } form[] = {
+        {"digitar", "preencher o campo"}, {"Espaço", "marcar / desmarcar checkbox"},
+        {"Ctrl-j Tab", "próximo campo"}, {"Ctrl-k", "campo anterior"},
+        {"Ctrl-a Ctrl-z Ctrl-v", "selecionar tudo / desfazer / colar"}, {"Esc", "sair do campo"},
+    };
+    HelpLine *lines = NULL;
+    int n = 0, cap = 0;
+    help_section(&lines, &n, &cap, "Leitura", normal_map, SDL_arraysize(normal_map), false);
+    help_section(&lines, &n, &cap, "Cursor de texto (v)", caret_map, SDL_arraysize(caret_map), true);
+    help_section(&lines, &n, &cap, "Cursor livre (Ctrl-v)", area_map, SDL_arraysize(area_map), true);
+    char panel_title[48];
+    snprintf(panel_title, sizeof panel_title, "Painel (%sl)", leader_label());
+    help_section(&lines, &n, &cap, panel_title, panel_map, SDL_arraysize(panel_map), false);
+    snprintf(help_add(&lines, &n, &cap)->keys, sizeof lines->keys, "Formulário (dentro de um campo)");
+    lines[n - 1].header = true;
+    for (size_t i = 0; i < SDL_arraysize(form); i++) {
+        HelpLine *l = help_add(&lines, &n, &cap);
+        snprintf(l->keys, sizeof l->keys, "%s", form[i].keys);
+        l->text = form[i].text;
+    }
+    *out = lines;
+    return n;
 }
 
 /* ---------- SDL events to tokens ---------- */

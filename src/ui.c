@@ -99,12 +99,57 @@ static void draw_message(Window *w)
     font_draw(w->font, (float)(w->W - tw), (float)(w->H - h - p + p / 2), text, t->message_fg);
 }
 
+/* Help screen (\\c): every key with its description, generated from the keymaps. */
+void ui_draw_help(Window *w)
+{
+    const Theme *t = wtheme(w);
+    HelpLine *lines;
+    int n = help_lines(&lines);
+    int p = pad(w) + (int)(6 * w->density), lh = font_height(w->font) + (int)(4 * w->density);
+    int bw = SDL_min(w->W - 2 * p, (int)(900 * w->density)), bh = w->H - top_of(w) - 2 * p;
+    float x = (w->W - bw) / 2.0f, y = (float)(top_of(w) + p);
+    int keyw = 0;
+    for (int i = 0; i < n; i++)
+        if (!lines[i].header)
+            keyw = SDL_max(keyw, font_width(w->font, lines[i].keys));
+    keyw = SDL_min(keyw, bw * 2 / 5);
+    int rows = SDL_max(1, (bh - 2 * p) / lh - 2);
+    w->help_first = SDL_clamp(w->help_first, 0, SDL_max(0, n - rows));
+    ui_fill(w, x, y, (float)bw, (float)bh, t->panel_bg, 255);
+    ui_frame(w, x, y, (float)bw, (float)bh, SDL_max(1.0f, w->density), t->panel_header);
+    char title[128];
+    snprintf(title, sizeof title, "Atalhos    j/k rolar    %sc ou Esc fecha", leader_label());
+    font_fit(w->font, title, bw - 2 * p);
+    font_draw(w->font, x + p, y + p / 2.0f, title, t->panel_header);
+    for (int i = 0; i < rows && w->help_first + i < n; i++) {
+        HelpLine *l = &lines[w->help_first + i];
+        float ry = y + p / 2.0f + (i + 2) * lh;
+        char keys[sizeof l->keys + 4], text[260];
+        snprintf(keys, sizeof l->keys, "%s", l->keys);
+        if (l->header) {
+            font_fit(w->font, keys, bw - 2 * p);
+            font_draw(w->font, x + p, ry, keys, t->panel_header);
+            continue;
+        }
+        font_fit(w->font, keys, keyw);
+        snprintf(text, 256, "%s", l->text);
+        font_fit(w->font, text, bw - 3 * p - keyw);
+        font_draw(w->font, x + 2 * p, ry, keys, t->tab_accent);
+        font_draw(w->font, x + 2 * p + keyw + p, ry, text, t->panel_fg);
+    }
+    if (w->help_first + rows < n)
+        font_draw(w->font, x + bw - p - font_width(w->font, "\u2193 mais"), y + bh - lh, "\u2193 mais", t->panel_header);
+    free(lines);
+}
+
 void ui_draw_overlays(Window *w, uint64_t now)
 {
     if (w->show_tabs || now < w->tabs_flash_until)
         draw_tabbar(w);
     if (w->mode == MODE_PANEL || (w->mode == MODE_PROMPT && w->prompt_return == MODE_PANEL))
         panel_draw(w);
+    if (w->mode == MODE_HELP)
+        ui_draw_help(w);
     if (w->mode == MODE_PROMPT)
         draw_prompt(w);
     else if (now < w->msg_until && w->msg[0])
