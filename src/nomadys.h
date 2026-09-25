@@ -50,7 +50,7 @@ typedef struct {
     uint32_t panel_bg, panel_fg, panel_selected_bg, panel_selected_fg, panel_header;
     uint32_t comment_bg, comment_fg, comment_marker;
     uint32_t selection, search_match, caret, form_focus;
-    uint32_t page_bg, page_fg;           /* page paper and ink colours (white/black: untouched) */
+    uint32_t page_bg, page_fg;           /* dark mode: page paper and ink colours */
     uint32_t shadow;                     /* soft shadow around pages */
 } Theme;
 

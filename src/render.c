@@ -248,8 +248,8 @@ void view_show_rect(View *v, int page, PRect r, int W, int H, int top)
 /* ---------- dark mode ---------- */
 /* Recolours a rendered page with the theme's paper and ink, outside images.
  * Dark mode first inverts lightness (keeping hue: c + 255 - max - min), so
- * white paper becomes 0; light mode keeps it at 255. Each channel then maps
- * linearly: paper value -> page_bg, ink value -> page_fg. */
+ * white paper becomes 0; each channel then maps linearly: paper -> page_bg,
+ * ink -> page_fg. (Light mode never calls this: pages stay white.) */
 static void recolor(uint8_t *px, int w, int h, int stride, const uint8_t *keep, bool dark)
 {
     const Theme *t = theme_of(dark);
@@ -276,8 +276,6 @@ static void recolor(uint8_t *px, int w, int h, int stride, const uint8_t *keep, 
         }
     }
 }
-
-static bool plain_paper(const Theme *t) { return t->page_bg == 0xFFFFFF && t->page_fg == 0x000000; }
 
 static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w, int h, int pw, int ph, int rot)
 {
@@ -321,7 +319,7 @@ static SDL_Texture *render_page(Window *win, View *v, int page, int cx, int cy, 
     if (d->form)
         FPDF_FFLDraw(d->form, bmp, p, -cx, -cy, pw, ph, v->rotation, flags);
     FPDFBitmap_Destroy(bmp);
-    if (v->dark || !plain_paper(theme_of(false))) {
+    if (v->dark) { /* light mode shows pages as they are */
         uint8_t *keep = image_mask(d, page, p, cx, cy, w, h, pw, ph, v->rotation);
         recolor(buf, w, h, stride, keep, v->dark);
         free(keep);

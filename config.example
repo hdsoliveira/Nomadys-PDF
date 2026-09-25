@@ -50,8 +50,6 @@ selection = #3C8CE7
 search_match = #FF9D00
 caret = #E64B35
 form_focus = #4DBBD5
-page_bg = #FFFFFF          # page paper (white + black ink = pages untouched)
-page_fg = #000000          # page ink
 shadow = #000000
 
 [dark]
