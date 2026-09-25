@@ -1,0 +1,4 @@
+build/
+/nomadys-pdf
+*.bmp
+third_party/pdfium/
