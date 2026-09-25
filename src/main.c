@@ -275,6 +275,9 @@ static void form_step(Window *w, int dir)
             continue;
         }
         if (doc_focus_widget(d, page, idx)) {
+            /* start at the end of existing text, ready to append or erase */
+            FORM_OnKeyDown(d->form, doc_page(d, page), FWL_VKEY_End, 0);
+            FORM_OnKeyUp(d->form, doc_page(d, page), FWL_VKEY_End, 0);
             w->mode = MODE_FORM;
             view_show_rect(v, page, d->slots[page].widgets[idx].r, w->W, w->H, top_of(w));
             w->redraw = true;
@@ -347,6 +350,11 @@ static bool form_key(Window *w, SDL_Keycode k, SDL_Keymod m)
             FORM_ReplaceSelection(d->form, p, u);
             SDL_free(clip);
         }
+        return true;
+    }
+    if (k == SDLK_BACKSPACE) {
+        /* PDFium edits delete backwards on the Backspace character, not the key */
+        FORM_OnChar(d->form, p, FWL_VKEY_Back, fwl_mods(m));
         return true;
     }
     int vk = vkey(k);
@@ -856,7 +864,7 @@ static SDL_Keycode named_key(const char *n, size_t len)
 {
     static const struct { const char *name; SDL_Keycode key; } keys[] = {
         {"Esc", SDLK_ESCAPE}, {"Enter", SDLK_RETURN}, {"Tab", SDLK_TAB}, {"BS", SDLK_BACKSPACE},
-        {"Down", SDLK_DOWN}, {"Up", SDLK_UP}, {"Left", SDLK_LEFT}, {"Right", SDLK_RIGHT}};
+        {"Del", SDLK_DELETE}, {"Home", SDLK_HOME}, {"End", SDLK_END}, {"Down", SDLK_DOWN}, {"Up", SDLK_UP}, {"Left", SDLK_LEFT}, {"Right", SDLK_RIGHT}};
     for (size_t i = 0; i < SDL_arraysize(keys); i++)
         if (strlen(keys[i].name) == len && !strncmp(n, keys[i].name, len))
             return keys[i].key;
