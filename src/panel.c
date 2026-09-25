@@ -199,6 +199,28 @@ void panel_delete(Window *w)
     w->redraw = true;
 }
 
+/* Removes the comment of the selected note and keeps the highlight. */
+void panel_delete_comment(Window *w)
+{
+    if (w->sel >= w->nitems || w->items[w->sel].kind != ITEM_NOTE) {
+        ui_message(w, "selecione um destaque");
+        return;
+    }
+    PanelItem *it = &w->items[w->sel];
+    Doc *d = cur_view(w)->doc;
+    char *c = note_comment(d, it->page, it->note);
+    if (!c) {
+        ui_message(w, "este destaque não tem comentário");
+        return;
+    }
+    free(c);
+    note_set_comment(d, it->page, it->note, "");
+    ui_message(w, "comentário apagado");
+    int sel = w->sel;
+    build(w);
+    w->sel = SDL_min(sel, w->nitems - 1);
+}
+
 static void renamed(Window *w, const char *text)
 {
     Doc *d = cur_view(w)->doc;
@@ -240,8 +262,9 @@ void panel_draw(Window *w)
     float x = (w->W - bw) / 2.0f, y = top_of(w) + (w->H - top_of(w) - bh) / 3.0f;
     ui_fill(w, x, y, (float)bw, (float)bh, t->panel_bg, 255);
     ui_frame(w, x, y, (float)bw, (float)bh, SDL_max(1.0f, w->density), t->panel_header);
-    font_draw(w->font, x + pad, y + pad / 2.0f, "j/k mover  Enter ir  r renomear/comentar  x apagar  Esc fechar",
-              t->panel_header);
+    char help[160] = "j/k mover  Enter ir  r renomear/editar  d apaga comentário  x apaga destaque/marca  Esc fechar";
+    font_fit(w->font, help, bw - 2 * pad);
+    font_draw(w->font, x + pad, y + pad / 2.0f, help, t->panel_header);
     if (!w->nitems)
         return;
     if (w->sel < w->first)

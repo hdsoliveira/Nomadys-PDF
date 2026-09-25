@@ -394,6 +394,7 @@ static void a_panel_top(Window *w, View *v, int c, const char *a) { (void)v, (vo
 static void a_panel_bottom(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_move(w, w->nitems); }
 static void a_panel_go(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_activate(w); }
 static void a_panel_delete(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_delete(w); }
+static void a_panel_uncomment(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_delete_comment(w); }
 static void a_panel_rename(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_rename(w); }
 static void a_panel_close(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_close(w); }
 
@@ -439,7 +440,7 @@ static const Binding area_map[] = {
 
 static const Binding panel_map[] = {
     {"j", a_panel_down}, {"k", a_panel_up}, {"<Down>", a_panel_down}, {"<Up>", a_panel_up},
-    {"gg", a_panel_top}, {"G", a_panel_bottom}, {"<Enter>", a_panel_go}, {"x", a_panel_delete},
+    {"gg", a_panel_top}, {"G", a_panel_bottom}, {"<Enter>", a_panel_go}, {"x", a_panel_delete}, {"d", a_panel_uncomment},
     {"r", a_panel_rename}, {"<Esc>", a_panel_close}, {"q", a_panel_close},
 };
 

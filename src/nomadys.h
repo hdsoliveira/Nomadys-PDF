@@ -350,6 +350,7 @@ void panel_close(Window *w);
 void panel_move(Window *w, int delta);
 void panel_activate(Window *w);
 void panel_delete(Window *w);
+void panel_delete_comment(Window *w);
 void panel_rename(Window *w);
 void panel_draw(Window *w);
 
