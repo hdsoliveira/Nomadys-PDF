@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "fpdf_doc.h"
 #include "nomadys.h"
@@ -29,15 +30,8 @@ static void mkdirs(char *path)
     mkdir(path, 0700);
 }
 
-static char *marks_file(Doc *d)
+static char *marks_path_for(uint64_t h)
 {
-    uint64_t h = 1469598103934665603ull;
-    char id[256];
-    unsigned long n = FPDF_GetFileIdentifier(d->pdf, FILEIDTYPE_PERMANENT, id, sizeof id);
-    if (n > 1 && n <= sizeof id)
-        h = fnv1a(id, n, fnv1a(&d->npages, sizeof d->npages, h));
-    else
-        h = fnv1a(d->path, strlen(d->path), h);
     const char *xdg = getenv("XDG_DATA_HOME"), *home = getenv("HOME");
     char dir[1024];
     if (xdg && *xdg)
@@ -49,9 +43,32 @@ static char *marks_file(Doc *d)
     return path;
 }
 
+/* Keyed by the file's path: the PDF's own /ID changes whenever LaTeX
+ * recompiles it (and on some saves), which would lose the marks. */
+static char *marks_file(Doc *d)
+{
+    return marks_path_for(fnv1a(d->path, strlen(d->path), 1469598103934665603ull));
+}
+
+/* Where version 0.2 kept them (the /ID key), to carry old marks over. */
+static char *old_marks_file(Doc *d)
+{
+    char id[256];
+    unsigned long n = FPDF_GetFileIdentifier(d->pdf, FILEIDTYPE_PERMANENT, id, sizeof id);
+    if (n <= 1 || n > sizeof id)
+        return NULL;
+    return marks_path_for(fnv1a(id, n, fnv1a(&d->npages, sizeof d->npages, 1469598103934665603ull)));
+}
+
 void marks_load(Doc *d)
 {
     d->marks_path = marks_file(d);
+    if (access(d->marks_path, F_OK) != 0) {
+        char *old = old_marks_file(d);
+        if (old && access(old, F_OK) == 0)
+            rename(old, d->marks_path);
+        free(old);
+    }
     FILE *f = fopen(d->marks_path, "r");
     if (!f)
         return;

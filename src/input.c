@@ -368,6 +368,9 @@ static void a_panel_delete(Window *w, View *v, int c, const char *a) { (void)v, 
 static void a_panel_uncomment(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_delete_comment(w); }
 static void a_panel_rename(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_rename(w); }
 static void a_panel_close(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_close(w); }
+static void a_panel_next_tab(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_switch(w, -2); }
+static void a_panel_prev_tab(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_switch(w, -1); }
+static void a_panel_tab(Window *w, View *v, int c, const char *a) { (void)v, (void)c; panel_switch(w, a[0] - '1'); }
 
 /* ---------- help screen actions ---------- */
 static void a_help(Window *w, View *v, int c, const char *a)
@@ -464,6 +467,10 @@ static const Binding panel_map[] = {
     {"r", a_panel_rename, "renomear a marca / editar o comentário"},
     {"d", a_panel_uncomment, "apagar só o comentário"},
     {"x", a_panel_delete, "apagar o destaque (com comentário) ou a marca"},
+    {"<Tab>", a_panel_next_tab, "aba seguinte / anterior"}, {"l", a_panel_next_tab, "aba seguinte / anterior"},
+    {"<S-Tab>", a_panel_prev_tab, "aba seguinte / anterior"}, {"h", a_panel_prev_tab, "aba seguinte / anterior"},
+    {"1", a_panel_tab, "ir para a aba 1, 2 ou 3"}, {"2", a_panel_tab, "ir para a aba 1, 2 ou 3"},
+    {"3", a_panel_tab, "ir para a aba 1, 2 ou 3"},
     {"<leader>c", a_help, NULL}, {"<Esc>", a_panel_close, "fechar"}, {"q", a_panel_close, "fechar"},
 };
 
@@ -596,8 +603,10 @@ void input_token(Window *w, const char *tok)
             prompt_special(w, tok);
         return;
     }
-    /* a count, unless a sequence is under way ("m1" is not a count) */
-    if (!npend && ((tok[0] >= '1' && tok[0] <= '9') || (tok[0] == '0' && w->count)) && !tok[1]) {
+    /* a count, unless a sequence is under way ("m1" is not a count); in the
+     * panel digits pick a tab */
+    if (!npend && w->mode != MODE_PANEL && ((tok[0] >= '1' && tok[0] <= '9') || (tok[0] == '0' && w->count)) &&
+        !tok[1]) {
         w->count = SDL_min(w->count * 10 + (tok[0] - '0'), 1000000);
         return;
     }

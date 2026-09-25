@@ -32,6 +32,21 @@ static void free_notes(PageSlot *s)
     s->nnotes = 0;
 }
 
+/* The colour of an annotation. Once it has an appearance stream PDFium no
+ * longer reports /C, so read the fill of the first drawing in it. */
+static uint32_t note_color(FPDF_ANNOTATION a)
+{
+    unsigned int r, g, b, al;
+    if (FPDFAnnot_GetColor(a, FPDFANNOT_COLORTYPE_Color, &r, &g, &b, &al))
+        return r << 16 | g << 8 | b;
+    for (int i = 0; i < FPDFAnnot_GetObjectCount(a); i++) {
+        FPDF_PAGEOBJECT o = FPDFAnnot_GetObject(a, i);
+        if (o && (FPDFPageObj_GetFillColor(o, &r, &g, &b, &al) || FPDFPageObj_GetStrokeColor(o, &r, &g, &b, &al)))
+            return r << 16 | g << 8 | b;
+    }
+    return cfg.highlights[0];
+}
+
 void notes_page(Doc *d, int page)
 {
     PageSlot *s = &d->slots[page];
@@ -68,6 +83,7 @@ void notes_page(Doc *d, int page)
                 nt->quads[nt->nquads++] = nt->r;
             /* length in bytes includes the UTF-16 terminator */
             nt->has_comment = FPDFAnnot_GetStringValue(a, "Contents", NULL, 0) > 2;
+            nt->color = note_color(a);
         }
         FPDFPage_CloseAnnot(a);
     }

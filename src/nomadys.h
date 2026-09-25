@@ -92,6 +92,7 @@ typedef struct {
     PRect *quads;            /* highlight areas, or just the rect */
     int nquads;
     bool has_comment;
+    uint32_t color;          /* 0xRRGGBB, for the panel */
 } Note;
 
 typedef struct {
@@ -270,12 +271,15 @@ bool screen_to_page(View *v, float sx, float sy, int top, int *page, double *x, 
 typedef struct Font Font;
 typedef void (*PromptFn)(Window *w, const char *text);
 
+typedef enum { PANEL_MARKS, PANEL_NOTES, PANEL_CONTENTS, PANEL_TABS } PanelTab;
+
 typedef struct {
-    int kind;                /* 0 header, 1 mark, 2 note, 3 contents entry */
-    char text[256];
-    int depth;
-    Pos pos;
+    char text[256];          /* main line */
+    char sub[256];           /* second, dimmer line (highlighted text), or "" */
+    int depth;               /* contents: nesting level */
+    Pos pos;                 /* where Enter goes; page -1 = nowhere */
     int page, note, mark;
+    uint32_t color;          /* note colour */
 } PanelItem;
 
 struct Window {
@@ -308,8 +312,10 @@ struct Window {
     Mode help_return;
     int help_first;
     /* panel */
-    PanelItem *items;
+    PanelItem *items;        /* entries of the current panel tab */
     int nitems, sel, first;
+    PanelTab panel_tab;
+    int panel_counts[PANEL_TABS];
     bool redraw;
     int W, H;                /* pixel size */
     float density;
@@ -401,6 +407,7 @@ void panel_activate(Window *w);
 void panel_delete(Window *w);
 void panel_delete_comment(Window *w);
 void panel_rename(Window *w);
+void panel_switch(Window *w, int tab);                    /* tab index, or -1 / -2 for prev / next */
 void panel_draw(Window *w);
 
 /* ---------- UI text (font.c) ---------- */
