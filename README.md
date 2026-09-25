@@ -115,6 +115,7 @@ restore_position = true
 show_tabs = false
 subpixel_text = false
 highlight_color = #FFE14D
+area_style = highlight    # or frame: a rectangle around figures
 leader = \                # or , ; space
 font = JetBrains Mono     # any installed font (fontconfig name)
 font_size = 11

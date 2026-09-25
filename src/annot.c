@@ -104,26 +104,13 @@ static void set_string(FPDF_ANNOTATION a, const char *key, const char *text)
     free(u);
 }
 
-bool note_create(Doc *d, int page, const PRect *quads, int n, const char *comment)
+/* Colour, author and comment shared by every note we create. */
+static void finish_note(Doc *d, int page, FPDF_ANNOTATION a, PRect bounds, const char *comment)
 {
-    FPDF_PAGE p = doc_page(d, page);
-    if (!p || n <= 0)
-        return false;
-    FPDF_ANNOTATION a = FPDFPage_CreateAnnot(p, FPDF_ANNOT_HIGHLIGHT);
-    if (!a)
-        return false;
     uint32_t c = cfg.highlight;
     FPDFAnnot_SetColor(a, FPDFANNOT_COLORTYPE_Color, c >> 16, (c >> 8) & 0xFF, c & 0xFF, 255);
     FPDFAnnot_SetFlags(a, FPDF_ANNOT_FLAG_PRINT);
-    PRect u = quads[0];
-    for (int i = 0; i < n; i++) {
-        PRect r = quads[i];
-        FS_QUADPOINTSF q = {r.l, r.t, r.r, r.t, r.l, r.b, r.r, r.b};
-        FPDFAnnot_AppendAttachmentPoints(a, &q);
-        u.l = SDL_min(u.l, r.l), u.r = SDL_max(u.r, r.r);
-        u.t = SDL_max(u.t, r.t), u.b = SDL_min(u.b, r.b);
-    }
-    FS_RECTF rect = {u.l, u.t, u.r, u.b};
+    FS_RECTF rect = {bounds.l, bounds.t, bounds.r, bounds.b};
     FPDFAnnot_SetRect(a, &rect);
     const char *user = getenv("USER");
     if (user)
@@ -132,6 +119,40 @@ bool note_create(Doc *d, int page, const PRect *quads, int n, const char *commen
         set_string(a, "Contents", comment);
     FPDFPage_CloseAnnot(a);
     doc_mark_changed(d, page);
+}
+
+bool note_create(Doc *d, int page, const PRect *quads, int n, const char *comment)
+{
+    FPDF_PAGE p = doc_page(d, page);
+    if (!p || n <= 0)
+        return false;
+    FPDF_ANNOTATION a = FPDFPage_CreateAnnot(p, FPDF_ANNOT_HIGHLIGHT);
+    if (!a)
+        return false;
+    PRect u = quads[0];
+    for (int i = 0; i < n; i++) {
+        PRect r = quads[i];
+        FS_QUADPOINTSF q = {r.l, r.t, r.r, r.t, r.l, r.b, r.r, r.b};
+        FPDFAnnot_AppendAttachmentPoints(a, &q);
+        u.l = SDL_min(u.l, r.l), u.r = SDL_max(u.r, r.r);
+        u.t = SDL_max(u.t, r.t), u.b = SDL_min(u.b, r.b);
+    }
+    finish_note(d, page, a, u, comment);
+    return true;
+}
+
+/* An area such as a figure: a highlight (like Acrobat) or, with
+ * area_style = frame, a rectangle drawn around it. */
+bool note_create_area(Doc *d, int page, PRect r, const char *comment)
+{
+    if (!cfg.area_frame)
+        return note_create(d, page, &r, 1, comment);
+    FPDF_PAGE p = doc_page(d, page);
+    FPDF_ANNOTATION a = p ? FPDFPage_CreateAnnot(p, FPDF_ANNOT_SQUARE) : NULL;
+    if (!a)
+        return false;
+    FPDFAnnot_SetBorder(a, 0, 0, 2);
+    finish_note(d, page, a, r, comment);
     return true;
 }
 

@@ -121,6 +121,8 @@ static bool set_global_key(const char *k, const char *v)
         cfg.show_tabs = parse_bool(v);
     else if (!strcmp(k, "restore_position"))
         cfg.restore_position = parse_bool(v);
+    else if (!strcmp(k, "area_style"))
+        cfg.area_frame = !strcmp(v, "frame");
     else if (!strcmp(k, "highlight_color"))
         return parse_color(v, &cfg.highlight);
     else if (!strcmp(k, "zoom"))

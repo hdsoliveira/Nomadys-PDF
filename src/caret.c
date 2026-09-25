@@ -377,7 +377,7 @@ static void area_done(Window *w, const char *text)
 {
     View *v = cur_view(w);
     PRect r = area_rect(v);
-    note_create(v->doc, v->area_page, &r, 1, text);
+    note_create_area(v->doc, v->area_page, r, text);
     v->area_selecting = false;
     ui_message(w, text && *text ? "área destacada com comentário" : "área destacada");
 }

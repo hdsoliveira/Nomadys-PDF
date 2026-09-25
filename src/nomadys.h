@@ -61,6 +61,7 @@ typedef struct {
     bool show_tabs;
     bool restore_position;   /* reopen a file where it was left */
     uint32_t highlight;      /* colour of new highlights, 0xRRGGBB */
+    bool area_frame;         /* areas: frame around instead of a highlight */
     double zoom;             /* 0 = fit width, otherwise 1.0 = 100 % */
     char font[128];          /* UI font family (fontconfig pattern) */
     double font_size;        /* UI font size in points */
@@ -176,6 +177,7 @@ void notes_page(Doc *d, int page);                       /* fills slots[page].no
 bool notes_scan(Doc *d, int pages);                      /* background listing; true if more remain */
 int note_at(Doc *d, int page, float x, float y);         /* index into notes, or -1 */
 bool note_create(Doc *d, int page, const PRect *quads, int n, const char *comment);
+bool note_create_area(Doc *d, int page, PRect r, const char *comment);
 char *note_comment(Doc *d, int page, int note);          /* malloc'd UTF-8, or NULL */
 bool note_set_comment(Doc *d, int page, int note, const char *comment);
 bool note_delete(Doc *d, int page, int note);
