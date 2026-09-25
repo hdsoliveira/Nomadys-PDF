@@ -60,7 +60,7 @@ typedef struct {
     bool subpixel_text;
     bool show_tabs;
     bool restore_position;   /* reopen a file where it was left */
-    uint32_t highlights[4];  /* colours of new highlights for H J K L, 0xRRGGBB */
+    uint32_t highlights[5];  /* colours of new highlights for C V B N M, 0xRRGGBB */
     bool area_frame;         /* areas: frame around instead of a highlight */
     double zoom;             /* 0 = fit width, otherwise 1.0 = 100 % */
     char font[128];          /* UI font family (fontconfig pattern) */

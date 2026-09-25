@@ -8,8 +8,8 @@ restore_position = true    # reopen a file where you stopped reading
 show_tabs = false          # true: tab bar always visible (t toggles it)
 subpixel_text = false      # true: sharper text on LCD monitors
 zoom = fit-width           # or a percentage, e.g. 125
-# highlight colours for H J K L (pastel yellow, red, green, pink)
-highlight_colors = #FFEE93, #FF9E9E, #A8E6A3, #FFB3DE
+# highlight colours for C V B N M (pastel yellow, red, green, pink, blue)
+highlight_colors = #FFEE93, #FF9E9E, #A8E6A3, #FFB3DE, #A7C7F2
 area_style = highlight     # areas/figures: highlight (like Acrobat) or frame
 leader = \                 # leader key: \ , ; or "space"
 

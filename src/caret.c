@@ -348,7 +348,7 @@ void area_enter(Window *w, View *v)
     }
     v->area_selecting = false;
     w->mode = MODE_AREA;
-    ui_message(w, "cursor livre: hjkl move, v seleciona área, H destaca, c comenta");
+    ui_message(w, "cursor livre: hjkl move (J K rápido), v seleciona, C V B N M destacam, c comenta");
     w->redraw = true;
 }
 

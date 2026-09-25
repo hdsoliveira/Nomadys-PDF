@@ -14,7 +14,7 @@ Config cfg = {
     .subpixel_text = false,
     .show_tabs = false,
     .restore_position = true,
-    .highlights = {0xFFEE93, 0xFF9E9E, 0xA8E6A3, 0xFFB3DE}, /* pastel yellow, red, green, pink */
+    .highlights = {0xFFEE93, 0xFF9E9E, 0xA8E6A3, 0xFFB3DE, 0xA7C7F2}, /* pastel yellow, red, green, pink, blue */
     .zoom = 0,
     .font = "monospace",
     .font_size = 10.5,
@@ -139,7 +139,7 @@ static bool set_global_key(const char *k, const char *v)
     else if (!strcmp(k, "highlight_color"))
         return parse_color(v, &cfg.highlights[0]);
     else if (!strcmp(k, "highlight_colors"))
-        return parse_color_list(v, cfg.highlights, 4);
+        return parse_color_list(v, cfg.highlights, 5);
     else if (!strcmp(k, "zoom"))
         cfg.zoom = !strcmp(v, "fit-width") ? 0 : atof(v) / 100.0;
     else if (!strcmp(k, "font"))
