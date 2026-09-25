@@ -403,6 +403,11 @@ static void a_panel_close(Window *w, View *v, int c, const char *a) { (void)v, (
     {"<PageDown>", a_page_down}, {"<PageUp>", a_page_up}, {"<Down>", a_down}, {"<Up>", a_up},  \
     {"<Left>", a_left}, {"<Right>", a_right}
 
+/* Marks, jumps and the panel work in every reading mode. */
+#define MARK_KEYS                                                                             \
+    {"mm", a_jump_back}, {"m*", a_mark_jump}, {"<leader>m*", a_mark_set}, {"<leader>l", a_panel}, \
+    {"<C-o>", a_jump_older}, {"<C-i>", a_jump_newer}
+
 static const Binding normal_map[] = {
     {"j", a_down}, {"k", a_up}, {"h", a_left}, {"l", a_right}, {" ", a_page_down},
     SCROLL_KEYS, {"<Home>", a_first}, {"<End>", a_last},
@@ -415,23 +420,21 @@ static const Binding normal_map[] = {
     {"<C-j>", a_form_next}, {"<C-k>", a_form_prev}, {"<Tab>", a_form_next}, {"<S-Tab>", a_form_prev},
     {"<C-n>", a_new_window}, {"<C-s>", a_save},
     {"<C-,>", a_tab_prev}, {"<C-.>", a_tab_next},
-    {"<C-o>", a_jump_older}, {"<C-i>", a_jump_newer},
-    {"mm", a_jump_back}, {"m*", a_mark_jump}, {"<leader>m*", a_mark_set}, {"<leader>l", a_panel},
-    {"<Esc>", a_clear}, {"q", a_quit},
+    MARK_KEYS, {"<Esc>", a_clear}, {"q", a_quit},
 };
 
 static const Binding caret_map[] = {
     {"h", a_caret_move}, {"j", a_caret_move}, {"k", a_caret_move}, {"l", a_caret_move},
     {"w", a_caret_move}, {"b", a_caret_move}, {"0", a_caret_move}, {"$", a_caret_move},
     {"v", a_caret_select}, {"H", a_caret_mark}, {"c", a_caret_comment}, {"y", a_caret_copy},
-    {"x", a_note_delete}, {"<C-v>", a_area}, {"<Esc>", a_leave}, SCROLL_KEYS,
+    {"x", a_note_delete}, {"<C-v>", a_area}, {"<Esc>", a_leave}, SCROLL_KEYS, MARK_KEYS,
 };
 
 static const Binding area_map[] = {
     {"h", a_area_move}, {"j", a_area_move}, {"k", a_area_move}, {"l", a_area_move},
     {"w", a_area_move}, {"b", a_area_move}, {"J", a_area_move}, {"K", a_area_move},
     {"v", a_area_select}, {"H", a_area_mark}, {"c", a_area_comment}, {"x", a_note_delete},
-    {"<C-v>", a_to_caret}, {"<Esc>", a_leave}, SCROLL_KEYS,
+    {"<C-v>", a_to_caret}, {"<Esc>", a_leave}, SCROLL_KEYS, MARK_KEYS,
 };
 
 static const Binding panel_map[] = {
