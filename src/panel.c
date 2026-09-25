@@ -7,7 +7,8 @@
 #include "fpdf_doc.h"
 #include "nomadys.h"
 
-static const char *tab_names[PANEL_TABS] = {"Marcas", "Destaques", "Sumário"};
+static const char *tab_names[PANEL_TABS] = {[PANEL_CONTENTS] = "Sumário", [PANEL_MARKS] = "Marcas",
+                                            [PANEL_NOTES] = "Destaques"};
 
 /* ---------- building the lists ---------- */
 static PanelItem *add(Window *w, int *cap)
@@ -374,9 +375,9 @@ static const char *empty_hint(Window *w, char *buf, size_t cap)
 static const char *footer(Window *w)
 {
     static const char *keys[PANEL_TABS] = {
-        "Enter ir   r renomear   x apagar   Tab outra aba   Esc fechar",
-        "Enter ir   r comentar   d apagar comentário   x apagar destaque   Tab outra aba   Esc fechar",
-        "Enter ir   j/k mover   Tab outra aba   Esc fechar",
+        [PANEL_CONTENTS] = "Enter ir   j/k mover   Tab outra aba   Esc fechar",
+        [PANEL_MARKS] = "Enter ir   r renomear   x apagar   Tab outra aba   Esc fechar",
+        [PANEL_NOTES] = "Enter ir   r comentar   d apagar comentário   x apagar destaque   Tab outra aba   Esc fechar",
     };
     return keys[w->panel_tab];
 }

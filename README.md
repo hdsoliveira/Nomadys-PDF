@@ -59,7 +59,7 @@ equation, the references):
 | `ma`, `mb`, ... | jump to that mark |
 | `mm` | back to where you were before the last jump; again to return |
 | `Ctrl-o` / `Ctrl-i` | older / newer position in the jump history (every `gg`, `G`, `42G`, search, mark and contents jump) |
-| `\l` | panel with three tabs — **Marks**, **Highlights** (colour, comment and the highlighted text) and the PDF's **Contents** (tree); `Tab` / `h` `l` / `1` `2` `3` switch tabs, `j` `k` move, `Enter` goes, `r` renames a mark or edits a comment, `d` deletes only the comment, `x` deletes the highlight or the mark, `Esc` closes |
+| `\l` | panel with three tabs — the PDF's **Contents** (tree), **Marks**, and **Highlights** (colour, comment and the highlighted text); `Tab` / `h` `l` / `1` `2` `3` switch tabs, `j` `k` move, `Enter` goes, `r` renames a mark or edits a comment, `d` deletes only the comment, `x` deletes the highlight or the mark, `Esc` closes |
 
 Marks and the last reading position are stored outside the PDF, in
 `~/.local/share/nomadys-pdf/marks/`, keyed by the file's path (so they survive

@@ -271,7 +271,7 @@ bool screen_to_page(View *v, float sx, float sy, int top, int *page, double *x, 
 typedef struct Font Font;
 typedef void (*PromptFn)(Window *w, const char *text);
 
-typedef enum { PANEL_MARKS, PANEL_NOTES, PANEL_CONTENTS, PANEL_TABS } PanelTab;
+typedef enum { PANEL_CONTENTS, PANEL_MARKS, PANEL_NOTES, PANEL_TABS } PanelTab; /* tab order */
 
 typedef struct {
     char text[256];          /* main line */
