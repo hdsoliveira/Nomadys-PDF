@@ -168,7 +168,7 @@ void ui_draw_help(Window *w)
     ui_fill(w, x, y, (float)bw, (float)bh, t->panel_bg, 255);
     ui_frame(w, x, y, (float)bw, (float)bh, SDL_max(1.0f, w->density), t->panel_header);
     char title[128];
-    snprintf(title, sizeof title, "Atalhos    j/k rolar    %sc ou Esc fecha", leader_label());
+    snprintf(title, sizeof title, "Keys    j/k scroll    %sc or Esc closes", leader_label());
     font_fit(w->font, title, bw - 2 * p);
     font_draw(w->font, x + p, y + p / 2.0f, title, t->panel_header);
     for (int i = 0; i < rows && w->help_first + i < n; i++) {
@@ -188,7 +188,7 @@ void ui_draw_help(Window *w)
         font_draw(w->font, x + 2 * p + keyw + p, ry, text, t->panel_fg);
     }
     if (w->help_first + rows < n)
-        font_draw(w->font, x + bw - p - font_width(w->font, "\u2193 mais"), y + bh - lh, "\u2193 mais", t->panel_header);
+        font_draw(w->font, x + bw - p - font_width(w->font, "\u2193 more"), y + bh - lh, "\u2193 more", t->panel_header);
     free(lines);
 }
 

@@ -99,7 +99,7 @@ static void a_fit_width(Window *w, View *v, int c, const char *a)
 {
     (void)c, (void)a;
     v->fit_width = true;
-    ui_message(w, "ajustar à largura");
+    ui_message(w, "fit width");
 }
 
 static void a_fit_page(Window *w, View *v, int c, const char *a)
@@ -122,11 +122,11 @@ static void a_dual(Window *w, View *v, int c, const char *a)
     view_layout(v, w->W, w->H, top_of(w));
     view_goto_page(v, p);
     view_clamp(v, w->W, w->H, top_of(w));
-    ui_message(w, v->dual ? "duas páginas" : "uma página");
+    ui_message(w, v->dual ? "two pages" : "one page");
 }
 
-static void a_rotate_cw(Window *w, View *v, int c, const char *a) { (void)a; view_rotate(v, n1(c)); ui_message(w, "rotação: %d°", v->rotation * 90); }
-static void a_rotate_ccw(Window *w, View *v, int c, const char *a) { (void)a; view_rotate(v, -n1(c)); ui_message(w, "rotação: %d°", v->rotation * 90); }
+static void a_rotate_cw(Window *w, View *v, int c, const char *a) { (void)a; view_rotate(v, n1(c)); ui_message(w, "rotation: %d°", v->rotation * 90); }
+static void a_rotate_ccw(Window *w, View *v, int c, const char *a) { (void)a; view_rotate(v, -n1(c)); ui_message(w, "rotation: %d°", v->rotation * 90); }
 static void a_dark(Window *w, View *v, int c, const char *a) { (void)w, (void)c, (void)a; v->dark = !v->dark; }
 static void a_tabs(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; w->show_tabs = !w->show_tabs; }
 static void a_caret(Window *w, View *v, int c, const char *a) { (void)c, (void)a; caret_enter(w, v); }
@@ -142,7 +142,7 @@ static void a_search_next(Window *w, View *v, int c, const char *a)
 {
     (void)a;
     if (!v->query[0])
-        ui_message(w, "nenhuma busca: use /");
+        ui_message(w, "no search yet: use /");
     for (int i = 0; i < n1(c) && v->query[0]; i++)
         search_run(w, v, 1, false);
 }
@@ -189,7 +189,7 @@ static bool mark_letter(Window *w, const char *a)
 {
     if (a[0] >= 'a' && a[0] <= 'z' && !a[1])
         return true;
-    ui_message(w, "marcas usam letras de a a z");
+    ui_message(w, "marks are letters a to z");
     return false;
 }
 
@@ -301,9 +301,9 @@ static void a_note_delete(Window *w, View *v, int c, const char *a)
     (void)c, (void)a;
     int page, note;
     if (cursor_note(w, v, &page, &note) && note_delete(v->doc, page, note))
-        ui_message(w, "destaque apagado");
+        ui_message(w, "highlight deleted");
     else
-        ui_message(w, "nenhum destaque sob o cursor");
+        ui_message(w, "no highlight under the cursor");
 }
 
 static void a_leave(Window *w, View *v, int c, const char *a)
@@ -391,87 +391,87 @@ static void a_help_bottom(Window *w, View *v, int c, const char *a) { (void)v, (
 
 /* ---------- keymaps ---------- */
 #define SCROLL_KEYS                                                                              \
-    {"<C-d>", a_half_down, "meia tela abaixo"}, {"<C-u>", a_half_up, "meia tela acima"},          \
-    {"<C-f>", a_page_down, "tela inteira abaixo"}, {"<C-b>", a_page_up, "tela inteira acima"},     \
+    {"<C-d>", a_half_down, "half a screen down"}, {"<C-u>", a_half_up, "half a screen up"},          \
+    {"<C-f>", a_page_down, "a screen down"}, {"<C-b>", a_page_up, "a screen up"},     \
     {"<PageDown>", a_page_down, NULL}, {"<PageUp>", a_page_up, NULL}, {"<Down>", a_down, NULL},    \
     {"<Up>", a_up, NULL}, {"<Left>", a_left, NULL}, {"<Right>", a_right, NULL}
 
 /* Marks, jumps, the panel and this help work in every reading mode. */
 #define MARK_KEYS                                                                                \
-    {"<leader>m*", a_mark_set, "gravar a posição na marca (a-z)"},                                \
-    {"m*", a_mark_jump, "saltar para a marca"}, {"mm", a_jump_back, "voltar ao ponto anterior"},   \
-    {"<C-o>", a_jump_older, "posição anterior no histórico"},                                      \
-    {"<C-i>", a_jump_newer, "próxima posição no histórico"},                                       \
-    {"<leader>l", a_panel, "painel: marcas, destaques e sumário"},                                 \
-    {"<leader>c", a_help, "esta ajuda (de novo fecha)"}
+    {"<leader>m*", a_mark_set, "set a mark here (a-z)"},                                \
+    {"m*", a_mark_jump, "jump to a mark"}, {"mm", a_jump_back, "back to where you were"},   \
+    {"<C-o>", a_jump_older, "older position in the jump list"},                                      \
+    {"<C-i>", a_jump_newer, "newer position in the jump list"},                                       \
+    {"<leader>l", a_panel, "panel: tabs, summary, marks, highlights"},                                 \
+    {"<leader>c", a_help, "this help (again closes it)"}
 
 static const Binding normal_map[] = {
-    {"j", a_down, "rolar"}, {"k", a_up, "rolar"}, {"h", a_left, "rolar"}, {"l", a_right, "rolar"},
-    {" ", a_page_down, "tela inteira abaixo"}, SCROLL_KEYS,
+    {"j", a_down, "scroll"}, {"k", a_up, "scroll"}, {"h", a_left, "scroll"}, {"l", a_right, "scroll"},
+    {" ", a_page_down, "a screen down"}, SCROLL_KEYS,
     {"<Home>", a_first, NULL}, {"<End>", a_last, NULL},
-    {"J", a_next_page, "próxima página"}, {"K", a_prev_page, "página anterior"},
-    {"gg", a_first, "início (42gg: página 42)"}, {"G", a_last, "fim (42G: página 42)"},
-    {"+", a_zoom_in, "zoom"}, {"-", a_zoom_out, "zoom"}, {"=", a_fit_width, "ajustar à largura"},
-    {"z", a_fit_page, "página inteira na tela"}, {"<C-=>", a_zoom_in, NULL}, {"<C-->", a_zoom_out, NULL},
-    {"d", a_dual, "duas páginas lado a lado"}, {"i", a_dark, "modo escuro"},
-    {"r", a_rotate_cw, "girar 90° no sentido horário"}, {"R", a_rotate_ccw, "girar 90° no sentido anti-horário"},
-    {"t", a_tabs, "mostrar/esconder abas"},
-    {"v", a_caret, "cursor de texto: destacar, comentar, copiar"},
-    {"<C-v>", a_area, "cursor livre: marcar figuras e áreas"},
-    {"/", a_search, "buscar"}, {"n", a_search_next, "próximo resultado"},
-    {"N", a_search_prev, "resultado anterior"},
-    {":", a_command, "comando: :w salvar, :q fechar aba, :e arquivo, :42 página"},
-    {"<C-j>", a_form_next, "próximo campo de formulário"}, {"<C-k>", a_form_prev, "campo anterior"},
+    {"J", a_next_page, "next page"}, {"K", a_prev_page, "previous page"},
+    {"gg", a_first, "first page (42gg: page 42)"}, {"G", a_last, "last page (42G: page 42)"},
+    {"+", a_zoom_in, "zoom"}, {"-", a_zoom_out, "zoom"}, {"=", a_fit_width, "fit width"},
+    {"z", a_fit_page, "fit page"}, {"<C-=>", a_zoom_in, NULL}, {"<C-->", a_zoom_out, NULL},
+    {"d", a_dual, "two pages side by side"}, {"i", a_dark, "dark mode"},
+    {"r", a_rotate_cw, "rotate 90° clockwise"}, {"R", a_rotate_ccw, "rotate 90° counter-clockwise"},
+    {"t", a_tabs, "show / hide tabs"},
+    {"v", a_caret, "text cursor: highlight, comment, copy"},
+    {"<C-v>", a_area, "free cursor: mark figures and areas"},
+    {"/", a_search, "search"}, {"n", a_search_next, "next match"},
+    {"N", a_search_prev, "previous match"},
+    {":", a_command, "command line: :w save, :q close tab, :e file, :42 page"},
+    {"<C-j>", a_form_next, "next form field"}, {"<C-k>", a_form_prev, "previous form field"},
     {"<Tab>", a_form_next, NULL}, {"<S-Tab>", a_form_prev, NULL},
-    {"<C-,>", a_tab_prev, "aba anterior"}, {"<C-.>", a_tab_next, "próxima aba"},
-    {"<C-n>", a_new_window, "nova janela do mesmo PDF"}, {"<C-s>", a_save, "salvar"},
-    MARK_KEYS, {"<Esc>", a_clear, "limpar a busca"}, {"q", a_quit, "fechar a janela"},
+    {"<C-,>", a_tab_prev, "previous tab"}, {"<C-.>", a_tab_next, "next tab"},
+    {"<C-n>", a_new_window, "new window on the same PDF"}, {"<C-s>", a_save, "save"},
+    MARK_KEYS, {"<Esc>", a_clear, "clear the search"}, {"q", a_quit, "close the window"},
 };
 
 static const Binding caret_map[] = {
-    {"h", a_caret_move, "mover"}, {"j", a_caret_move, "mover"}, {"k", a_caret_move, "mover"},
-    {"l", a_caret_move, "mover"}, {"w", a_caret_move, "palavra seguinte / anterior"},
-    {"b", a_caret_move, "palavra seguinte / anterior"}, {"0", a_caret_move, "início / fim da linha"},
-    {"$", a_caret_move, "início / fim da linha"}, {"v", a_caret_select, "começar / parar a seleção"},
-    {"C", a_caret_mark, "destacar: amarelo pastel"}, {"V", a_caret_mark, "destacar: vermelho pastel"},
-    {"B", a_caret_mark, "destacar: verde pastel"}, {"N", a_caret_mark, "destacar: rosa pastel"},
-    {"M", a_caret_mark, "destacar: azul pastel"},
-    {"c", a_caret_comment, "destacar com comentário, ou editar o comentário"},
-    {"y", a_caret_copy, "copiar a seleção"}, {"x", a_note_delete, "apagar o destaque sob o cursor"},
-    {"<C-v>", a_area, "trocar para o cursor livre"}, {"<Esc>", a_leave, "cancelar a seleção / sair"},
-    {"<Enter>", a_source, "LaTeX: abrir este ponto no editor (SyncTeX)"},
+    {"h", a_caret_move, "move"}, {"j", a_caret_move, "move"}, {"k", a_caret_move, "move"},
+    {"l", a_caret_move, "move"}, {"w", a_caret_move, "next / previous word"},
+    {"b", a_caret_move, "next / previous word"}, {"0", a_caret_move, "start / end of line"},
+    {"$", a_caret_move, "start / end of line"}, {"v", a_caret_select, "start / stop selecting"},
+    {"C", a_caret_mark, "highlight: pastel yellow"}, {"V", a_caret_mark, "highlight: pastel red"},
+    {"B", a_caret_mark, "highlight: pastel green"}, {"N", a_caret_mark, "highlight: pastel pink"},
+    {"M", a_caret_mark, "highlight: pastel blue"},
+    {"c", a_caret_comment, "highlight with a comment, or edit the comment"},
+    {"y", a_caret_copy, "copy the selection"}, {"x", a_note_delete, "delete the highlight under the cursor"},
+    {"<C-v>", a_area, "switch to the free cursor"}, {"<Esc>", a_leave, "cancel the selection / leave"},
+    {"<Enter>", a_source, "LaTeX: open this spot in the editor (SyncTeX)"},
     SCROLL_KEYS, MARK_KEYS,
 };
 
 static const Binding area_map[] = {
-    {"h", a_area_move, "mover"}, {"j", a_area_move, "mover"}, {"k", a_area_move, "mover"},
-    {"l", a_area_move, "mover"}, {"w", a_area_move, "mover rápido"}, {"b", a_area_move, "mover rápido"},
-    {"J", a_area_move, "mover rápido"}, {"K", a_area_move, "mover rápido"},
-    {"<C-h>", a_area_move, "mover rápido"}, {"<C-j>", a_area_move, "mover rápido"},
-    {"<C-k>", a_area_move, "mover rápido"}, {"<C-l>", a_area_move, "mover rápido"},
-    {"v", a_area_select, "começar / parar o retângulo"},
-    {"C", a_area_mark, "destacar a área: amarelo pastel"}, {"V", a_area_mark, "destacar a área: vermelho pastel"},
-    {"B", a_area_mark, "destacar a área: verde pastel"}, {"N", a_area_mark, "destacar a área: rosa pastel"},
-    {"M", a_area_mark, "destacar a área: azul pastel"},
-    {"c", a_area_comment, "destacar com comentário, ou editar o comentário"},
-    {"x", a_note_delete, "apagar o destaque sob o cursor"},
-    {"<C-v>", a_to_caret, "voltar ao cursor de texto"}, {"<Esc>", a_leave, "cancelar / sair"},
-    {"<Enter>", a_source, "LaTeX: abrir este ponto no editor (SyncTeX)"},
+    {"h", a_area_move, "move"}, {"j", a_area_move, "move"}, {"k", a_area_move, "move"},
+    {"l", a_area_move, "move"}, {"w", a_area_move, "move faster"}, {"b", a_area_move, "move faster"},
+    {"J", a_area_move, "move faster"}, {"K", a_area_move, "move faster"},
+    {"<C-h>", a_area_move, "move faster"}, {"<C-j>", a_area_move, "move faster"},
+    {"<C-k>", a_area_move, "move faster"}, {"<C-l>", a_area_move, "move faster"},
+    {"v", a_area_select, "start / stop the rectangle"},
+    {"C", a_area_mark, "highlight the area: pastel yellow"}, {"V", a_area_mark, "highlight the area: pastel red"},
+    {"B", a_area_mark, "highlight the area: pastel green"}, {"N", a_area_mark, "highlight the area: pastel pink"},
+    {"M", a_area_mark, "highlight the area: pastel blue"},
+    {"c", a_area_comment, "highlight with a comment, or edit the comment"},
+    {"x", a_note_delete, "delete the highlight under the cursor"},
+    {"<C-v>", a_to_caret, "back to the text cursor"}, {"<Esc>", a_leave, "cancel / leave"},
+    {"<Enter>", a_source, "LaTeX: open this spot in the editor (SyncTeX)"},
     SCROLL_KEYS, MARK_KEYS,
 };
 
 static const Binding panel_map[] = {
-    {"j", a_panel_down, "mover"}, {"k", a_panel_up, "mover"}, {"<Down>", a_panel_down, NULL},
-    {"<Up>", a_panel_up, NULL}, {"gg", a_panel_top, "primeiro / último"},
-    {"G", a_panel_bottom, "primeiro / último"}, {"<Enter>", a_panel_go, "ir até o item"},
-    {"r", a_panel_rename, "renomear a marca / editar o comentário"},
-    {"d", a_panel_uncomment, "apagar só o comentário"},
-    {"x", a_panel_delete, "apagar o destaque (com comentário) ou a marca"},
-    {"<Tab>", a_panel_next_tab, "aba seguinte / anterior"}, {"l", a_panel_next_tab, "aba seguinte / anterior"},
-    {"<S-Tab>", a_panel_prev_tab, "aba seguinte / anterior"}, {"h", a_panel_prev_tab, "aba seguinte / anterior"},
-    {"1", a_panel_tab, "ir para a aba 1, 2 ou 3"}, {"2", a_panel_tab, "ir para a aba 1, 2 ou 3"},
-    {"3", a_panel_tab, "ir para a aba 1, 2 ou 3"},
-    {"<leader>c", a_help, NULL}, {"<Esc>", a_panel_close, "fechar"}, {"q", a_panel_close, "fechar"},
+    {"j", a_panel_down, "move"}, {"k", a_panel_up, "move"}, {"<Down>", a_panel_down, NULL},
+    {"<Up>", a_panel_up, NULL}, {"gg", a_panel_top, "first / last"},
+    {"G", a_panel_bottom, "first / last"}, {"<Enter>", a_panel_go, "go to the entry"},
+    {"r", a_panel_rename, "rename the mark / edit the comment"},
+    {"d", a_panel_uncomment, "delete only the comment"},
+    {"x", a_panel_delete, "delete the highlight (with its comment) or the mark"},
+    {"<Tab>", a_panel_next_tab, "next / previous panel tab"}, {"l", a_panel_next_tab, "next / previous panel tab"},
+    {"<S-Tab>", a_panel_prev_tab, "next / previous panel tab"}, {"h", a_panel_prev_tab, "next / previous panel tab"},
+    {"1", a_panel_tab, "go to panel tab 1-4"}, {"2", a_panel_tab, "go to panel tab 1-4"},
+    {"3", a_panel_tab, "go to panel tab 1-4"}, {"4", a_panel_tab, "go to panel tab 1-4"},
+    {"<leader>c", a_help, NULL}, {"<Esc>", a_panel_close, "close"}, {"q", a_panel_close, "close"},
 };
 
 static const Binding help_map[] = {
@@ -656,7 +656,7 @@ void input_token(Window *w, const char *tok)
 
 /* ---------- help screen content, generated from the keymaps ---------- */
 
-/* "<leader>m*" -> "\\m<letra>", "<C-j>" -> "Ctrl-j", " " -> "Espaço". */
+/* "<leader>m*" -> "\\m<letter>", "<C-j>" -> "Ctrl-j", " " -> "Space". */
 static void key_label(const char *pattern, char *out, size_t cap)
 {
     char t[TOKENS_MAX][TOKEN_LEN];
@@ -665,11 +665,11 @@ static void key_label(const char *pattern, char *out, size_t cap)
     for (int i = 0; i < n; i++) {
         char part[40];
         if (!strcmp(t[i], "*"))
-            snprintf(part, sizeof part, "<letra>");
+            snprintf(part, sizeof part, "<letter>");
         else if (!strcmp(t[i], " ") && i == 0 && !strncmp(pattern, "<leader>", 8))
-            snprintf(part, sizeof part, "espaço ");
+            snprintf(part, sizeof part, "space ");
         else if (!strcmp(t[i], " "))
-            snprintf(part, sizeof part, "Espaço");
+            snprintf(part, sizeof part, "Space");
         else if (!strncmp(t[i], "<C-", 3))
             snprintf(part, sizeof part, "Ctrl-%.*s", (int)strlen(t[i]) - 4, t[i] + 3);
         else if (t[i][0] == '<' && t[i][1])
@@ -727,25 +727,25 @@ static void help_section(HelpLine **lines, int *n, int *cap, const char *title, 
 int help_lines(HelpLine **out)
 {
     static const struct { const char *keys, *text; } form[] = {
-        {"digitar", "preencher o campo"}, {"Espaço", "marcar / desmarcar checkbox"},
-        {"Ctrl-j Tab", "próximo campo"}, {"Ctrl-k", "campo anterior"},
-        {"Ctrl-a Ctrl-z Ctrl-v", "selecionar tudo / desfazer / colar"}, {"Esc", "sair do campo"},
+        {"type", "fill in the field"}, {"Space", "tick / untick a checkbox"},
+        {"Ctrl-j Tab", "next field"}, {"Ctrl-k", "previous field"},
+        {"Ctrl-a Ctrl-z Ctrl-v", "select all / undo / paste"}, {"Esc", "leave the field"},
     };
     HelpLine *lines = NULL;
     int n = 0, cap = 0;
-    help_section(&lines, &n, &cap, "Leitura", normal_map, SDL_arraysize(normal_map), false);
-    help_section(&lines, &n, &cap, "Cursor de texto (v)", caret_map, SDL_arraysize(caret_map), true);
-    help_section(&lines, &n, &cap, "Cursor livre (Ctrl-v)", area_map, SDL_arraysize(area_map), true);
+    help_section(&lines, &n, &cap, "Reading", normal_map, SDL_arraysize(normal_map), false);
+    help_section(&lines, &n, &cap, "Text cursor (v)", caret_map, SDL_arraysize(caret_map), true);
+    help_section(&lines, &n, &cap, "Free cursor (Ctrl-v)", area_map, SDL_arraysize(area_map), true);
     char panel_title[48];
-    snprintf(panel_title, sizeof panel_title, "Painel (%sl)", leader_label());
+    snprintf(panel_title, sizeof panel_title, "Panel (%sl)", leader_label());
     help_section(&lines, &n, &cap, panel_title, panel_map, SDL_arraysize(panel_map), false);
-    snprintf(help_add(&lines, &n, &cap)->keys, sizeof lines->keys, "Comandos (:, Tab completa)");
+    snprintf(help_add(&lines, &n, &cap)->keys, sizeof lines->keys, "Commands (:, Tab completes)");
     lines[n - 1].header = true;
     for (int i = 0; i < command_count(); i++) {
         HelpLine *l = help_add(&lines, &n, &cap);
         command_describe(i, l->keys, sizeof l->keys, &l->text);
     }
-    snprintf(help_add(&lines, &n, &cap)->keys, sizeof lines->keys, "Formulário (dentro de um campo)");
+    snprintf(help_add(&lines, &n, &cap)->keys, sizeof lines->keys, "Forms (inside a field)");
     lines[n - 1].header = true;
     for (size_t i = 0; i < SDL_arraysize(form); i++) {
         HelpLine *l = help_add(&lines, &n, &cap);

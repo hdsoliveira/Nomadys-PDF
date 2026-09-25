@@ -73,7 +73,7 @@ bool search_run(Window *w, View *v, int dir, bool from_current)
         free(m);
     }
     v->match_page = -1;
-    ui_message(w, "não encontrado: %s", v->query);
+    ui_message(w, "not found: %s", v->query);
     return false;
 }
 

@@ -128,7 +128,7 @@ bool synctex_inverse(Window *w, View *v, int page, double x, double y)
 {
     Doc *d = v->doc;
     if (!synctex_available(d)) {
-        ui_message(w, "sem SyncTeX: compile com -synctex=1");
+        ui_message(w, "no SyncTeX data: compile with -synctex=1");
         return false;
     }
     FPDF_PAGE p = doc_page(d, page);
@@ -142,7 +142,7 @@ bool synctex_inverse(Window *w, View *v, int page, double x, double y)
     char *out = run_synctex("edit", "-o", spot, NULL, NULL);
     const char *input = out ? field(out, "Input") : NULL, *line = out ? field(out, "Line") : NULL;
     if (!input || !line) {
-        ui_message(w, out ? "SyncTeX não achou este ponto no código" : "comando synctex não encontrado");
+        ui_message(w, out ? "SyncTeX found no source for this spot" : "synctex command not found");
         free(out);
         return false;
     }
@@ -167,7 +167,7 @@ bool synctex_forward(Window *w, View *v, const char *tex, int line, int col)
     char *out = run_synctex("view", "-i", input, "-o", d->path);
     const char *page = out ? field(out, "Page") : NULL;
     if (!page) {
-        ui_message(w, out ? "SyncTeX: linha %d não encontrada no PDF" : "comando synctex não encontrado", line);
+        ui_message(w, out ? "SyncTeX: line %d not found in the PDF" : "synctex command not found", line);
         free(out);
         return false;
     }

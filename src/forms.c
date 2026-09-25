@@ -17,7 +17,7 @@ void form_step(Window *w, int dir)
     View *v = cur_view(w);
     Doc *d = v->doc;
     if (!doc_has_forms(d)) {
-        ui_message(w, "este PDF não tem formulário");
+        ui_message(w, "this PDF has no form");
         return;
     }
     int page, idx;
@@ -47,7 +47,7 @@ void form_step(Window *w, int dir)
             return;
         }
     }
-    ui_message(w, "nenhum campo preenchível");
+    ui_message(w, "no fillable field");
 }
 
 void form_leave(Window *w)

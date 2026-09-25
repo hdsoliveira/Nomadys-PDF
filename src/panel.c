@@ -1,5 +1,6 @@
-/* The panel ('\l'): three tabs — marks, highlights/comments, and the PDF's
- * own contents — each a list navigated with j/k and opened with Enter. */
+/* The panel ('\l'): four tabs — the open tabs, the PDF's summary (its
+ * outline), marks, and highlights/comments — each a list navigated with j/k
+ * and opened with Enter. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,8 +8,8 @@
 #include "fpdf_doc.h"
 #include "nomadys.h"
 
-static const char *tab_names[PANEL_TABS] = {[PANEL_CONTENTS] = "Sumário", [PANEL_MARKS] = "Marcas",
-                                            [PANEL_NOTES] = "Destaques"};
+static const char *tab_names[PANEL_NTABS] = {[PANEL_OPEN_TABS] = "Tabs", [PANEL_CONTENTS] = "Summary",
+                                             [PANEL_MARKS] = "Marks", [PANEL_NOTES] = "Highlights"};
 
 /* ---------- building the lists ---------- */
 static PanelItem *add(Window *w, int *cap)
@@ -59,6 +60,27 @@ static char *covered_text(Doc *d, int page, Note *n)
     return all;
 }
 
+static void build_open_tabs(Window *w, int *cap)
+{
+    for (int i = 0; i < w->ntabs; i++) {
+        View *v = w->tabs[i];
+        PanelItem *it = add(w, cap);
+        const char *slash = strrchr(v->doc->path, '/');
+        it->tab = i;
+        it->page = v->lay_w ? view_pos(v).page : -1;
+        it->pos.page = -1;
+        snprintf(it->text, sizeof it->text, "%s", slash ? slash + 1 : v->doc->path);
+        /* the folder, with the home directory shown as ~ */
+        const char *home = getenv("HOME");
+        int dirlen = slash ? (int)(slash - v->doc->path) : 0;
+        size_t hl = home ? strlen(home) : 0;
+        if (hl && !strncmp(v->doc->path, home, hl) && (size_t)dirlen >= hl)
+            snprintf(it->sub, sizeof it->sub, "~%.*s", dirlen - (int)hl, v->doc->path + hl);
+        else
+            snprintf(it->sub, sizeof it->sub, "%.*s", dirlen, v->doc->path);
+    }
+}
+
 static void build_marks(Window *w, Doc *d, int *cap)
 {
     for (int m = 0; m < NMARKS; m++) {
@@ -68,7 +90,7 @@ static void build_marks(Window *w, Doc *d, int *cap)
         it->mark = m;
         it->pos = d->marks[m].pos;
         it->page = it->pos.page;
-        snprintf(it->text, sizeof it->text, "%s", d->marks[m].name[0] ? d->marks[m].name : "(sem nome)");
+        snprintf(it->text, sizeof it->text, "%s", d->marks[m].name[0] ? d->marks[m].name : "(no name)");
     }
 }
 
@@ -89,7 +111,7 @@ static void build_notes(Window *w, Doc *d, int *cap)
                 if (t)
                     snprintf(it->sub, sizeof it->sub, "“%s”", t);
             } else {
-                snprintf(it->text, sizeof it->text, t ? "“%s”" : "%s", t ? t : "(área destacada)");
+                snprintf(it->text, sizeof it->text, t ? "“%s”" : "%s", t ? t : "(highlighted area)");
             }
             one_line(it->text);
             one_line(it->sub);
@@ -129,7 +151,9 @@ static void build(Window *w)
     Doc *d = cur_view(w)->doc;
     int cap = 0, budget = 5000;
     w->nitems = 0;
-    if (w->panel_tab == PANEL_MARKS)
+    if (w->panel_tab == PANEL_OPEN_TABS)
+        build_open_tabs(w, &cap);
+    else if (w->panel_tab == PANEL_MARKS)
         build_marks(w, d, &cap);
     else if (w->panel_tab == PANEL_NOTES)
         build_notes(w, d, &cap);
@@ -158,6 +182,7 @@ static void count_tabs(Window *w)
         notes_page(d, page);
         notes += d->slots[page].nnotes;
     }
+    w->panel_counts[PANEL_OPEN_TABS] = w->ntabs;
     w->panel_counts[PANEL_MARKS] = marks;
     w->panel_counts[PANEL_NOTES] = notes;
     w->panel_counts[PANEL_CONTENTS] = count_contents(d, NULL, 0, &budget);
@@ -175,8 +200,8 @@ void panel_open(Window *w)
     w->sel = w->first = 0;
     count_tabs(w);
     /* start on a tab that has something, preferring the last one used */
-    for (int k = 0; k < PANEL_TABS && !w->panel_counts[w->panel_tab]; k++)
-        w->panel_tab = (w->panel_tab + 1) % PANEL_TABS;
+    for (int k = 0; k < PANEL_NTABS && !w->panel_counts[w->panel_tab]; k++)
+        w->panel_tab = (w->panel_tab + 1) % PANEL_NTABS;
     build(w);
     w->mode = MODE_PANEL;
     w->redraw = true;
@@ -191,8 +216,8 @@ void panel_close(Window *w)
 void panel_switch(Window *w, int tab)
 {
     if (tab == -1 || tab == -2)
-        tab = (w->panel_tab + (tab == -2 ? 1 : PANEL_TABS - 1)) % PANEL_TABS;
-    w->panel_tab = SDL_clamp(tab, 0, PANEL_TABS - 1);
+        tab = (w->panel_tab + (tab == -2 ? 1 : PANEL_NTABS - 1)) % PANEL_NTABS;
+    w->panel_tab = SDL_clamp(tab, 0, PANEL_NTABS - 1);
     w->sel = w->first = 0;
     build(w);
     w->redraw = true;
@@ -212,6 +237,12 @@ void panel_activate(Window *w)
     View *v = cur_view(w);
     PanelTab tab = w->panel_tab;
     panel_close(w);
+    if (tab == PANEL_OPEN_TABS) {
+        w->cur = it.tab;
+        w->tabs_flash_until = SDL_GetTicks() + 1000;
+        update_title(w);
+        return;
+    }
     if (it.pos.page < 0)
         return;
     jump_to(w, v, it.pos);
@@ -229,13 +260,21 @@ void panel_delete(Window *w)
         return;
     PanelItem *it = &w->items[w->sel];
     Doc *d = cur_view(w)->doc;
-    if (w->panel_tab == PANEL_MARKS) {
+    if (w->panel_tab == PANEL_OPEN_TABS) {
+        if (w->ntabs == 1) {
+            ui_message(w, "the last tab: q closes the window");
+            return;
+        }
+        if (!confirm_close(w, w->tabs[it->tab]))
+            return;
+        close_tab(w, it->tab);
+    } else if (w->panel_tab == PANEL_MARKS) {
         d->marks[it->mark].set = false;
         marks_save(d);
-        ui_message(w, "marca %c apagada", 'a' + it->mark);
+        ui_message(w, "mark %c deleted", 'a' + it->mark);
     } else if (w->panel_tab == PANEL_NOTES) {
         note_delete(d, it->page, it->note);
-        ui_message(w, "destaque apagado");
+        ui_message(w, "highlight deleted");
     } else {
         return;
     }
@@ -251,12 +290,12 @@ void panel_delete_comment(Window *w)
     Doc *d = cur_view(w)->doc;
     char *c = note_comment(d, it->page, it->note);
     if (!c) {
-        ui_message(w, "este destaque não tem comentário");
+        ui_message(w, "this highlight has no comment");
         return;
     }
     free(c);
     note_set_comment(d, it->page, it->note, "");
-    ui_message(w, "comentário apagado");
+    ui_message(w, "comment deleted");
     rebuild(w);
 }
 
@@ -280,10 +319,10 @@ void panel_rename(Window *w)
     PanelItem *it = &w->items[w->sel];
     Doc *d = cur_view(w)->doc;
     if (w->panel_tab == PANEL_MARKS) {
-        prompt_open(w, "nome da marca: ", d->marks[it->mark].name, renamed, w->sel);
+        prompt_open(w, "mark name: ", d->marks[it->mark].name, renamed, w->sel);
     } else if (w->panel_tab == PANEL_NOTES) {
         char *c = note_comment(d, it->page, it->note);
-        prompt_open(w, "comentário: ", c ? c : "", renamed, w->sel);
+        prompt_open(w, "comment: ", c ? c : "", renamed, w->sel);
         free(c);
     }
 }
@@ -305,9 +344,9 @@ static void draw_tabs(Box *b, Window *w)
 {
     const Theme *t = b->t;
     float x = b->x + b->pad, y = b->y + b->pad / 2.0f;
-    for (int k = 0; k < PANEL_TABS; k++) {
+    for (int k = 0; k < PANEL_NTABS; k++) {
         char label[64];
-        snprintf(label, sizeof label, "%d %s  %d", k + 1, tab_names[k], w->panel_counts[k]);
+        snprintf(label, sizeof label, "%s  %d", tab_names[k], w->panel_counts[k]);
         int tw = font_width(w->font, label);
         bool cur = k == (int)w->panel_tab;
         if (cur)
@@ -334,7 +373,12 @@ static void draw_row(Box *b, PanelItem *it, float y, bool sel)
     int pw = font_width(w->font, page);
     font_draw(w->font, right - pw, ty, page, dim);
     /* left marker: mark letter, note colour, or contents indentation */
-    if (b->w->panel_tab == PANEL_MARKS) {
+    if (b->w->panel_tab == PANEL_OPEN_TABS) {
+        float s = b->lh * 0.45f; /* a dot on the active tab */
+        if (it->tab == w->cur)
+            ui_fill(w, x + (b->lh - s) / 2, ty + (b->lh - s) / 2, s, s, sel ? t->panel_selected_fg : t->tab_accent, 255);
+        x += b->lh + b->pad / 2.0f;
+    } else if (b->w->panel_tab == PANEL_MARKS) {
         char letter[2] = {(char)('a' + it->mark), 0};
         float bx = x, bs = (float)b->lh;
         ui_fill(w, bx, ty, bs, bs, t->tab_accent, 255);
@@ -364,20 +408,21 @@ static void draw_row(Box *b, PanelItem *it, float y, bool sel)
 static const char *empty_hint(Window *w, char *buf, size_t cap)
 {
     if (w->panel_tab == PANEL_MARKS)
-        snprintf(buf, cap, "Nenhuma marca ainda. Grave a posição atual com %sm e uma letra.", leader_label());
+        snprintf(buf, cap, "No marks yet. Mark the current position with %sm and a letter.", leader_label());
     else if (w->panel_tab == PANEL_NOTES)
-        snprintf(buf, cap, "Nenhum destaque. No cursor (v ou Ctrl-v), selecione com v e use C V B N M ou c.");
+        snprintf(buf, cap, "No highlights. In a cursor (v or Ctrl-v), select with v, then C V B N M or c.");
     else
-        snprintf(buf, cap, "Este PDF não tem sumário.");
+        snprintf(buf, cap, "This PDF has no summary (outline).");
     return buf;
 }
 
 static const char *footer(Window *w)
 {
-    static const char *keys[PANEL_TABS] = {
-        [PANEL_CONTENTS] = "Enter ir   j/k mover   Tab outra aba   Esc fechar",
-        [PANEL_MARKS] = "Enter ir   r renomear   x apagar   Tab outra aba   Esc fechar",
-        [PANEL_NOTES] = "Enter ir   r comentar   d apagar comentário   x apagar destaque   Tab outra aba   Esc fechar",
+    static const char *keys[PANEL_NTABS] = {
+        [PANEL_OPEN_TABS] = "Enter switch to it   x close it   Tab next panel tab   Esc close",
+        [PANEL_CONTENTS] = "Enter go   j/k move   Tab next panel tab   Esc close",
+        [PANEL_MARKS] = "Enter go   r rename   x delete   Tab next panel tab   Esc close",
+        [PANEL_NOTES] = "Enter go   r comment   d delete comment   x delete highlight   Tab next panel tab   Esc close",
     };
     return keys[w->panel_tab];
 }

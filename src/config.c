@@ -53,7 +53,7 @@ Config cfg = {
 const Theme *theme_of(bool dark) { return dark ? &cfg.dark_theme : &cfg.light; }
 
 /* The leader key as shown in messages. */
-const char *leader_label(void) { return !strcmp(cfg.leader, " ") ? "espaço " : cfg.leader; }
+const char *leader_label(void) { return !strcmp(cfg.leader, " ") ? "space " : cfg.leader; }
 
 /* Theme keys, valid inside [light] and [dark]. */
 #define COLOR(name) {#name, offsetof(Theme, name)}

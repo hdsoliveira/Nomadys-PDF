@@ -271,14 +271,14 @@ bool screen_to_page(View *v, float sx, float sy, int top, int *page, double *x, 
 typedef struct Font Font;
 typedef void (*PromptFn)(Window *w, const char *text);
 
-typedef enum { PANEL_CONTENTS, PANEL_MARKS, PANEL_NOTES, PANEL_TABS } PanelTab; /* tab order */
+typedef enum { PANEL_OPEN_TABS, PANEL_CONTENTS, PANEL_MARKS, PANEL_NOTES, PANEL_NTABS } PanelTab; /* tab order */
 
 typedef struct {
     char text[256];          /* main line */
     char sub[256];           /* second, dimmer line (highlighted text), or "" */
     int depth;               /* contents: nesting level */
     Pos pos;                 /* where Enter goes; page -1 = nowhere */
-    int page, note, mark;
+    int page, note, mark, tab;
     uint32_t color;          /* note colour */
 } PanelItem;
 
@@ -315,7 +315,7 @@ struct Window {
     PanelItem *items;        /* entries of the current panel tab */
     int nitems, sel, first;
     PanelTab panel_tab;
-    int panel_counts[PANEL_TABS];
+    int panel_counts[PANEL_NTABS];
     bool redraw;
     int W, H;                /* pixel size */
     float density;

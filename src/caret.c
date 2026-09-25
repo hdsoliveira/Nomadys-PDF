@@ -144,7 +144,7 @@ bool caret_enter(Window *w, View *v)
             }
         }
     }
-    ui_message(w, "nenhum texto selecionável aqui: use Ctrl-v para o cursor livre");
+    ui_message(w, "no selectable text here: use Ctrl-v for the free cursor");
     return false;
 }
 
@@ -247,7 +247,7 @@ static void highlight_selection(Window *w, View *v, const char *comment)
     flush_marks(&c);
     free(c.quads);
     v->selecting = false;
-    ui_message(w, comment && *comment ? "destacado com comentário" : "destacado");
+    ui_message(w, comment && *comment ? "highlighted with a comment" : "highlighted");
 }
 
 static void comment_done_selection(Window *w, const char *text) { highlight_selection(w, cur_view(w), text); }
@@ -256,7 +256,7 @@ static void comment_done_edit(Window *w, const char *text)
 {
     int page = w->prompt_arg >> 16, note = w->prompt_arg & 0xFFFF;
     note_set_comment(cur_view(w)->doc, page, note, text);
-    ui_message(w, *text ? "comentário salvo" : "comentário removido");
+    ui_message(w, *text ? "comment saved" : "comment removed");
 }
 
 /* Edit the comment of the note under the cursor; false if there is none. */
@@ -266,7 +266,7 @@ static bool edit_note_comment(Window *w, View *v)
     if (!cursor_note(w, v, &page, &note))
         return false;
     char *old = note_comment(v->doc, page, note);
-    prompt_open(w, "comentário: ", old ? old : "", comment_done_edit, (page << 16) | note);
+    prompt_open(w, "comment: ", old ? old : "", comment_done_edit, (page << 16) | note);
     free(old);
     return true;
 }
@@ -276,11 +276,11 @@ void caret_mark(Window *w, View *v, bool comment, uint32_t color)
     v->mark_color = color;
     if (v->selecting) {
         if (comment)
-            prompt_open(w, "comentário: ", "", comment_done_selection, 0);
+            prompt_open(w, "comment: ", "", comment_done_selection, 0);
         else
             highlight_selection(w, v, NULL);
     } else if (!(comment && edit_note_comment(w, v))) {
-        ui_message(w, "selecione com v primeiro");
+        ui_message(w, "select with v first");
     }
     w->redraw = true;
 }
@@ -290,7 +290,7 @@ typedef struct { char *buf; size_t len; } CopyCtx;
 void caret_copy(Window *w, View *v)
 {
     if (!v->selecting) {
-        ui_message(w, "selecione com v antes de copiar");
+        ui_message(w, "select with v before copying");
         return;
     }
     TextPos a = v->anchor, b = v->caret;
@@ -319,7 +319,7 @@ void caret_copy(Window *w, View *v)
     }
     if (c.buf) {
         SDL_SetClipboardText(c.buf);
-        ui_message(w, "copiado (%zu caracteres)", c.len);
+        ui_message(w, "copied (%zu characters)", c.len);
         free(c.buf);
     }
     v->selecting = false;
@@ -348,7 +348,7 @@ void area_enter(Window *w, View *v)
     }
     v->area_selecting = false;
     w->mode = MODE_AREA;
-    ui_message(w, "cursor livre: hjkl move (J K rápido), v seleciona, C V B N M destacam, c comenta");
+    ui_message(w, "free cursor: hjkl move (J K faster), v selects, C V B N M highlight, c comments");
     w->redraw = true;
 }
 
@@ -389,7 +389,7 @@ static void area_done(Window *w, const char *text)
     PRect r = area_rect(v);
     note_create_area(v->doc, v->area_page, r, text, v->mark_color);
     v->area_selecting = false;
-    ui_message(w, text && *text ? "área destacada com comentário" : "área destacada");
+    ui_message(w, text && *text ? "area highlighted with a comment" : "area highlighted");
 }
 
 void area_mark(Window *w, View *v, bool comment, uint32_t color)
@@ -397,16 +397,16 @@ void area_mark(Window *w, View *v, bool comment, uint32_t color)
     v->mark_color = color;
     if (!v->area_selecting) {
         if (!(comment && edit_note_comment(w, v)))
-            ui_message(w, "marque a área com v primeiro");
+            ui_message(w, "mark the area with v first");
         return;
     }
     PRect r = area_rect(v);
     if (r.r - r.l < 2 || r.t - r.b < 2) {
-        ui_message(w, "área vazia: mova o cursor depois do v");
+        ui_message(w, "empty area: move the cursor after v");
         return;
     }
     if (comment)
-        prompt_open(w, "comentário: ", "", area_done, 0);
+        prompt_open(w, "comment: ", "", area_done, 0);
     else
         area_done(w, NULL);
 }

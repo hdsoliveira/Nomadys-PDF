@@ -120,7 +120,7 @@ void marks_save(Doc *d)
 /* The first line of text at or below a position, as a default mark name. */
 static void snippet(Doc *d, Pos p, char *out, size_t cap)
 {
-    snprintf(out, cap, "página %d", p.page + 1);
+    snprintf(out, cap, "page %d", p.page + 1);
     doc_page_chars(d, p.page);
     PageSlot *s = &d->slots[p.page];
     FPDF_TEXTPAGE tp = doc_text(d, p.page);
@@ -153,7 +153,7 @@ void mark_set(Window *w, View *v, int m)
     mk->pos = view_pos(v);
     snippet(d, mk->pos, mk->name, sizeof mk->name);
     marks_save(d);
-    ui_message(w, "marca %c: p. %d", 'a' + m, mk->pos.page + 1);
+    ui_message(w, "mark %c: p. %d", 'a' + m, mk->pos.page + 1);
 }
 
 static void go(Window *w, View *v, Pos p)
@@ -182,7 +182,7 @@ void mark_jump(Window *w, View *v, int m)
 {
     Mark *mk = &v->doc->marks[m];
     if (!mk->set) {
-        ui_message(w, "marca %c não existe (grave com %sm%c)", 'a' + m, leader_label(), 'a' + m);
+        ui_message(w, "no mark %c (set it with %sm%c)", 'a' + m, leader_label(), 'a' + m);
         return;
     }
     jump_to(w, v, mk->pos);
@@ -192,7 +192,7 @@ void mark_jump(Window *w, View *v, int m)
 void jump_back(Window *w, View *v)
 {
     if (v->previous.page < 0) {
-        ui_message(w, "nenhum salto anterior");
+        ui_message(w, "no previous jump");
         return;
     }
     Pos here = view_pos(v);

@@ -137,7 +137,7 @@ bool confirm_close(Window *w, View *only)
     if (!unsaved_would_be_lost(w, only) || now < w->quit_warned)
         return true;
     w->quit_warned = now + 4000;
-    ui_message(w, "alterações não salvas: Ctrl-s salva, repita para descartar");
+    ui_message(w, "unsaved changes: Ctrl-s saves, repeat to discard");
     return false;
 }
 
@@ -181,7 +181,7 @@ bool open_tab(Window *w, const char *path)
     }
     if (w->ntabs == MAX_TABS) {
         doc_unref(d);
-        ui_message(w, "abas demais");
+        ui_message(w, "too many tabs");
         return false;
     }
     View *v = view_new(d);
@@ -201,7 +201,7 @@ void save(Window *w, View *v)
     if (w->mode == MODE_FORM)
         w->mode = MODE_NORMAL;
     if (doc_save(v->doc, err, sizeof err))
-        ui_message(w, "salvo");
+        ui_message(w, "saved");
     else
         ui_message(w, "%s", err);
     w->quit_warned = 0;
@@ -489,27 +489,27 @@ static bool script_step(void)
 
 static void usage(void)
 {
-    printf("uso: nomadys-pdf arquivo.pdf [arquivo2.pdf ...]\n"
+    printf("usage: nomadys-pdf file.pdf [other.pdf ...]\n"
            "\n"
-           "  j/k h/l      rolar           gg / G / 42G   início / fim / página 42\n"
-           "  Ctrl-d/u     meia tela       Ctrl-f/b       tela inteira\n"
-           "  J/K          página seguinte/anterior\n"
-           "  + / - / =    zoom / ajustar à largura       z   página inteira\n"
-           "  d            duas páginas    i              modo escuro\n"
-           "  %sma  ma      grava / salta para a marca a   mm  volta ao ponto anterior\n"
-           "  Ctrl-o/i     histórico de saltos            %sl  painel de marcas e notas\n"
-           "  v            cursor de texto: hjkl w b 0 $, v seleciona, C V B N M destacam,\n"
-           "               c comenta, y copia, x apaga destaque\n"
-           "  Ctrl-v       cursor livre (áreas e figuras): hjkl, J K rápido, v, C V B N M, c\n"
-           "  Ctrl-j/k     próximo/anterior campo de formulário (Esc sai)\n"
-           "  / n N        buscar          :e arquivo     abrir em nova aba\n"
-           "  t            mostrar abas    Ctrl-, Ctrl-.  aba anterior/seguinte\n"
-           "  Ctrl-n       nova janela     Ctrl-s / :w    salvar\n"
-           "  :q           fechar aba      q              fechar janela\n"
-           "  %sc          todos os atalhos (de novo fecha)\n"
+           "  j/k h/l      scroll          gg / G / 42G   first / last / page 42\n"
+           "  Ctrl-d/u     half screen     Ctrl-f/b       full screen\n"
+           "  J/K          next / previous page\n"
+           "  + / - / =    zoom / fit width              z   fit page\n"
+           "  d            two pages       i              dark mode      r / R  rotate\n"
+           "  %sma  ma      set / jump to mark a           mm  back to where you were\n"
+           "  Ctrl-o/i     jump list                      %sl  panel: tabs, summary, marks, highlights\n"
+           "  v            text cursor: hjkl w b 0 $, v selects, C V B N M highlight,\n"
+           "               c comments, y copies, x deletes a highlight\n"
+           "  Ctrl-v       free cursor (areas, figures): hjkl, J K faster, v, C V B N M, c\n"
+           "  Ctrl-j/k     next / previous form field (Esc leaves)\n"
+           "  / n N        search          :e file        open in a new tab\n"
+           "  t            show tabs       Ctrl-, Ctrl-.  previous / next tab\n"
+           "  Ctrl-n       new window      Ctrl-s / :w    save\n"
+           "  :q           close tab       q              close window\n"
+           "  %sc          every key (again closes it)\n"
            "\n"
-           "LaTeX: --synctex-forward LINHA:COLUNA:ARQUIVO.tex arquivo.pdf salta até a linha;\n"
-           "       duplo clique, Ctrl+clique ou Enter no cursor abre o código (-x COMANDO)\n"
+           "LaTeX: --synctex-forward LINE:COL:FILE.tex file.pdf shows that line;\n"
+           "       double click, Ctrl+click or Enter in a cursor opens the source (-x COMMAND)\n"
            "\n"
            "config: ~/.config/nomadys-pdf/config\n",
            leader_label(), leader_label(), leader_label());

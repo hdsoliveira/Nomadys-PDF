@@ -55,7 +55,7 @@ static void c_edit(Window *w, View *v, const char *a)
 {
     (void)v;
     if (!*a) {
-        ui_message(w, "uso: :e arquivo.pdf");
+        ui_message(w, "usage: :e file.pdf");
         return;
     }
     char *path = expand_home(a);
@@ -71,14 +71,14 @@ static void c_reload(Window *w, View *v, const char *a)
     (void)a;
     v->doc->saved_mtime_ns = -2; /* differs from any real mtime: reload for sure */
     v->doc->reload_at = SDL_GetTicks();
-    ui_message(w, "recarregando");
+    ui_message(w, "reloading");
 }
 
 static void c_zoom(Window *w, View *v, const char *a)
 {
     double pct = atof(a);
     if (pct < 5 || pct > 4000) {
-        ui_message(w, "uso: :zoom 150  (porcentagem)");
+        ui_message(w, "usage: :zoom 150  (percent)");
         return;
     }
     v->fit_width = false;
@@ -103,32 +103,32 @@ static void c_rotate(Window *w, View *v, const char *a)
 {
     int deg = atoi(a);
     if (!*a || deg % 90) {
-        ui_message(w, "uso: :rotate 90  (múltiplos de 90, negativo = anti-horário)");
+        ui_message(w, "usage: :rotate 90  (multiples of 90, negative = counter-clockwise)");
         return;
     }
     view_rotate(v, deg / 90);
-    ui_message(w, "rotação: %d°", v->rotation * 90);
+    ui_message(w, "rotation: %d°", v->rotation * 90);
 }
 
 static void c_page(Window *w, View *v, const char *a) { goto_page(w, v, atoi(a) - 1); }
 
 static const Command commands[] = {
-    {"w", ARG_NONE, c_write, "salvar"},
-    {"q", ARG_NONE, c_quit, "fechar a aba"},
-    {"q!", ARG_NONE, c_quit_force, "fechar a aba descartando alterações"},
-    {"wq", ARG_NONE, c_write_quit, "salvar e fechar a aba"},
-    {"x", ARG_NONE, c_write_quit, "salvar e fechar a aba"},
-    {"e", ARG_FILE, c_edit, "abrir um PDF em nova aba"},
-    {"page", ARG_NUMBER, c_page, "ir para a página (também :42)"},
-    {"zoom", ARG_NUMBER, c_zoom, "zoom em porcentagem, ex. :zoom 150"},
-    {"rotate", ARG_NUMBER, c_rotate, "girar a vista: :rotate 90, -90, 180"},
-    {"dark", ARG_NONE, c_dark, "modo escuro"},
-    {"light", ARG_NONE, c_light, "modo claro"},
-    {"marks", ARG_NONE, c_panel, "painel de marcas, destaques e sumário"},
-    {"notes", ARG_NONE, c_panel, "painel de marcas, destaques e sumário"},
-    {"noh", ARG_NONE, c_nohl, "limpar o destaque da busca"},
-    {"reload", ARG_NONE, c_reload, "recarregar o PDF do disco"},
-    {"help", ARG_NONE, c_help, "todos os atalhos"},
+    {"w", ARG_NONE, c_write, "save"},
+    {"q", ARG_NONE, c_quit, "close the tab"},
+    {"q!", ARG_NONE, c_quit_force, "close the tab, discarding changes"},
+    {"wq", ARG_NONE, c_write_quit, "save and close the tab"},
+    {"x", ARG_NONE, c_write_quit, "save and close the tab"},
+    {"e", ARG_FILE, c_edit, "open a PDF in a new tab"},
+    {"page", ARG_NUMBER, c_page, "go to a page (also :42)"},
+    {"zoom", ARG_NUMBER, c_zoom, "zoom in percent, e.g. :zoom 150"},
+    {"rotate", ARG_NUMBER, c_rotate, "rotate the view: :rotate 90, -90, 180"},
+    {"dark", ARG_NONE, c_dark, "dark mode"},
+    {"light", ARG_NONE, c_light, "light mode"},
+    {"marks", ARG_NONE, c_panel, "panel: tabs, summary, marks, highlights"},
+    {"notes", ARG_NONE, c_panel, "panel: tabs, summary, marks, highlights"},
+    {"noh", ARG_NONE, c_nohl, "clear the search highlight"},
+    {"reload", ARG_NONE, c_reload, "reload the PDF from disk"},
+    {"help", ARG_NONE, c_help, "every key"},
 };
 
 int command_count(void) { return (int)SDL_arraysize(commands); }
@@ -136,7 +136,7 @@ int command_count(void) { return (int)SDL_arraysize(commands); }
 void command_describe(int i, char *keys, size_t cap, const char **text)
 {
     const Command *c = &commands[i];
-    snprintf(keys, cap, ":%s%s", c->name, c->arg == ARG_FILE ? " arquivo" : c->arg == ARG_NUMBER ? " N" : "");
+    snprintf(keys, cap, ":%s%s", c->name, c->arg == ARG_FILE ? " file" : c->arg == ARG_NUMBER ? " N" : "");
     *text = c->help;
 }
 
@@ -159,7 +159,7 @@ void command_run(Window *w, const char *line)
             return;
         }
     }
-    ui_message(w, "comando desconhecido: %.*s  (Tab lista os comandos)", (int)n, line);
+    ui_message(w, "unknown command: %.*s  (Tab lists the commands)", (int)n, line);
 }
 
 /* ---------- completion ---------- */
@@ -232,7 +232,7 @@ void command_complete(Window *w, int dir)
     if (!w->ncomp) {
         build_candidates(w);
         if (!w->ncomp) {
-            ui_message(w, "nenhuma opção");
+            ui_message(w, "no options");
             return;
         }
         if (w->ncomp == 1) {
