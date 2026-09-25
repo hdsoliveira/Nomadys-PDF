@@ -12,6 +12,10 @@ highlight_color = #FFE14D  # colour of new highlights
 area_style = highlight     # areas/figures: highlight (like Acrobat) or frame
 leader = \                 # leader key: \ , ; or "space"
 
+# LaTeX inverse search (double click, Ctrl+click, Enter in the cursor):
+# %l line, %c column, %f file
+synctex_editor = nvim --headless -c "VimtexInverseSearch %l '%f'"
+
 # UI font (tabs, command line, messages, panel): any installed font
 font = monospace           # e.g. JetBrains Mono, DejaVu Sans, Go Mono
 font_size = 10.5           # points

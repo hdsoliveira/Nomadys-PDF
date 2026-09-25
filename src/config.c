@@ -19,6 +19,7 @@ Config cfg = {
     .font = "monospace",
     .font_size = 10.5,
     .leader = "\\",
+    .synctex_editor = "nvim --headless -c \"VimtexInverseSearch %l '%f'\"",
     .light = {
         .background = 0xD9D9D9,
         .tab_bg = 0xECECEC, .tab_fg = 0x5A5A5A, .tab_active_bg = 0xFFFFFF,
@@ -131,6 +132,8 @@ static bool set_global_key(const char *k, const char *v)
         snprintf(cfg.font, sizeof cfg.font, "%s", v);
     else if (!strcmp(k, "font_size"))
         cfg.font_size = SDL_clamp(atof(v), 5, 72);
+    else if (!strcmp(k, "synctex_editor"))
+        snprintf(cfg.synctex_editor, sizeof cfg.synctex_editor, "%s", v);
     else if (!strcmp(k, "leader"))
         snprintf(cfg.leader, sizeof cfg.leader, "%s", !strcmp(v, "space") ? " " : v);
     /* keys from version 0.1 */

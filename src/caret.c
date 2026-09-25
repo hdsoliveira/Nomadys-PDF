@@ -17,8 +17,10 @@ static PageSlot *chars(View *v, int page)
 
 static bool valid(View *v, TextPos p)
 {
+    if (p.page < 0 || p.page >= v->doc->npages)
+        return false;
     PageSlot *s = chars(v, p.page);
-    return p.page >= 0 && p.ch >= 0 && p.ch < s->nchars && s->line[p.ch] >= 0;
+    return p.ch >= 0 && p.ch < s->nchars && s->line[p.ch] >= 0;
 }
 
 static PRect box(View *v, TextPos p) { return chars(v, p.page)->boxes[p.ch]; }

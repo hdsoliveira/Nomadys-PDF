@@ -219,6 +219,12 @@ static void draw(Window *w, uint64_t now)
     view_draw(w, v, top);
     ui_draw_notes(w, v, top);
     search_draw(w, v, top);
+    if (now < v->flash_until) {
+        float x0, y0, x1, y1;
+        page_to_screen(v, v->flash_page, v->flash_rect.l, v->flash_rect.t, &x0, &y0, top);
+        page_to_screen(v, v->flash_page, v->flash_rect.r, v->flash_rect.b, &x1, &y1, top);
+        ui_fill(w, SDL_min(x0, x1), SDL_min(y0, y1), SDL_fabsf(x1 - x0), SDL_fabsf(y1 - y0), wtheme(w)->caret, 70);
+    }
     cursor_draw(w, v, top, blink_on);
     if (w->mode == MODE_FORM)
         form_draw_focus(w, v, top);
@@ -244,9 +250,109 @@ static bool alive(Window *w)
     return false;
 }
 
+/* ---------- LaTeX: requests from VimTeX and reloads ---------- */
+
+/* "forward\t<pdf>\t<line>\t<col>\t<tex>": show that source line in the PDF. */
+static void handle_request(char *msg)
+{
+    char *f[5];
+    int n = 0;
+    for (char *p = strtok(msg, "\t\n"); p && n < 5; p = strtok(NULL, "\t\n"))
+        f[n++] = p;
+    if (n < 5 || strcmp(f[0], "forward") || !nwindows)
+        return;
+    char *real = realpath(f[1], NULL);
+    Window *w = NULL;
+    int tab = -1;
+    for (int i = 0; i < nwindows && tab < 0; i++) {
+        Window *x = windows[i];
+        if (x->ntabs && real && !strcmp(cur_view(x)->doc->path, real)) {
+            w = x, tab = x->cur;
+            break;
+        }
+        for (int k = 0; k < x->ntabs; k++)
+            if (real && !strcmp(x->tabs[k]->doc->path, real)) {
+                w = x, tab = k;
+                break;
+            }
+    }
+    if (tab < 0) {
+        w = windows[0];
+        if (!open_tab(w, f[1])) {
+            free(real);
+            return;
+        }
+        tab = w->cur;
+    }
+    free(real);
+    w->cur = tab;
+    w->mode = MODE_NORMAL;
+    update_title(w);
+    View *v = cur_view(w);
+    update_size(w);
+    view_layout(v, w->W, w->H, top_of(w));
+    view_clamp(v, w->W, w->H, top_of(w));
+    synctex_forward(w, v, f[4], atoi(f[2]), atoi(f[3]));
+}
+
+static void file_changed(int wd, const char *name)
+{
+    for (int i = 0; i < ndocs; i++) {
+        Doc *d = docs[i];
+        const char *base = strrchr(d->path, '/');
+        if (d->watch_wd == wd && base && !strcmp(base + 1, name)) {
+            d->reload_at = SDL_GetTicks() + 250; /* let the writer finish */
+            d->reload_tries = 0;
+        }
+    }
+}
+
+static void reload_due(uint64_t now, int *wait)
+{
+    for (int i = 0; i < ndocs; i++) {
+        Doc *d = docs[i];
+        if (!d->reload_at)
+            continue;
+        if (now < d->reload_at) {
+            int left = (int)(d->reload_at - now);
+            *wait = *wait < 0 ? left : SDL_min(*wait, left);
+            continue;
+        }
+        long long mtime = file_mtime_ns(d->path);
+        if (mtime == d->saved_mtime_ns || mtime < 0) {
+            d->reload_at = 0; /* our own save, or the file is gone for now */
+            continue;
+        }
+        if (!doc_reload(d)) {
+            d->reload_at = ++d->reload_tries < 40 ? now + 250 : 0;
+            continue;
+        }
+        d->reload_at = 0;
+        for (int k = 0; k < nwindows; k++) {
+            Window *w = windows[k];
+            for (int t = 0; t < w->ntabs; t++) {
+                if (w->tabs[t]->doc != d)
+                    continue;
+                view_doc_reloaded(w->tabs[t]);
+                if (t == w->cur && w->mode != MODE_HELP && w->mode != MODE_PROMPT)
+                    w->mode = MODE_NORMAL;
+            }
+            w->redraw = true;
+        }
+    }
+}
+
 static void handle_event(SDL_Event *e)
 {
     Window *w = NULL;
+    if (e->type == ipc_event) {
+        if (e->user.code == IPC_REQUEST)
+            handle_request(e->user.data1);
+        else if (e->user.code == IPC_FILE)
+            file_changed((int)(intptr_t)e->user.data2, e->user.data1);
+        free(e->user.data1);
+        return;
+    }
     switch (e->type) {
     case SDL_EVENT_QUIT:
         while (nwindows)
@@ -281,6 +387,18 @@ static void handle_event(SDL_Event *e)
         return;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
     case SDL_EVENT_MOUSE_BUTTON_UP:
+        /* double click or Ctrl+click: go to the LaTeX source (SyncTeX) */
+        if (e->type == SDL_EVENT_MOUSE_BUTTON_DOWN && (w = window_by_id(e->button.windowID)) &&
+            e->button.button == SDL_BUTTON_LEFT &&
+            (e->button.clicks >= 2 || (SDL_GetModState() & SDL_KMOD_CTRL))) {
+            int page;
+            double px, py;
+            if (screen_to_page(cur_view(w), e->button.x * w->density, e->button.y * w->density, top_of(w),
+                               &page, &px, &py))
+                synctex_inverse(w, cur_view(w), page, px, py);
+            w->redraw = true;
+            return;
+        }
         if ((w = window_by_id(e->button.windowID)) && e->button.button == SDL_BUTTON_LEFT &&
             (w->mode == MODE_NORMAL || w->mode == MODE_FORM))
             form_click(w, e->button.x * w->density, e->button.y * w->density,
@@ -388,23 +506,46 @@ static void usage(void)
            "  :q           fechar aba      q              fechar janela\n"
            "  %sc          todos os atalhos (de novo fecha)\n"
            "\n"
+           "LaTeX: --synctex-forward LINHA:COLUNA:ARQUIVO.tex arquivo.pdf salta até a linha;\n"
+           "       duplo clique, Ctrl+clique ou Enter no cursor abre o código (-x COMANDO)\n"
+           "\n"
            "config: ~/.config/nomadys-pdf/config\n",
            leader_label(), leader_label(), leader_label());
 }
 
 int main(int argc, char **argv)
 {
-    while (argc > 2 && (!strcmp(argv[1], "--test-script") || !strcmp(argv[1], "--test-out"))) {
+    const char *forward = NULL, *editor = NULL;
+    while (argc > 2 && argv[1][0] == '-' && strcmp(argv[1], "--help") && strcmp(argv[1], "--version")) {
         if (!strcmp(argv[1], "--test-script"))
             script = argv[2];
-        else
+        else if (!strcmp(argv[1], "--test-out"))
             script_dir = argv[2];
+        else if (!strcmp(argv[1], "--synctex-forward"))
+            forward = argv[2];
+        else if (!strcmp(argv[1], "--synctex-editor-command") || !strcmp(argv[1], "-x"))
+            editor = argv[2];
+        else
+            break;
         argv += 2;
         argc -= 2;
     }
     if (script && !script_dir)
         script_dir = ".";
     config_load();
+    if (editor)
+        snprintf(cfg.synctex_editor, sizeof cfg.synctex_editor, "%s", editor);
+    /* VimTeX forward search: "--synctex-forward LINE:COL:TEX file.pdf" */
+    char request[8192] = "";
+    if (forward && argc >= 2) {
+        int line = 0, col = 0, used = 0;
+        char *pdf = realpath(argv[argc - 1], NULL);
+        if (sscanf(forward, "%d:%d:%n", &line, &col, &used) >= 2 && used && pdf)
+            snprintf(request, sizeof request, "forward\t%s\t%d\t%d\t%s\n", pdf, line, col, forward + used);
+        free(pdf);
+        if (request[0] && !script && ipc_send(request))
+            return 0; /* a running instance shows it */
+    }
     if (argc < 2 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
         usage();
         return argc < 2;
@@ -419,6 +560,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "nomadys-pdf: %s\n", SDL_GetError());
         return 1;
     }
+    ipc_start();
     Window *w = NULL;
     for (int i = 1; i < argc; i++) {
         char err[512];
@@ -442,6 +584,13 @@ int main(int argc, char **argv)
         FPDF_DestroyLibrary();
         return 1;
     }
+    if (request[0]) {
+        SDL_Event e = {0};
+        e.type = ipc_event;
+        e.user.code = IPC_REQUEST;
+        e.user.data1 = strdup(request);
+        SDL_PushEvent(&e);
+    }
     blink_at = SDL_GetTicks() + BLINK_MS;
     bool prefetching = false;
     while (nwindows) {
@@ -457,8 +606,8 @@ int main(int argc, char **argv)
             Window *x = windows[i];
             Mode m = x->mode == MODE_PROMPT ? x->prompt_return : x->mode;
             blinking |= m == MODE_CARET || m == MODE_AREA;
-            uint64_t until[2] = {x->msg_until, x->tabs_flash_until};
-            for (int k = 0; k < 2; k++) {
+            uint64_t until[3] = {x->msg_until, x->tabs_flash_until, x->ntabs ? cur_view(x)->flash_until : 0};
+            for (int k = 0; k < 3; k++) {
                 if (until[k] > now) {
                     int left = (int)(until[k] - now) + 1;
                     wait = wait < 0 ? left : SDL_min(wait, left);
@@ -480,6 +629,7 @@ int main(int argc, char **argv)
             blink_on = true;
         }
         autosave(now, &wait);
+        reload_due(now, &wait);
         input_expire(now);
         int keys = input_wait_ms(now);
         if (keys >= 0)
@@ -511,6 +661,7 @@ int main(int argc, char **argv)
     }
     while (ndocs)
         doc_unref(docs[0]);
+    ipc_stop();
     SDL_Quit();
     FPDF_DestroyLibrary();
     return 0;

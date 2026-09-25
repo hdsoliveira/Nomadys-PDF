@@ -19,6 +19,7 @@ View *view_new(Doc *d)
     v->dark = cfg.dark;
     v->match_page = -1;
     v->previous.page = -1;
+    v->caret.page = -1;
     v->pending_pos = cfg.restore_position ? d->last : (Pos){-1, 0};
     int n = d->npages ? d->npages : 1;
     v->px = calloc(n, sizeof *v->px);
@@ -50,6 +51,26 @@ void view_invalidate_cache(View *v)
             SDL_DestroyTexture(v->cache[i].tex);
         v->cache[i] = (CacheEntry){0};
     }
+}
+
+/* After the document was reloaded: new page count and sizes, same place. */
+void view_doc_reloaded(View *v)
+{
+    Pos p = v->lay_w ? view_pos(v) : v->pending_pos;
+    int n = v->doc->npages ? v->doc->npages : 1;
+    v->px = realloc(v->px, n * sizeof *v->px);
+    v->py = realloc(v->py, n * sizeof *v->py);
+    v->pwpx = realloc(v->pwpx, n * sizeof *v->pwpx);
+    v->phpx = realloc(v->phpx, n * sizeof *v->phpx);
+    view_invalidate_cache(v);
+    v->lay_w = 0;
+    v->content_h = 0;
+    p.page = SDL_clamp(p.page, 0, n - 1);
+    v->pending_pos = p;
+    v->selecting = v->area_selecting = false;
+    v->caret.page = -1;
+    v->match_page = -1;
+    v->flash_until = 0;
 }
 
 void view_free(View *v)

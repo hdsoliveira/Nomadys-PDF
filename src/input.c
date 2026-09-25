@@ -388,6 +388,22 @@ static void a_area_select(Window *w, View *v, int c, const char *a) { (void)c, (
 static void a_area_mark(Window *w, View *v, int c, const char *a) { (void)c, (void)a; area_mark(w, v, false); }
 static void a_area_comment(Window *w, View *v, int c, const char *a) { (void)c, (void)a; area_mark(w, v, true); }
 
+static void a_source(Window *w, View *v, int c, const char *a)
+{
+    (void)c, (void)a;
+    int page;
+    float x, y;
+    if (w->mode == MODE_AREA) {
+        page = v->area_page, x = v->area_x, y = v->area_y;
+    } else if (v->caret.page >= 0 && v->doc->slots[v->caret.page].chars_ready) {
+        PRect r = v->doc->slots[v->caret.page].boxes[v->caret.ch];
+        page = v->caret.page, x = (r.l + r.r) / 2, y = (r.t + r.b) / 2;
+    } else {
+        return;
+    }
+    synctex_inverse(w, v, page, x, y);
+}
+
 /* ---------- panel actions ---------- */
 static void a_panel_down(Window *w, View *v, int c, const char *a) { (void)v, (void)a; panel_move(w, n1(c)); }
 static void a_panel_up(Window *w, View *v, int c, const char *a) { (void)v, (void)a; panel_move(w, -n1(c)); }
@@ -463,6 +479,7 @@ static const Binding caret_map[] = {
     {"c", a_caret_comment, "destacar com comentário, ou editar o comentário"},
     {"y", a_caret_copy, "copiar a seleção"}, {"x", a_note_delete, "apagar o destaque sob o cursor"},
     {"<C-v>", a_area, "trocar para o cursor livre"}, {"<Esc>", a_leave, "cancelar a seleção / sair"},
+    {"<Enter>", a_source, "LaTeX: abrir este ponto no editor (SyncTeX)"},
     SCROLL_KEYS, MARK_KEYS,
 };
 
@@ -474,6 +491,7 @@ static const Binding area_map[] = {
     {"c", a_area_comment, "destacar com comentário, ou editar o comentário"},
     {"x", a_note_delete, "apagar o destaque sob o cursor"},
     {"<C-v>", a_to_caret, "voltar ao cursor de texto"}, {"<Esc>", a_leave, "cancelar / sair"},
+    {"<Enter>", a_source, "LaTeX: abrir este ponto no editor (SyncTeX)"},
     SCROLL_KEYS, MARK_KEYS,
 };
 

@@ -104,6 +104,92 @@ static void ffi_goto(FPDF_FORMFILLINFO *info, int page, int zoom, float *pos, in
 }
 
 /* ---------- open / close ---------- */
+long long file_mtime_ns(const char *path)
+{
+    struct stat st;
+    return stat(path, &st) ? -1 : (long long)st.st_mtim.tv_sec * 1000000000LL + st.st_mtim.tv_nsec;
+}
+
+/* Page sizes, page slots and the form environment of a freshly loaded PDF. */
+static void attach(Doc *d, FPDF_DOCUMENT pdf)
+{
+    d->pdf = pdf;
+    d->focus_page = -1;
+    d->nloaded = 0;
+    d->notes_scanned = 0;
+    d->npages = FPDF_GetPageCount(pdf);
+    d->pw = calloc(d->npages ? d->npages : 1, sizeof *d->pw);
+    d->ph = calloc(d->npages ? d->npages : 1, sizeof *d->ph);
+    d->slots = calloc(d->npages ? d->npages : 1, sizeof *d->slots);
+    for (int i = 0; i < d->npages; i++) {
+        FS_SIZEF s = {612, 792};
+        FPDF_GetPageSizeByIndexF(pdf, i, &s);
+        d->pw[i] = s.width > 1 ? s.width : 612;
+        d->ph[i] = s.height > 1 ? s.height : 792;
+    }
+    FPDF_FORMFILLINFO *fi = &d->ffi.info;
+    memset(fi, 0, sizeof *fi);
+    d->ffi.doc = d;
+    fi->version = 2;
+    fi->FFI_Invalidate = ffi_invalidate;
+    fi->FFI_SetTimer = ffi_set_timer;
+    fi->FFI_KillTimer = ffi_kill_timer;
+    fi->FFI_OnChange = ffi_on_change;
+    fi->FFI_GetPage = ffi_get_page;
+    fi->FFI_GetCurrentPage = ffi_current_page;
+    fi->FFI_GetRotation = ffi_rotation;
+    fi->FFI_ExecuteNamedAction = ffi_named_action;
+    fi->FFI_SetTextFieldFocus = ffi_text_focus;
+    fi->FFI_DoURIAction = ffi_uri;
+    fi->FFI_DoGoToAction = ffi_goto;
+    fi->xfa_disabled = 1;
+    d->form = FPDFDOC_InitFormFillEnvironment(pdf, fi);
+    if (d->form) {
+        FPDF_SetFormFieldHighlightColor(d->form, 0, 0xFFE8DD); /* 0xBBGGRR */
+        FPDF_SetFormFieldHighlightAlpha(d->form, 110);
+    }
+    d->saved_mtime_ns = file_mtime_ns(d->path);
+}
+
+static void close_slot(Doc *d, int i);
+
+/* Pages, forms and the PDFium document; the Doc itself (path, marks) stays. */
+static void detach(Doc *d)
+{
+    doc_kill_focus(d);
+    for (int i = 0; i < d->npages; i++) {
+        close_slot(d, i);
+        free(d->slots[i].images);
+        free(d->slots[i].widgets);
+        for (int k = 0; k < d->slots[i].nnotes; k++)
+            free(d->slots[i].notes[k].quads);
+        free(d->slots[i].notes);
+    }
+    for (int i = 0; i < MAX_TIMERS; i++)
+        d->timers[i].id = 0;
+    if (d->form)
+        FPDFDOC_ExitFormFillEnvironment(d->form);
+    d->form = NULL;
+    FPDF_CloseDocument(d->pdf);
+    free(d->pw);
+    free(d->ph);
+    free(d->slots);
+}
+
+/* Replaces the document with the new version on disk. Unsaved edits are
+ * dropped: the file was rewritten by someone else (e.g. LaTeX). */
+bool doc_reload(Doc *d)
+{
+    FPDF_DOCUMENT pdf = FPDF_LoadDocument(d->path, NULL);
+    if (!pdf)
+        return false; /* still being written */
+    detach(d);
+    attach(d, pdf);
+    d->modified = false;
+    need_redraw_all = true;
+    return true;
+}
+
 Doc *doc_open(const char *path, char *err, size_t errlen)
 {
     char *real = realpath(path, NULL);
@@ -134,41 +220,11 @@ Doc *doc_open(const char *path, char *err, size_t errlen)
     }
     Doc *d = calloc(1, sizeof *d);
     d->path = real;
-    d->pdf = pdf;
     d->refs = 1;
-    d->focus_page = -1;
-    d->npages = FPDF_GetPageCount(pdf);
-    d->pw = calloc(d->npages ? d->npages : 1, sizeof *d->pw);
-    d->ph = calloc(d->npages ? d->npages : 1, sizeof *d->ph);
-    d->slots = calloc(d->npages ? d->npages : 1, sizeof *d->slots);
-    for (int i = 0; i < d->npages; i++) {
-        FS_SIZEF s = {612, 792};
-        FPDF_GetPageSizeByIndexF(pdf, i, &s);
-        d->pw[i] = s.width > 1 ? s.width : 612;
-        d->ph[i] = s.height > 1 ? s.height : 792;
-    }
-    FPDF_FORMFILLINFO *fi = &d->ffi.info;
-    d->ffi.doc = d;
-    fi->version = 2;
-    fi->FFI_Invalidate = ffi_invalidate;
-    fi->FFI_SetTimer = ffi_set_timer;
-    fi->FFI_KillTimer = ffi_kill_timer;
-    fi->FFI_OnChange = ffi_on_change;
-    fi->FFI_GetPage = ffi_get_page;
-    fi->FFI_GetCurrentPage = ffi_current_page;
-    fi->FFI_GetRotation = ffi_rotation;
-    fi->FFI_ExecuteNamedAction = ffi_named_action;
-    fi->FFI_SetTextFieldFocus = ffi_text_focus;
-    fi->FFI_DoURIAction = ffi_uri;
-    fi->FFI_DoGoToAction = ffi_goto;
-    fi->xfa_disabled = 1;
-    d->form = FPDFDOC_InitFormFillEnvironment(pdf, fi);
-    if (d->form) {
-        FPDF_SetFormFieldHighlightColor(d->form, 0, 0xFFE8DD); /* 0xBBGGRR */
-        FPDF_SetFormFieldHighlightAlpha(d->form, 110);
-    }
+    attach(d, pdf);
     d->last.page = -1;
     marks_load(d);
+    ipc_watch(d);
     docs[ndocs++] = d;
     return d;
 }
@@ -208,26 +264,13 @@ void doc_unref(Doc *d)
         if (!doc_save(d, err, sizeof err))
             fprintf(stderr, "nomadys-pdf: %s\n", err);
     }
-    for (int i = 0; i < d->npages; i++) {
-        close_slot(d, i);
-        free(d->slots[i].images);
-        free(d->slots[i].widgets);
-        for (int k = 0; k < d->slots[i].nnotes; k++)
-            free(d->slots[i].notes[k].quads);
-        free(d->slots[i].notes);
-    }
-    if (d->form)
-        FPDFDOC_ExitFormFillEnvironment(d->form);
-    FPDF_CloseDocument(d->pdf);
+    detach(d);
     for (int i = 0; i < ndocs; i++) {
         if (docs[i] == d) {
             docs[i] = docs[--ndocs];
             break;
         }
     }
-    free(d->pw);
-    free(d->ph);
-    free(d->slots);
     free(d->marks_path);
     free(d->path);
     free(d);
@@ -361,6 +404,7 @@ bool doc_save(Doc *d, char *err, size_t errlen)
     }
     free(tmp);
     d->modified = false;
+    d->saved_mtime_ns = file_mtime_ns(d->path); /* our write: do not reload */
     return true;
 }
 

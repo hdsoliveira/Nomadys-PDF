@@ -82,6 +82,31 @@ Everything by keyboard. Highlights are standard PDF annotations: other readers
 
 Highlights with a comment get a small dot in their corner.
 
+### LaTeX with VimTeX
+
+- **Auto-reload:** when LaTeX writes a new PDF, it reloads in place (same
+  page, zoom and mode). Unsaved highlights in that PDF are dropped, since the
+  file was rewritten.
+- **Source → PDF** (forward search, `\lv` in VimTeX): the line under the
+  editor cursor is shown and briefly highlighted. A second
+  `nomadys-pdf --synctex-forward ...` hands the request to the running window
+  through a socket and exits (`$XDG_RUNTIME_DIR/nomadys-pdf.sock`).
+- **PDF → source** (inverse search): **double click** or **Ctrl+click** a spot,
+  or press `Enter` in the text/free cursor; the editor opens that line.
+  Requires `-synctex=1` when compiling.
+
+Neovim + VimTeX:
+
+```vim
+let g:vimtex_view_method = 'general'
+let g:vimtex_view_general_viewer = 'nomadys-pdf'
+let g:vimtex_view_general_options = '--synctex-forward @line:@col:@tex @pdf'
+```
+
+The editor command for inverse search is `synctex_editor` in the config
+(default `nvim --headless -c "VimtexInverseSearch %l '%f'"`; `%l` line,
+`%c` column, `%f` file), or `-x CMD` on the command line.
+
 ### Forms, tabs, windows
 
 | Key | Action |
@@ -156,6 +181,8 @@ One feature per file in `src/`; `nomadys.h` has the shared types and a module ma
 | `annot.c` | highlights and comments |
 | `marks.c` | marks, jump history, last position |
 | `search.c` | text search |
+| `synctex.c` | LaTeX forward/inverse search through the `synctex` tool |
+| `ipc.c` | socket for VimTeX requests, inotify for auto-reload |
 | `panel.c` | the marks / notes / contents panel |
 | `font.c` | UI text through fontconfig and FreeType |
 | `ui.c` | tab bar, prompt, messages, comment box |

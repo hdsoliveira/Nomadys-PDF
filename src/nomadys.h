@@ -66,6 +66,7 @@ typedef struct {
     char font[128];          /* UI font family (fontconfig pattern) */
     double font_size;        /* UI font size in points */
     char leader[8];          /* leader key token, e.g. "\\" */
+    char synctex_editor[1024]; /* inverse search command: %l line, %c column, %f file */
     Theme light, dark_theme;
 } Config;
 
@@ -152,6 +153,11 @@ struct Doc {
     Mark marks[NMARKS];
     Pos last;                /* last reading position, page -1 = none */
     int notes_scanned;       /* pages whose notes were listed in the background */
+    /* reloading after an external change (ipc.c watches the directory) */
+    int watch_wd;
+    uint64_t reload_at;      /* 0 = nothing pending */
+    int reload_tries;
+    long long saved_mtime_ns; /* our own last save, not an external change */
 };
 
 Doc *doc_open(const char *path, char *err, size_t errlen);
@@ -168,6 +174,8 @@ int doc_run_timers(Doc *d, uint64_t now);    /* returns ms until next timer, -1 
 bool doc_focus_widget(Doc *d, int page, int w);
 void doc_kill_focus(Doc *d);
 bool doc_has_forms(Doc *d);
+bool doc_reload(Doc *d);                                  /* false while the file is incomplete */
+long long file_mtime_ns(const char *path);
 extern Doc *docs[MAX_DOCS];
 extern int ndocs;
 extern bool need_redraw_all;
@@ -225,6 +233,10 @@ typedef struct {
     Pos jumps[JUMPS_MAX];
     int njumps, jump_at;
     Pos previous;            /* for "mm": position before the last jump */
+    /* synctex.c: spot shown briefly after a forward search */
+    int flash_page;
+    PRect flash_rect;
+    uint64_t flash_until;
     /* search.c */
     char query[CMD_MAX];
     int match_page, match_start, match_len;
@@ -238,6 +250,7 @@ void view_clamp(View *v, int W, int H, int top);
 void view_draw(Window *w, View *v, int top);
 bool view_prefetch(Window *w, View *v, int top);
 void view_invalidate_cache(View *v);
+void view_doc_reloaded(View *v);                         /* page count/sizes changed */
 int view_top_page(View *v);
 void view_goto_page(View *v, int page);
 Pos view_pos(View *v);
@@ -344,6 +357,17 @@ void mark_jump(Window *w, View *v, int m);
 void jump_to(Window *w, View *v, Pos p);                 /* records the jump */
 void jump_back(Window *w, View *v);                      /* "mm" */
 void jump_history(Window *w, View *v, int dir);          /* Ctrl-o / Ctrl-i */
+
+/* ---------- LaTeX: SyncTeX and the link with VimTeX (synctex.c, ipc.c) ---------- */
+enum { IPC_REQUEST = 1, IPC_FILE = 2 };
+extern Uint32 ipc_event;
+bool synctex_available(Doc *d);
+bool synctex_inverse(Window *w, View *v, int page, double x, double y);
+bool synctex_forward(Window *w, View *v, const char *tex, int line, int col);
+void ipc_start(void);
+void ipc_stop(void);
+bool ipc_send(const char *msg);                          /* to a running instance */
+void ipc_watch(Doc *d);
 
 /* ---------- search (search.c) ---------- */
 bool search_run(Window *w, View *v, int dir, bool from_current);
