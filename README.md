@@ -72,9 +72,10 @@ Everything by keyboard. Highlights are standard PDF annotations: other readers
 |---|---|
 | `v` | text cursor (blinking): `h j k l w b 0 $` move |
 | then `v` | start/stop selecting text |
-| then `H` / `c` | highlight the selection / highlight it and type a comment (`Enter` saves) |
-| `Ctrl-v` | free cursor, for figures and areas: `h j k l` move, `w b J K` move faster |
-| then `v`, `H` / `c` | select a rectangle, highlight it / with a comment |
+| then `H` `J` `K` `L` | highlight in pastel yellow / red / green / pink (`highlight_colors` in the config) |
+| then `c` | highlight (yellow) and type a comment (`Enter` saves) |
+| `Ctrl-v` | free cursor, for figures and areas: `h j k l` move, `w b` and `Ctrl-h/j/k/l` move faster |
+| then `v`, `H` `J` `K` `L` / `c` | select a rectangle, highlight it in a colour / with a comment |
 | `c` on a highlight | edit its comment (shown in a box while the cursor is on it) |
 | `x` on a highlight | delete it |
 | `y` | copy the selected text |
@@ -142,7 +143,7 @@ autosave = true
 restore_position = true
 show_tabs = false
 subpixel_text = false
-highlight_color = #FFE14D
+highlight_colors = #FFEE93, #FF9E9E, #A8E6A3, #FFB3DE   # H J K L
 area_style = highlight    # or frame: a rectangle around figures
 leader = \                # or , ; space
 font = JetBrains Mono     # any installed font (fontconfig name)

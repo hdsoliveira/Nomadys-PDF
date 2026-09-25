@@ -342,8 +342,15 @@ static void a_caret_move(Window *w, View *v, int c, const char *a)
 }
 
 static void a_caret_select(Window *w, View *v, int c, const char *a) { (void)c, (void)a; caret_toggle_select(w, v); }
-static void a_caret_mark(Window *w, View *v, int c, const char *a) { (void)c, (void)a; caret_mark(w, v, false); }
-static void a_caret_comment(Window *w, View *v, int c, const char *a) { (void)c, (void)a; caret_mark(w, v, true); }
+/* H J K L: the four highlight colours of the config, in that order. */
+static uint32_t mark_color(const char *key)
+{
+    const char *at = strchr("HJKL", key[0]);
+    return cfg.highlights[at && key[0] ? at - "HJKL" : 0];
+}
+
+static void a_caret_mark(Window *w, View *v, int c, const char *a) { (void)c; caret_mark(w, v, false, mark_color(a)); }
+static void a_caret_comment(Window *w, View *v, int c, const char *a) { (void)c, (void)a; caret_mark(w, v, true, cfg.highlights[0]); }
 static void a_caret_copy(Window *w, View *v, int c, const char *a) { (void)c, (void)a; caret_copy(w, v); }
 
 static void a_note_delete(Window *w, View *v, int c, const char *a)
@@ -372,6 +379,10 @@ static void a_to_caret(Window *w, View *v, int c, const char *a) { (void)c, (voi
 static void a_area_move(Window *w, View *v, int c, const char *a)
 {
     float n = (float)n1(c), big = 6 * n;
+    if (!strncmp(a, "<C-", 3)) { /* Ctrl-h/j/k/l: fast */
+        n = big;
+        a += 3;
+    }
     switch (a[0]) {
     case 'h': area_move(w, v, -n, 0); break;
     case 'l': area_move(w, v, n, 0); break;
@@ -379,14 +390,12 @@ static void a_area_move(Window *w, View *v, int c, const char *a)
     case 'k': area_move(w, v, 0, -n); break;
     case 'b': area_move(w, v, -big, 0); break;
     case 'w': area_move(w, v, big, 0); break;
-    case 'J': area_move(w, v, 0, big); break;
-    case 'K': area_move(w, v, 0, -big); break;
     }
 }
 
 static void a_area_select(Window *w, View *v, int c, const char *a) { (void)c, (void)a; area_toggle_select(w, v); }
-static void a_area_mark(Window *w, View *v, int c, const char *a) { (void)c, (void)a; area_mark(w, v, false); }
-static void a_area_comment(Window *w, View *v, int c, const char *a) { (void)c, (void)a; area_mark(w, v, true); }
+static void a_area_mark(Window *w, View *v, int c, const char *a) { (void)c; area_mark(w, v, false, mark_color(a)); }
+static void a_area_comment(Window *w, View *v, int c, const char *a) { (void)c, (void)a; area_mark(w, v, true, cfg.highlights[0]); }
 
 static void a_source(Window *w, View *v, int c, const char *a)
 {
@@ -475,7 +484,8 @@ static const Binding caret_map[] = {
     {"l", a_caret_move, "mover"}, {"w", a_caret_move, "palavra seguinte / anterior"},
     {"b", a_caret_move, "palavra seguinte / anterior"}, {"0", a_caret_move, "início / fim da linha"},
     {"$", a_caret_move, "início / fim da linha"}, {"v", a_caret_select, "começar / parar a seleção"},
-    {"H", a_caret_mark, "destacar a seleção"},
+    {"H", a_caret_mark, "destacar: amarelo pastel"}, {"J", a_caret_mark, "destacar: vermelho pastel"},
+    {"K", a_caret_mark, "destacar: verde pastel"}, {"L", a_caret_mark, "destacar: rosa pastel"},
     {"c", a_caret_comment, "destacar com comentário, ou editar o comentário"},
     {"y", a_caret_copy, "copiar a seleção"}, {"x", a_note_delete, "apagar o destaque sob o cursor"},
     {"<C-v>", a_area, "trocar para o cursor livre"}, {"<Esc>", a_leave, "cancelar a seleção / sair"},
@@ -486,8 +496,11 @@ static const Binding caret_map[] = {
 static const Binding area_map[] = {
     {"h", a_area_move, "mover"}, {"j", a_area_move, "mover"}, {"k", a_area_move, "mover"},
     {"l", a_area_move, "mover"}, {"w", a_area_move, "mover rápido"}, {"b", a_area_move, "mover rápido"},
-    {"J", a_area_move, "mover rápido"}, {"K", a_area_move, "mover rápido"},
-    {"v", a_area_select, "começar / parar o retângulo"}, {"H", a_area_mark, "destacar a área"},
+    {"<C-h>", a_area_move, "mover rápido"}, {"<C-j>", a_area_move, "mover rápido"},
+    {"<C-k>", a_area_move, "mover rápido"}, {"<C-l>", a_area_move, "mover rápido"},
+    {"v", a_area_select, "começar / parar o retângulo"},
+    {"H", a_area_mark, "destacar a área: amarelo pastel"}, {"J", a_area_mark, "destacar a área: vermelho pastel"},
+    {"K", a_area_mark, "destacar a área: verde pastel"}, {"L", a_area_mark, "destacar a área: rosa pastel"},
     {"c", a_area_comment, "destacar com comentário, ou editar o comentário"},
     {"x", a_note_delete, "apagar o destaque sob o cursor"},
     {"<C-v>", a_to_caret, "voltar ao cursor de texto"}, {"<Esc>", a_leave, "cancelar / sair"},

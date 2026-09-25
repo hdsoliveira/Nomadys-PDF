@@ -14,7 +14,7 @@ Config cfg = {
     .subpixel_text = false,
     .show_tabs = false,
     .restore_position = true,
-    .highlight = 0xFFE14D,
+    .highlights = {0xFFEE93, 0xFF9E9E, 0xA8E6A3, 0xFFB3DE}, /* pastel yellow, red, green, pink */
     .zoom = 0,
     .font = "monospace",
     .font_size = 10.5,
@@ -93,6 +93,18 @@ static bool parse_color(const char *v, uint32_t *out)
     return true;
 }
 
+/* "#FFE14D, #FF9E9E, ..." into up to n colours. */
+static bool parse_color_list(const char *v, uint32_t *out, int n)
+{
+    char buf[256];
+    snprintf(buf, sizeof buf, "%s", v);
+    int i = 0;
+    for (char *tok = strtok(buf, ", \t"); tok && i < n; tok = strtok(NULL, ", \t"))
+        if (!parse_color(tok, &out[i++]))
+            return false;
+    return i > 0;
+}
+
 static bool set_theme_key(Theme *t, const char *k, const char *v)
 {
     for (size_t i = 0; i < SDL_arraysize(theme_keys); i++) {
@@ -125,7 +137,9 @@ static bool set_global_key(const char *k, const char *v)
     else if (!strcmp(k, "area_style"))
         cfg.area_frame = !strcmp(v, "frame");
     else if (!strcmp(k, "highlight_color"))
-        return parse_color(v, &cfg.highlight);
+        return parse_color(v, &cfg.highlights[0]);
+    else if (!strcmp(k, "highlight_colors"))
+        return parse_color_list(v, cfg.highlights, 4);
     else if (!strcmp(k, "zoom"))
         cfg.zoom = !strcmp(v, "fit-width") ? 0 : atof(v) / 100.0;
     else if (!strcmp(k, "font"))

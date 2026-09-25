@@ -60,7 +60,7 @@ typedef struct {
     bool subpixel_text;
     bool show_tabs;
     bool restore_position;   /* reopen a file where it was left */
-    uint32_t highlight;      /* colour of new highlights, 0xRRGGBB */
+    uint32_t highlights[4];  /* colours of new highlights for H J K L, 0xRRGGBB */
     bool area_frame;         /* areas: frame around instead of a highlight */
     double zoom;             /* 0 = fit width, otherwise 1.0 = 100 % */
     char font[128];          /* UI font family (fontconfig pattern) */
@@ -184,8 +184,8 @@ extern bool need_redraw_all;
 void notes_page(Doc *d, int page);                       /* fills slots[page].notes */
 bool notes_scan(Doc *d, int pages);                      /* background listing; true if more remain */
 int note_at(Doc *d, int page, float x, float y);         /* index into notes, or -1 */
-bool note_create(Doc *d, int page, const PRect *quads, int n, const char *comment);
-bool note_create_area(Doc *d, int page, PRect r, const char *comment);
+bool note_create(Doc *d, int page, const PRect *quads, int n, const char *comment, uint32_t color);
+bool note_create_area(Doc *d, int page, PRect r, const char *comment, uint32_t color);
 char *note_comment(Doc *d, int page, int note);          /* malloc'd UTF-8, or NULL */
 bool note_set_comment(Doc *d, int page, int note, const char *comment);
 bool note_delete(Doc *d, int page, int note);
@@ -229,6 +229,7 @@ typedef struct {
     int area_page;
     float area_x, area_y, area_ax, area_ay;
     bool area_selecting;
+    uint32_t mark_color;     /* colour for the highlight waiting on its comment */
     /* marks.c: jump list */
     Pos jumps[JUMPS_MAX];
     int njumps, jump_at;
@@ -340,12 +341,12 @@ void form_draw_focus(Window *w, View *v, int top);
 bool caret_enter(Window *w, View *v);
 void caret_move(Window *w, View *v, char motion, int count);
 void caret_toggle_select(Window *w, View *v);
-void caret_mark(Window *w, View *v, bool comment);    /* highlight selection */
+void caret_mark(Window *w, View *v, bool comment, uint32_t color); /* highlight selection */
 void caret_copy(Window *w, View *v);
 void area_enter(Window *w, View *v);
 void area_move(Window *w, View *v, float dx, float dy);
 void area_toggle_select(Window *w, View *v);
-void area_mark(Window *w, View *v, bool comment);
+void area_mark(Window *w, View *v, bool comment, uint32_t color);
 bool cursor_note(Window *w, View *v, int *page, int *note); /* note under the cursor */
 void cursor_draw(Window *w, View *v, int top, bool blink_on);
 

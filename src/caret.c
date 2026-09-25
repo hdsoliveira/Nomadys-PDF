@@ -214,13 +214,14 @@ typedef struct {
     PRect *quads;
     int n, cap;
     const char *comment;
+    uint32_t color;
     Doc *doc;
     int created;
 } MarkCtx;
 
 static void flush_marks(MarkCtx *c)
 {
-    if (c->n && note_create(c->doc, c->page, c->quads, c->n, c->comment))
+    if (c->n && note_create(c->doc, c->page, c->quads, c->n, c->comment, c->color))
         c->created++;
     c->n = 0;
 }
@@ -241,7 +242,7 @@ static void collect_line(View *v, int page, PRect r, void *p)
 
 static void highlight_selection(Window *w, View *v, const char *comment)
 {
-    MarkCtx c = {.page = -1, .comment = comment, .doc = v->doc};
+    MarkCtx c = {.page = -1, .comment = comment, .color = v->mark_color, .doc = v->doc};
     selection_lines(v, collect_line, &c);
     flush_marks(&c);
     free(c.quads);
@@ -270,8 +271,9 @@ static bool edit_note_comment(Window *w, View *v)
     return true;
 }
 
-void caret_mark(Window *w, View *v, bool comment)
+void caret_mark(Window *w, View *v, bool comment, uint32_t color)
 {
+    v->mark_color = color;
     if (v->selecting) {
         if (comment)
             prompt_open(w, "comentário: ", "", comment_done_selection, 0);
@@ -379,13 +381,14 @@ static void area_done(Window *w, const char *text)
 {
     View *v = cur_view(w);
     PRect r = area_rect(v);
-    note_create_area(v->doc, v->area_page, r, text);
+    note_create_area(v->doc, v->area_page, r, text, v->mark_color);
     v->area_selecting = false;
     ui_message(w, text && *text ? "área destacada com comentário" : "área destacada");
 }
 
-void area_mark(Window *w, View *v, bool comment)
+void area_mark(Window *w, View *v, bool comment, uint32_t color)
 {
+    v->mark_color = color;
     if (!v->area_selecting) {
         if (!(comment && edit_note_comment(w, v)))
             ui_message(w, "marque a área com v primeiro");

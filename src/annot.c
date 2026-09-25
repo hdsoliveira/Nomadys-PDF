@@ -105,9 +105,8 @@ static void set_string(FPDF_ANNOTATION a, const char *key, const char *text)
 }
 
 /* Colour, author and comment shared by every note we create. */
-static void finish_note(Doc *d, int page, FPDF_ANNOTATION a, PRect bounds, const char *comment)
+static void finish_note(Doc *d, int page, FPDF_ANNOTATION a, PRect bounds, const char *comment, uint32_t c)
 {
-    uint32_t c = cfg.highlight;
     FPDFAnnot_SetColor(a, FPDFANNOT_COLORTYPE_Color, c >> 16, (c >> 8) & 0xFF, c & 0xFF, 255);
     FPDFAnnot_SetFlags(a, FPDF_ANNOT_FLAG_PRINT);
     FS_RECTF rect = {bounds.l, bounds.t, bounds.r, bounds.b};
@@ -121,7 +120,7 @@ static void finish_note(Doc *d, int page, FPDF_ANNOTATION a, PRect bounds, const
     doc_mark_changed(d, page);
 }
 
-bool note_create(Doc *d, int page, const PRect *quads, int n, const char *comment)
+bool note_create(Doc *d, int page, const PRect *quads, int n, const char *comment, uint32_t color)
 {
     FPDF_PAGE p = doc_page(d, page);
     if (!p || n <= 0)
@@ -137,22 +136,22 @@ bool note_create(Doc *d, int page, const PRect *quads, int n, const char *commen
         u.l = SDL_min(u.l, r.l), u.r = SDL_max(u.r, r.r);
         u.t = SDL_max(u.t, r.t), u.b = SDL_min(u.b, r.b);
     }
-    finish_note(d, page, a, u, comment);
+    finish_note(d, page, a, u, comment, color);
     return true;
 }
 
 /* An area such as a figure: a highlight (like Acrobat) or, with
  * area_style = frame, a rectangle drawn around it. */
-bool note_create_area(Doc *d, int page, PRect r, const char *comment)
+bool note_create_area(Doc *d, int page, PRect r, const char *comment, uint32_t color)
 {
     if (!cfg.area_frame)
-        return note_create(d, page, &r, 1, comment);
+        return note_create(d, page, &r, 1, comment, color);
     FPDF_PAGE p = doc_page(d, page);
     FPDF_ANNOTATION a = p ? FPDFPage_CreateAnnot(p, FPDF_ANNOT_SQUARE) : NULL;
     if (!a)
         return false;
     FPDFAnnot_SetBorder(a, 0, 0, 2);
-    finish_note(d, page, a, r, comment);
+    finish_note(d, page, a, r, comment, color);
     return true;
 }
 
