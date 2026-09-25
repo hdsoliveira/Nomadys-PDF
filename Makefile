@@ -28,10 +28,12 @@ $(PDFIUM)/lib/libpdfium.so:
 install: nomadys-pdf
 	install -Dm755 nomadys-pdf $(PREFIX)/bin/nomadys-pdf
 	install -Dm644 $(PDFIUM)/lib/libpdfium.so $(PREFIX)/lib/nomadys-pdf/libpdfium.so
+	install -d $(PREFIX)/share/nomadys-pdf/themes
+	install -m644 themes/*.conf $(PREFIX)/share/nomadys-pdf/themes/
 
 uninstall:
 	rm -f $(PREFIX)/bin/nomadys-pdf
-	rm -rf $(PREFIX)/lib/nomadys-pdf
+	rm -rf $(PREFIX)/lib/nomadys-pdf $(PREFIX)/share/nomadys-pdf/themes  # keeps marks/ (user data)
 
 clean:
 	rm -rf build nomadys-pdf

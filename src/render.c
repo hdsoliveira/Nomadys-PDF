@@ -248,10 +248,15 @@ void view_show_rect(View *v, int page, PRect r, int W, int H, int top)
 /* ---------- dark mode ---------- */
 static void darken(uint8_t *px, int w, int h, int stride, const uint8_t *keep)
 {
+    /* after the inversion, 0 (black paper) maps to page_bg and 255 (white
+     * ink) to page_fg, per channel: themed paper, e.g. gruvbox brown */
     const Theme *t = theme_of(true);
-    uint8_t lut[256];
-    for (int i = 0; i < 256; i++)
-        lut[i] = (uint8_t)(t->page_low + i * (t->page_high - t->page_low) / 255);
+    uint8_t lut[3][256];
+    for (int c = 0; c < 3; c++) {
+        int lo = (t->page_bg >> (8 * c)) & 0xFF, hi = (t->page_fg >> (8 * c)) & 0xFF;
+        for (int i = 0; i < 256; i++)
+            lut[c][i] = (uint8_t)(lo + i * (hi - lo) / 255);
+    }
     for (int y = 0; y < h; y++) {
         uint8_t *p = px + (size_t)y * stride;
         const uint8_t *k = keep ? keep + (size_t)y * w : NULL;
@@ -262,9 +267,9 @@ static void darken(uint8_t *px, int w, int h, int stride, const uint8_t *keep)
             int b = p[0], g = p[1], r = p[2];
             int mx = SDL_max(r, SDL_max(g, b)), mn = SDL_min(r, SDL_min(g, b));
             int dlt = 255 - mx - mn;
-            p[0] = lut[b + dlt];
-            p[1] = lut[g + dlt];
-            p[2] = lut[r + dlt];
+            p[0] = lut[0][b + dlt];
+            p[1] = lut[1][g + dlt];
+            p[2] = lut[2][r + dlt];
         }
     }
 }

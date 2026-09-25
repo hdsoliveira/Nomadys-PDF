@@ -180,9 +180,28 @@ tab_active_bg = #2E2E2E
 bar_bg = #1E1E1E          # ':' and '/' line
 panel_bg = #1C1C1C
 comment_bg = #2B2A1E
-page_low = 28             # page luminance range in dark mode
-page_high = 228
+page_bg = #1C1C1C         # dark mode: page paper and ink colours
+page_fg = #E4E4E4
 ```
+
+## Themes
+
+Ready-made colour themes in `themes/`, each with a light and a dark mode
+(`i` switches): **gruvbox**, **tokyonight** (Day / Night), **dracula**
+(Alucard / Dracula), **nord** and **solarized**. One line in the config
+selects one:
+
+```ini
+include = gruvbox
+theme = dark        # start in dark mode
+```
+
+`make install` copies them to `~/.local/share/nomadys-pdf/themes/`. To make
+your own, copy one to `~/.config/nomadys-pdf/themes/mine.conf` and use
+`include = mine`; any key can also be overridden in the config after the
+include line. In dark mode `page_bg` / `page_fg` colour the pages themselves.
+
+![themes](docs/themes.png)
 
 ## Dark mode
 

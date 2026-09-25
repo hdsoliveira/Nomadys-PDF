@@ -1,6 +1,10 @@
 # Nomadys-PDF: copy to ~/.config/nomadys-pdf/config
 # '#' starts a comment. Colours are #RRGGBB.
 
+# A ready-made colour theme (gruvbox, tokyonight, dracula, nord, solarized);
+# settings below it override the theme.
+# include = gruvbox
+
 theme = light              # dark | light (i toggles while reading)
 autosave = true            # false: save only with Ctrl-s or :w
 autosave_delay_ms = 1000
@@ -70,5 +74,5 @@ selection = #3C8CE7
 search_match = #FF9D00
 caret = #F39B7F
 form_focus = #4DBBD5
-page_low = 28              # page luminance range in dark mode (0-255)
-page_high = 228
+page_bg = #1C1C1C          # dark mode: page paper colour
+page_fg = #E4E4E4          # dark mode: page ink colour
