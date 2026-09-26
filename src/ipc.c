@@ -21,6 +21,7 @@
 
 Uint32 ipc_event;            /* SDL event type; code IPC_REQUEST or IPC_FILE */
 static int server_fd = -1, notify_fd = -1;
+static SDL_AtomicInt stopping; /* set at exit: post no more events */
 
 static void socket_path(struct sockaddr_un *a)
 {
@@ -48,6 +49,10 @@ bool ipc_send(const char *msg)
 
 static void post(int code, char *text, int wd)
 {
+    if (SDL_GetAtomicInt(&stopping)) {
+        free(text);
+        return;
+    }
     SDL_Event e = {0};
     e.type = ipc_event;
     e.user.code = code;
@@ -138,6 +143,11 @@ void ipc_start(void)
 
 void ipc_stop(void)
 {
+    /* free the texts of events still queued (a file changed as we quit) */
+    SDL_SetAtomicInt(&stopping, 1);
+    SDL_Event e;
+    while (SDL_PeepEvents(&e, 1, SDL_GETEVENT, ipc_event, ipc_event) == 1)
+        free(e.user.data1);
     if (server_fd >= 0) {
         struct sockaddr_un a;
         socket_path(&a);

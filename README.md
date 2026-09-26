@@ -256,6 +256,17 @@ SDL_VIDEODRIVER=offscreen ./nomadys-pdf --test-out /tmp/shots \
 Tokens: plain characters, any key name from `input.c` (`<Esc>`, `<Enter>`,
 `<C-j>`, ...), `<wait:ms>` and `<shot:name>` (saves `name.bmp`).
 
+## Stress testing
+
+`tests/qa/run.sh [WORKDIR] [SEEDS] [KEYS]` builds a sanitizer binary
+(AddressSanitizer + UndefinedBehaviorSanitizer), generates malformed PDFs
+(`make_corpus.py`: truncated, garbage, empty, no pages, cyclic outline, huge
+and tiny pages, rotated pages, 3000 pages, many form fields...), runs each
+through a broad key sequence, then feeds random key sequences built from every
+keymap (`fuzz.py`, reproducible by seed, including window resizes).
+`check.py` reports memory errors, undefined behaviour, leaks in our code,
+crashes and hangs; it exits non-zero on any finding.
+
 ## Licences
 
 Nomadys-PDF code: MIT (`LICENSE`). PDFium: BSD-3/Apache-2.0
