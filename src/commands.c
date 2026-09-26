@@ -13,7 +13,7 @@
 
 typedef void (*CommandFn)(Window *w, View *v, const char *arg);
 
-enum { ARG_NONE, ARG_FILE, ARG_NUMBER };
+enum { ARG_NONE, ARG_FILE, ARG_NUMBER, ARG_PRINT };
 
 typedef struct {
     const char *name;
@@ -110,6 +110,8 @@ static void c_rotate(Window *w, View *v, const char *a)
     ui_message(w, "rotation: %d°", v->rotation * 90);
 }
 
+static void c_print(Window *w, View *v, const char *a) { print_document(w, v, a); }
+
 static void c_page(Window *w, View *v, const char *a) { goto_page(w, v, atoi(a) - 1); }
 
 static const Command commands[] = {
@@ -128,6 +130,7 @@ static const Command commands[] = {
     {"notes", ARG_NONE, c_panel, "panel: tabs, summary, marks, highlights"},
     {"noh", ARG_NONE, c_nohl, "clear the search highlight"},
     {"reload", ARG_NONE, c_reload, "reload the PDF from disk"},
+    {"print", ARG_PRINT, c_print, "print: :print 3-7 x2 @printer duplex (all optional)"},
     {"help", ARG_NONE, c_help, "every key"},
 };
 
@@ -136,7 +139,8 @@ int command_count(void) { return (int)SDL_arraysize(commands); }
 void command_describe(int i, char *keys, size_t cap, const char **text)
 {
     const Command *c = &commands[i];
-    snprintf(keys, cap, ":%s%s", c->name, c->arg == ARG_FILE ? " file" : c->arg == ARG_NUMBER ? " N" : "");
+    snprintf(keys, cap, ":%s%s", c->name,
+             c->arg == ARG_FILE ? " file" : c->arg == ARG_NUMBER ? " N" : c->arg == ARG_PRINT ? " [options]" : "");
     *text = c->help;
 }
 
@@ -203,6 +207,21 @@ static void build_candidates(Window *w)
     for (size_t i = 0; i < SDL_arraysize(commands); i++)
         if (strlen(commands[i].name) == n && !strncmp(commands[i].name, line, n))
             c = &commands[i];
+    if (c && c->arg == ARG_PRINT) { /* "@" + a printer name, in the word being typed */
+        const char *word = strrchr(line, ' ') + 1;
+        if (*word != '@')
+            return;
+        w->comp_start = (int)(word - line);
+        char *list = print_printers();
+        for (char *p = strtok(list, "\n"); p; p = strtok(NULL, "\n"))
+            if (!strncmp(p, word + 1, strlen(word + 1))) {
+                char cand[300];
+                snprintf(cand, sizeof cand, "@%s", p);
+                add_candidate(w, cand);
+            }
+        free(list);
+        return;
+    }
     if (!c || c->arg != ARG_FILE)
         return;
     const char *arg = space + strspn(space, " ");

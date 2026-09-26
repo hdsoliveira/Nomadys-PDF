@@ -406,6 +406,10 @@ void ipc_stop(void);
 bool ipc_send(const char *msg);                          /* to a running instance */
 void ipc_watch(Doc *d);
 
+/* ---------- printing (print.c) ---------- */
+void print_document(Window *w, View *v, const char *args);
+char *print_printers(void);                              /* names, one per line */
+
 /* ---------- search (search.c) ---------- */
 bool search_run(Window *w, View *v, int dir, bool from_current);
 void search_draw(Window *w, View *v, int top);

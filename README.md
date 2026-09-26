@@ -150,6 +150,7 @@ listed above the line and `Tab` / `Shift-Tab` cycle through them (`:` then
 | `:marks`, `:notes` | the panel |
 | `:noh` | clear the search highlight |
 | `:reload` | reload the PDF from disk |
+| `:print`, `Ctrl-p` | print through CUPS; options in any order: pages `3-7,10`, copies `x2`, printer `@name` (`Tab` lists them), `duplex`. Unsaved highlights and form entries are saved first, so they are printed too |
 | `:help` | every key |
 
 Commands live in one table in `commands.c` (name, argument, action,
@@ -240,6 +241,7 @@ One feature per file in `src/`; `nomadys.h` has the shared types and a module ma
 | `commands.c` | the `:` commands and their Tab completion |
 | `synctex.c` | LaTeX forward/inverse search through the `synctex` tool |
 | `ipc.c` | socket for VimTeX requests, inotify for auto-reload |
+| `print.c` | printing through CUPS (`lp`, `lpstat`) |
 | `panel.c` | the marks / notes / contents panel |
 | `font.c` | UI text through fontconfig and FreeType |
 | `ui.c` | tab bar, prompt, messages, comment box |

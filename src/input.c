@@ -219,6 +219,12 @@ static void run_search(Window *w, const char *text)
     search_run(w, v, 1, true);
 }
 
+static void a_print(Window *w, View *v, int c, const char *a)
+{
+    (void)v, (void)c, (void)a;
+    prompt_open(w, ":", "print ", command_run, 0);
+}
+
 static void a_command(Window *w, View *v, int c, const char *a)
 {
     (void)v, (void)c, (void)a;
@@ -445,6 +451,7 @@ static const Binding normal_map[] = {
     {"<Tab>", a_form_next, NULL}, {"<S-Tab>", a_form_prev, NULL},
     {"<C-,>", a_tab_prev, "previous tab"}, {"<C-.>", a_tab_next, "next tab"},
     {"<C-n>", a_new_window, "new window on the same PDF"}, {"<C-s>", a_save, "save"},
+    {"<C-p>", a_print, "print (opens :print; Enter prints everything)"},
     MARK_KEYS, {"<Esc>", a_clear, "clear the search"}, {"q", a_quit, "close the window"},
 };
 
