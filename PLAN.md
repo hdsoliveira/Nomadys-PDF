@@ -98,10 +98,10 @@ Most valuable for reading and reviewing papers by keyboard:
 1. **Follow links by keyboard** — `f` shows letter hints on every visible link
    (citations, figure/equation references, outline, URLs, DOIs); typing the
    letters follows it, as a jump (`Ctrl-o` returns); URLs open in the browser.
-   *In progress.*
+   *Done (src/links.c); a plain click on a link also follows it.*
 2. **Reference preview** — show the target of "Fig. 3", "Eq. 5" or "[12]" in a
    popup without leaving the page (`F` + hint letters), Enter to go there.
-   *In progress.*
+   *Done (src/links.c).*
 3. **Export highlights and comments to Markdown** (`:export`): text, comment,
    page and colour, for notes / Obsidian / review reports.
 4. **Copy a region as an image** — free cursor (`Ctrl-v`), select, `y` copies

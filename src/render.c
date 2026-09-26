@@ -326,25 +326,27 @@ static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w,
 }
 
 /* ---------- rendering ---------- */
-static SDL_Texture *render_page(Window *win, View *v, int page, int cx, int cy, int w, int h)
+/* Renders the part (cx, cy, w, h) of a page drawn at pw x ph pixels, with the
+ * view's dark mode, into a texture. */
+SDL_Texture *view_render_area(Window *win, View *v, int page, int pw, int ph, int rot, int cx, int cy, int w, int h)
 {
     Doc *d = v->doc;
     FPDF_PAGE p = doc_page(d, page);
-    if (!p || w <= 0 || h <= 0)
+    if (!p || w <= 0 || h <= 0 || pw <= 0 || ph <= 0)
         return NULL;
-    int pw = v->pwpx[page], ph = v->phpx[page], stride = w * 4;
+    int stride = w * 4;
     uint8_t *buf = malloc((size_t)stride * h);
     if (!buf)
         return NULL;
     FPDF_BITMAP bmp = FPDFBitmap_CreateEx(w, h, FPDFBitmap_BGRA, buf, stride);
     FPDFBitmap_FillRect(bmp, 0, 0, w, h, 0xFFFFFFFF);
     int flags = FPDF_ANNOT | (cfg.subpixel_text ? FPDF_LCD_TEXT : 0);
-    FPDF_RenderPageBitmap(bmp, p, -cx, -cy, pw, ph, v->rotation, flags);
+    FPDF_RenderPageBitmap(bmp, p, -cx, -cy, pw, ph, rot, flags);
     if (d->form)
-        FPDF_FFLDraw(d->form, bmp, p, -cx, -cy, pw, ph, v->rotation, flags);
+        FPDF_FFLDraw(d->form, bmp, p, -cx, -cy, pw, ph, rot, flags);
     FPDFBitmap_Destroy(bmp);
     if (v->dark) { /* light mode shows pages as they are */
-        uint8_t *keep = image_mask(d, page, p, cx, cy, w, h, pw, ph, v->rotation, buf, stride);
+        uint8_t *keep = image_mask(d, page, p, cx, cy, w, h, pw, ph, rot, buf, stride);
         recolor(buf, w, h, stride, keep, v->dark);
         free(keep);
     }
@@ -355,6 +357,11 @@ static SDL_Texture *render_page(Window *win, View *v, int page, int cx, int cy, 
     }
     free(buf);
     return t;
+}
+
+static SDL_Texture *render_page(Window *win, View *v, int page, int cx, int cy, int w, int h)
+{
+    return view_render_area(win, v, page, v->pwpx[page], v->phpx[page], v->rotation, cx, cy, w, h);
 }
 
 static CacheEntry *cache_find(View *v, int page, int cx, int cy, int w, int h)

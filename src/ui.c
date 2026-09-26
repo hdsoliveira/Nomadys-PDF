@@ -212,6 +212,8 @@ static void draw_mode(Window *w)
     case MODE_FORM: label = "INSERT", color = t->mode_insert; break;
     case MODE_PANEL: label = "PANEL", color = t->tab_accent; break;
     case MODE_HELP: label = "HELP", color = t->tab_accent; break;
+    case MODE_HINTS: label = w->hint_preview ? "PREVIEW" : "FOLLOW", color = t->search_match; break;
+    case MODE_PREVIEW: label = "PREVIEW", color = t->search_match; break;
     case MODE_PROMPT:
         label = prompt_kind(w);
         color = !strcmp(label, "COMMAND") || !strcmp(label, "SEARCH") ? t->mode_command : t->mode_insert;
@@ -235,6 +237,10 @@ void ui_draw_overlays(Window *w, uint64_t now)
         panel_draw(w);
     if (w->mode == MODE_HELP)
         ui_draw_help(w);
+    if (w->mode == MODE_HINTS)
+        hints_draw(w);
+    if (w->mode == MODE_PREVIEW)
+        preview_draw(w);
     if (cfg.mode_indicator)
         draw_mode(w);
     if (w->mode == MODE_PROMPT)

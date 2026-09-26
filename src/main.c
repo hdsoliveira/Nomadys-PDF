@@ -90,6 +90,9 @@ static void window_destroy(Window *w)
     if (w->shadow)
         SDL_DestroyTexture(w->shadow);
     free(w->items);
+    free(w->links);
+    if (w->preview.tex)
+        SDL_DestroyTexture(w->preview.tex);
     SDL_DestroyRenderer(w->ren);
     SDL_DestroyWindow(w->win);
     for (int i = 0; i < nwindows; i++) {
@@ -343,6 +346,8 @@ static void reload_due(uint64_t now, int *wait)
                     command_complete_reset(w);
                     ui_message(w, "PDF reloaded: edit cancelled");
                     w->mode = MODE_NORMAL;
+                } else if (w->mode == MODE_PREVIEW) {
+                    preview_close(w); /* the target may have moved */
                 } else if (w->mode != MODE_HELP && w->mode != MODE_PROMPT) {
                     w->mode = MODE_NORMAL;
                 } else if (w->mode == MODE_PROMPT) {
@@ -414,9 +419,16 @@ static void handle_event(SDL_Event *e)
             return;
         }
         if ((w = window_by_id(e->button.windowID)) && e->button.button == SDL_BUTTON_LEFT &&
-            (w->mode == MODE_NORMAL || w->mode == MODE_FORM))
-            form_click(w, e->button.x * w->density, e->button.y * w->density,
-                       e->type == SDL_EVENT_MOUSE_BUTTON_DOWN);
+            (w->mode == MODE_NORMAL || w->mode == MODE_FORM)) {
+            static float down_x, down_y;
+            float x = e->button.x * w->density, y = e->button.y * w->density;
+            bool down = e->type == SDL_EVENT_MOUSE_BUTTON_DOWN;
+            form_click(w, x, y, down);
+            if (down)
+                down_x = x, down_y = y;
+            else if (w->mode == MODE_NORMAL && SDL_fabsf(x - down_x) + SDL_fabsf(y - down_y) < 6 * w->density)
+                links_click(w, x, y); /* a plain click on a link follows it */
+        }
         if (w && alive(w))
             w->redraw = true;
         return;

@@ -212,7 +212,8 @@ typedef struct {
     uint64_t used;
 } CacheEntry;
 
-typedef enum { MODE_NORMAL, MODE_FORM, MODE_CARET, MODE_AREA, MODE_PANEL, MODE_PROMPT, MODE_HELP } Mode;
+typedef enum { MODE_NORMAL, MODE_FORM, MODE_CARET, MODE_AREA, MODE_PANEL, MODE_PROMPT, MODE_HELP,
+               MODE_HINTS, MODE_PREVIEW } Mode;
 
 typedef struct { int page, ch; } TextPos;
 
@@ -264,6 +265,7 @@ void view_clamp(View *v, int W, int H, int top);
 void view_draw(Window *w, View *v, int top);
 bool view_prefetch(Window *w, View *v, int top);
 void view_invalidate_cache(View *v);
+SDL_Texture *view_render_area(Window *w, View *v, int page, int pw, int ph, int rot, int cx, int cy, int cw, int ch);
 void view_doc_reloaded(View *v);                         /* page count/sizes changed */
 void view_rotate(View *v, int quarter_turns);
 float view_page_w(View *v, int page);                    /* points, after rotation */
@@ -290,6 +292,16 @@ typedef struct {
     int page, note, mark, tab;
     uint32_t color;          /* note colour */
 } PanelItem;
+
+/* links.c: a link on screen, labelled for 'f' / 'F' */
+typedef struct {
+    int page;
+    PRect r;
+    bool internal;           /* target is in this document */
+    Pos target;
+    char uri[1024];          /* external target */
+    char label[4];
+} Link;
 
 struct Window {
     SDL_Window *win;
@@ -325,6 +337,19 @@ struct Window {
     int nitems, sel, first;
     PanelTab panel_tab;
     int panel_counts[PANEL_NTABS];
+    /* link hints and reference preview (links.c) */
+    Link *links;
+    int nlinks;
+    char hint_typed[4];
+    bool hint_preview;
+    Mode hint_return;
+    struct {
+        Link link;
+        int page, th;
+        float w, h, top;     /* box size in pixels; top of the view in points */
+        bool at_top;
+        SDL_Texture *tex;
+    } preview;
     bool redraw;
     int W, H;                /* pixel size */
     float density;
@@ -453,6 +478,16 @@ void *xmalloc(size_t n);
 void *xcalloc(size_t n, size_t size);
 void *xrealloc(void *p, size_t n);
 char *xstrdup(const char *s);
+/* links.c */
+void links_start(Window *w, bool preview);
+bool links_click(Window *w, float sx, float sy);
+void hints_key(Window *w, const char *tok);
+void hints_draw(Window *w);
+void preview_draw(Window *w);
+void preview_scroll(Window *w, float lines);
+void preview_go(Window *w);
+void preview_close(Window *w);
+
 int utf8_to_utf16(const char *s, unsigned short *out, int cap);
 char *utf16_to_utf8(const unsigned short *s, int n);
 unsigned utf8_next(const char **s);

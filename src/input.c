@@ -415,6 +415,16 @@ static void a_help_page_up(Window *w, View *v, int c, const char *a) { (void)v, 
 static void a_help_top(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; w->help_first = 0; }
 static void a_help_bottom(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; w->help_first = 1 << 20; }
 
+/* ---------- links and reference preview ---------- */
+static void a_follow(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; links_start(w, false); }
+static void a_peek(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; links_start(w, true); }
+static void a_preview_down(Window *w, View *v, int c, const char *a) { (void)v, (void)a; preview_scroll(w, (float)n1(c)); }
+static void a_preview_up(Window *w, View *v, int c, const char *a) { (void)v, (void)a; preview_scroll(w, -(float)n1(c)); }
+static void a_preview_page_down(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; preview_scroll(w, 6); }
+static void a_preview_page_up(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; preview_scroll(w, -6); }
+static void a_preview_go(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; preview_go(w); }
+static void a_preview_close(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; preview_close(w); }
+
 /* ---------- keymaps ---------- */
 #define SCROLL_KEYS                                                                              \
     {"<C-d>", a_half_down, "half a screen down"}, {"<C-u>", a_half_up, "half a screen up"},          \
@@ -446,6 +456,8 @@ static const Binding normal_map[] = {
     {"<C-v>", a_area, "free cursor: mark figures and areas"},
     {"/", a_search, "search"}, {"n", a_search_next, "next match"},
     {"N", a_search_prev, "previous match"},
+    {"f", a_follow, "follow a link: type its letters (Ctrl-o returns)"},
+    {"F", a_peek, "preview a reference (figure, equation, citation) in place"},
     {":", a_command, "command line: :w save, :q close tab, :e file, :42 page"},
     {"<C-j>", a_form_next, "next form field"}, {"<C-k>", a_form_prev, "previous form field"},
     {"<Tab>", a_form_next, NULL}, {"<S-Tab>", a_form_prev, NULL},
@@ -509,6 +521,14 @@ static const Binding help_map[] = {
     {"<leader>c", a_help_close, NULL}, {"<Esc>", a_help_close, NULL}, {"q", a_help_close, NULL},
 };
 
+static const Binding preview_map[] = {
+    {"j", a_preview_down, "scroll the preview"}, {"k", a_preview_up, "scroll the preview"},
+    {"<Down>", a_preview_down, NULL}, {"<Up>", a_preview_up, NULL},
+    {"<C-d>", a_preview_page_down, "scroll the preview faster"}, {"<C-u>", a_preview_page_up, "scroll the preview faster"},
+    {"<Enter>", a_preview_go, "go there (Ctrl-o returns)"},
+    {"<Esc>", a_preview_close, "close"}, {"q", a_preview_close, "close"}, {"F", a_preview_close, NULL},
+};
+
 static const Binding *keymap(Mode m, int *n)
 {
     switch (m) {
@@ -517,6 +537,7 @@ static const Binding *keymap(Mode m, int *n)
     case MODE_AREA: *n = SDL_arraysize(area_map); return area_map;
     case MODE_PANEL: *n = SDL_arraysize(panel_map); return panel_map;
     case MODE_HELP: *n = SDL_arraysize(help_map); return help_map;
+    case MODE_PREVIEW: *n = SDL_arraysize(preview_map); return preview_map;
     default: *n = 0; return NULL;
     }
 }
@@ -628,6 +649,11 @@ void input_token(Window *w, const char *tok)
             prompt_insert(w, text);
         else
             prompt_special(w, tok);
+        return;
+    }
+    if (w->mode == MODE_HINTS) { /* letters pick a link */
+        npend = 0;
+        hints_key(w, tok);
         return;
     }
     /* a count, unless a sequence is under way ("m1" is not a count); in the
@@ -766,6 +792,7 @@ int help_lines(HelpLine **out)
     char panel_title[48];
     snprintf(panel_title, sizeof panel_title, "Panel (%sl)", leader_label());
     help_section(&lines, &n, &cap, panel_title, panel_map, SDL_arraysize(panel_map), false);
+    help_section(&lines, &n, &cap, "Reference preview (F)", preview_map, SDL_arraysize(preview_map), false);
     snprintf(help_add(&lines, &n, &cap)->keys, sizeof lines->keys, "Commands (:, Tab completes)");
     lines[n - 1].header = true;
     for (int i = 0; i < command_count(); i++) {

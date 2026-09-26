@@ -54,6 +54,17 @@ A small coloured badge in the bottom-left corner shows the mode: `NORMAL`,
 | `i` | dark mode (images keep their colours) |
 | `/` `n` `N` | search / next / previous (`Esc` clears) |
 
+### Links and references
+
+| Key | Action |
+|---|---|
+| `f` | letters appear on every link on screen (citations, "Fig. 3", "Eq. 5", table of contents, URLs and DOIs, even ones only written in the text); type them to follow. Inside the PDF it is a jump, so `Ctrl-o` comes back; web links open in the browser (`xdg-open`). `Esc` cancels, `Backspace` undoes a letter |
+| `F` | the same letters, but **previews** the target in a box without leaving the page: the figure, the equation, the bibliography entry (a mark in the margin shows the exact spot). `j` `k` / `Ctrl-d` `Ctrl-u` scroll it, `Enter` goes there, `Esc` / `q` closes. On a web link it shows the address |
+| click | a plain click on a link follows it (double click / `Ctrl`+click stays SyncTeX) |
+
+Only `http(s)`, `mailto:` and `doi:` links are opened; links to files or
+programs are shown and copied to the clipboard instead.
+
 ### Marks and jumps
 
 For going back and forth between places while reading (text, a figure, an
@@ -242,6 +253,7 @@ One feature per file in `src/`; `nomadys.h` has the shared types and a module ma
 | `synctex.c` | LaTeX forward/inverse search through the `synctex` tool |
 | `ipc.c` | socket for VimTeX requests, inotify for auto-reload |
 | `print.c` | printing through CUPS (`lp`, `lpstat`) |
+| `links.c` | link hints (`f`), reference preview (`F`), clicking links |
 | `panel.c` | the marks / notes / contents panel |
 | `font.c` | UI text through fontconfig and FreeType |
 | `ui.c` | tab bar, prompt, messages, comment box |
