@@ -112,7 +112,9 @@ colour and the comment:
 ## Page 3
 
 - *(yellow)* “stiffness amplification through successive instabilities, ...”
+
   **Comment:** check this claim against [43]
+
 - *(blue, area)* highlighted region — figure, table or equation
 ```
 

@@ -180,12 +180,12 @@ int export_write(Doc *d, FILE *f, int *ncomments)
     time_t now = time(NULL);
     strftime(when, sizeof when, "%Y-%m-%d %H:%M", localtime(&now));
     fprintf(f, EXPORT_TAG "\n# %s — highlights\n\n", base_name(d->path));
-    fprintf(f, "Exported by Nomadys-PDF on %s from `%s`.\n", when, d->path);
+    fprintf(f, "Exported by Nomadys-PDF on %s from `%s`.\n\n", when, d->path);
     for (int page = 0; page < d->npages; page++) {
         PageSlot *s = &d->slots[page];
         if (!s->nnotes)
             continue;
-        fprintf(f, "\n## Page %d\n\n", page + 1);
+        fprintf(f, "## Page %d\n\n", page + 1);
         Order *o = page_order(d, page);
         for (int i = 0; i < s->nnotes; i++) {
             const Note *n = &s->notes[o[i].note];
@@ -193,12 +193,13 @@ int export_write(Doc *d, FILE *f, int *ncomments)
             const char *color = color_name(n->color, hex, sizeof hex);
             char *text = note_text(d, page, n), *comment = note_comment(d, page, o[i].note);
             if (text)
-                fprintf(f, "- *(%s)* “%s”\n", color, text);
+                fprintf(f, "- *(%s)* “%s”\n\n", color, text); /* blank lines: easier to read */
             else
-                fprintf(f, "- *(%s, area)* highlighted region — figure, table or equation\n", color);
+                fprintf(f, "- *(%s, area)* highlighted region — figure, table or equation\n\n", color);
             if (comment && *comment) {
                 fprintf(f, "  **Comment:** ");
                 write_indented(f, comment, "  ");
+                fprintf(f, "\n");
                 comments++;
             }
             free(text);
@@ -210,7 +211,7 @@ int export_write(Doc *d, FILE *f, int *ncomments)
     for (int m = 0; m < NMARKS; m++)
         nmarks += d->marks[m].set;
     if (nmarks) {
-        fprintf(f, "\n## Marks\n\n");
+        fprintf(f, "## Marks\n\n");
         for (int m = 0; m < NMARKS; m++)
             if (d->marks[m].set) {
                 char name[sizeof d->marks[m].name], *o = name;
@@ -224,7 +225,7 @@ int export_write(Doc *d, FILE *f, int *ncomments)
             }
     }
     if (!total && !nmarks)
-        fprintf(f, "\nNo highlights, comments or marks yet.\n");
+        fprintf(f, "No highlights, comments or marks yet.\n");
     if (ncomments)
         *ncomments = comments;
     return total;
