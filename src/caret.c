@@ -315,6 +315,7 @@ void caret_copy(Window *w, View *v)
         unsigned short *u = xmalloc(((size_t)n + 1) * sizeof *u);
         int got = FPDFText_GetText(tp, first, n, u);
         char *s = utf16_to_utf8(u, got > 0 ? got : 0);
+        text_join_hyphens(s);
         size_t sl = strlen(s);
         c.buf = xrealloc(c.buf, c.len + sl + 1);
         memcpy(c.buf + c.len, s, sl + 1);

@@ -366,6 +366,23 @@ int utf8_to_utf16(const char *s, unsigned short *out, int cap)
     return n;
 }
 
+/* PDFium marks a word broken at the end of a line ("lat-" / "tice") with
+ * U+0002: drop it and the line break after it, so the word is whole again. */
+void text_join_hyphens(char *s)
+{
+    char *o = s;
+    for (char *i = s; *i;) {
+        if (*i == 0x02) {
+            i++;
+            while (*i == '\r' || *i == '\n' || *i == ' ')
+                i++;
+            continue;
+        }
+        *o++ = *i++;
+    }
+    *o = 0;
+}
+
 char *utf16_to_utf8(const unsigned short *s, int n)
 {
     char *out = xmalloc((size_t)n * 4 + 1), *o = out;

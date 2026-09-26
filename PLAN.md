@@ -104,6 +104,7 @@ Most valuable for reading and reviewing papers by keyboard:
    *Done (src/links.c).*
 3. **Export highlights and comments to Markdown** (`:export`): text, comment,
    page and colour, for notes / Obsidian / review reports.
+   *Done (src/export.c); also `nomadys-pdf --export file.pdf` to stdout.*
 4. **Copy a region as an image** — free cursor (`Ctrl-v`), select, `y` copies
    a high-resolution image to the clipboard (for slides).
 5. **Compare two versions of a PDF** (`:diff old.pdf`): highlight what changed

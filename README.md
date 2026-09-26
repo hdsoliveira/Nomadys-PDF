@@ -102,6 +102,24 @@ Everything by keyboard. Highlights are standard PDF annotations: other readers
 
 Highlights with a comment get a small dot in their corner.
 
+**Export to Markdown.** `:export` writes every highlight and comment, plus the
+marks, to `paper-notes.md` next to `paper.pdf` (or `:export name.md`; a
+relative name is taken from the PDF's folder). Page by page, in reading order,
+with the full highlighted text (words broken across lines joined again), its
+colour and the comment:
+
+```markdown
+## Page 3
+
+- *(yellow)* “stiffness amplification through successive instabilities, ...”
+  **Comment:** check this claim against [43]
+- *(blue, area)* highlighted region — figure, table or equation
+```
+
+Running it again replaces the file; a Markdown file that `:export` did not
+write is never overwritten unless you use `:export!`.
+`nomadys-pdf --export paper.pdf` prints the same to the terminal.
+
 ### LaTeX with VimTeX
 
 - **Auto-reload:** when LaTeX writes a new PDF, it reloads in place (same
@@ -160,6 +178,7 @@ listed above the line and `Tab` / `Shift-Tab` cycle through them (`:` then
 | `:dark` / `:light` | dark / light mode |
 | `:marks`, `:notes` | the panel |
 | `:noh` | clear the search highlight |
+| `:export [file.md]` | highlights, comments and marks to Markdown (`:export!` overwrites a file it did not write) |
 | `:reload` | reload the PDF from disk |
 | `:print`, `Ctrl-p` | print through CUPS; options in any order: pages `3-7,10`, copies `x2`, printer `@name` (`Tab` lists them), `duplex`. Unsaved highlights and form entries are saved first, so they are printed too |
 | `:help` | every key |
@@ -253,6 +272,7 @@ One feature per file in `src/`; `nomadys.h` has the shared types and a module ma
 | `synctex.c` | LaTeX forward/inverse search through the `synctex` tool |
 | `ipc.c` | socket for VimTeX requests, inotify for auto-reload |
 | `print.c` | printing through CUPS (`lp`, `lpstat`) |
+| `export.c` | `:export`: highlights and comments to Markdown |
 | `links.c` | link hints (`f`), reference preview (`F`), clicking links |
 | `panel.c` | the marks / notes / contents panel |
 | `font.c` | UI text through fontconfig and FreeType |

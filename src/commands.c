@@ -13,7 +13,7 @@
 
 typedef void (*CommandFn)(Window *w, View *v, const char *arg);
 
-enum { ARG_NONE, ARG_FILE, ARG_NUMBER, ARG_PRINT };
+enum { ARG_NONE, ARG_FILE, ARG_NUMBER, ARG_PRINT, ARG_MD };
 
 typedef struct {
     const char *name;
@@ -112,6 +112,9 @@ static void c_rotate(Window *w, View *v, const char *a)
 
 static void c_print(Window *w, View *v, const char *a) { print_document(w, v, a); }
 
+static void c_export(Window *w, View *v, const char *a) { export_notes(w, v, a, false); }
+static void c_export_force(Window *w, View *v, const char *a) { export_notes(w, v, a, true); }
+
 static void c_page(Window *w, View *v, const char *a) { goto_page(w, v, atoi(a) - 1); }
 
 static const Command commands[] = {
@@ -126,6 +129,8 @@ static const Command commands[] = {
     {"rotate", ARG_NUMBER, c_rotate, "rotate the view: :rotate 90, -90, 180"},
     {"dark", ARG_NONE, c_dark, "dark mode"},
     {"light", ARG_NONE, c_light, "light mode"},
+    {"export", ARG_MD, c_export, "highlights and comments to Markdown (paper-notes.md)"},
+    {"export!", ARG_MD, c_export_force, "the same, overwriting any file"},
     {"marks", ARG_NONE, c_panel, "panel: tabs, summary, marks, highlights"},
     {"notes", ARG_NONE, c_panel, "panel: tabs, summary, marks, highlights"},
     {"noh", ARG_NONE, c_nohl, "clear the search highlight"},
@@ -140,7 +145,7 @@ void command_describe(int i, char *keys, size_t cap, const char **text)
 {
     const Command *c = &commands[i];
     snprintf(keys, cap, ":%s%s", c->name,
-             c->arg == ARG_FILE ? " file" : c->arg == ARG_NUMBER ? " N" : c->arg == ARG_PRINT ? " [options]" : "");
+             c->arg == ARG_FILE ? " file" : c->arg == ARG_MD ? " [file.md]" : c->arg == ARG_NUMBER ? " N" : c->arg == ARG_PRINT ? " [options]" : "");
     *text = c->help;
 }
 
@@ -185,10 +190,10 @@ static void add_candidate(Window *w, const char *s)
     w->comp[w->ncomp++] = xstrdup(s);
 }
 
-static bool is_pdf_or_dir(const char *p)
+static bool is_pdf_or_dir(const char *p, const char *ext)
 {
     size_t n = strlen(p);
-    return (n && p[n - 1] == '/') || (n > 4 && !strcasecmp(p + n - 4, ".pdf"));
+    return (n && p[n - 1] == '/') || (n > 4 && !strcasecmp(p + n - strlen(ext), ext));
 }
 
 static void build_candidates(Window *w)
@@ -222,18 +227,21 @@ static void build_candidates(Window *w)
         free(list);
         return;
     }
-    if (!c || c->arg != ARG_FILE)
+    if (!c || (c->arg != ARG_FILE && c->arg != ARG_MD))
         return;
     const char *arg = space + strspn(space, " ");
     w->comp_start = (int)(arg - line);
     char *prefix = expand_home(arg);
-    char *pattern = xmalloc(strlen(prefix) + 2);
-    sprintf(pattern, "%s*", prefix);
+    /* :export names are relative to the PDF's folder, not to where we started */
+    const char *pdf = cur_view(w)->doc->path, *slash = strrchr(pdf, '/');
+    int dirlen = c->arg == ARG_MD && prefix[0] != '/' && slash ? (int)(slash - pdf) + 1 : 0;
+    char *pattern = xmalloc(strlen(prefix) + (size_t)dirlen + 2);
+    sprintf(pattern, "%.*s%s*", dirlen, pdf, prefix);
     glob_t g;
     if (glob(pattern, GLOB_MARK, NULL, &g) == 0)
         for (size_t i = 0; i < g.gl_pathc; i++)
-            if (is_pdf_or_dir(g.gl_pathv[i]))
-                add_candidate(w, g.gl_pathv[i]);
+            if (is_pdf_or_dir(g.gl_pathv[i], c->arg == ARG_MD ? ".md" : ".pdf"))
+                add_candidate(w, g.gl_pathv[i] + dirlen);
     globfree(&g);
     free(pattern);
     free(prefix);

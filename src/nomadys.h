@@ -478,6 +478,10 @@ void *xmalloc(size_t n);
 void *xcalloc(size_t n, size_t size);
 void *xrealloc(void *p, size_t n);
 char *xstrdup(const char *s);
+/* export.c */
+int export_write(Doc *d, FILE *f, int *ncomments);       /* Markdown; returns highlights */
+void export_notes(Window *w, View *v, const char *arg, bool force);
+
 /* links.c */
 void links_start(Window *w, bool preview);
 bool links_click(Window *w, float sx, float sy);
@@ -490,4 +494,5 @@ void preview_close(Window *w);
 
 int utf8_to_utf16(const char *s, unsigned short *out, int cap);
 char *utf16_to_utf8(const unsigned short *s, int n);
+void text_join_hyphens(char *s);                          /* removes PDFium's U+0002 breaks */
 unsigned utf8_next(const char **s);

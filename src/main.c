@@ -540,6 +540,8 @@ static void usage(void)
            "LaTeX: --synctex-forward LINE:COL:FILE.tex file.pdf shows that line;\n"
            "       double click, Ctrl+click or Enter in a cursor opens the source (-x COMMAND)\n"
            "\n"
+           "--export file.pdf   print its highlights and comments as Markdown\n"
+           "\n"
            "config: ~/.config/nomadys-pdf/config\n",
            leader_label(), leader_label(), leader_label());
 }
@@ -587,6 +589,16 @@ int main(int argc, char **argv)
     }
     FPDF_LIBRARY_CONFIG lib = {.version = 2};
     FPDF_InitLibraryWithConfig(&lib);
+    if (!strcmp(argv[1], "--export")) { /* highlights as Markdown, to standard output */
+        char err[512];
+        Doc *d = argc == 3 ? doc_open(argv[2], err, sizeof err) : NULL;
+        if (!d)
+            fprintf(stderr, "nomadys-pdf: %s\n", argc == 3 ? err : "usage: nomadys-pdf --export file.pdf");
+        else
+            export_write(d, stdout, NULL);
+        FPDF_DestroyLibrary();
+        return d ? 0 : 1;
+    }
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         fprintf(stderr, "nomadys-pdf: %s\n", SDL_GetError());
         return 1;

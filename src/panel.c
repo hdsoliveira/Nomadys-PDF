@@ -53,6 +53,8 @@ static char *covered_text(Doc *d, int page, Note *n)
         len += tl;
         free(t);
     }
+    if (all)
+        text_join_hyphens(all);
     if (all && !*all) { /* an area over a figure: no text */
         free(all);
         all = NULL;
