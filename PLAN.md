@@ -90,3 +90,35 @@ dark and light, UI font choice, and maintainable code.
   after background annotation listing (was ~0.9 s). Speed unchanged.
 - Open: area highlights use the standard multiply blend, which darkens
   colourful figures; a frame style could be offered.
+
+## Roadmap (suggested 2026-09-26, accepted by the user)
+
+Most valuable for reading and reviewing papers by keyboard:
+
+1. **Follow links by keyboard** — `f` shows letter hints on every visible link
+   (citations, figure/equation references, outline, URLs, DOIs); typing the
+   letters follows it, as a jump (`Ctrl-o` returns); URLs open in the browser.
+   *In progress.*
+2. **Reference preview** — show the target of "Fig. 3", "Eq. 5" or "[12]" in a
+   popup without leaving the page (`F` + hint letters), Enter to go there.
+   *In progress.*
+3. **Export highlights and comments to Markdown** (`:export`): text, comment,
+   page and colour, for notes / Obsidian / review reports.
+4. **Copy a region as an image** — free cursor (`Ctrl-v`), select, `y` copies
+   a high-resolution image to the clipboard (for slides).
+5. **Compare two versions of a PDF** (`:diff old.pdf`): highlight what changed
+   (answers to reviewers, co-author edits).
+
+Everyday comfort:
+
+6. Incremental search (highlight while typing, all matches on the page,
+   case toggle).
+7. Sessions: reopen the last tabs (`:session`), recent files with fuzzy search.
+8. Thumbnail grid of pages, navigated with hjkl.
+9. Presentation mode: fullscreen, one page, nothing else (Beamer).
+10. Password-protected PDFs: ask for the password in the prompt line.
+
+More ambitious:
+
+11. OCR for scanned PDFs (tesseract, if installed): search/select/highlight.
+12. Background rendering thread: smooth zoom/scroll on very heavy pages.
