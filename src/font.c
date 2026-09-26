@@ -143,6 +143,11 @@ static Glyph *glyph(Font *f, unsigned cp)
     return g;
 }
 
+int font_ascent(Font *f) { return f ? f->ascent : 0; }
+
+/* Pixels per em: the size a 1em-high thing (a formula) should match. */
+float font_em(Font *f) { return f ? (float)f->face->size->metrics.y_ppem : 12.0f; }
+
 int font_width(Font *f, const char *s)
 {
     int w = 0;

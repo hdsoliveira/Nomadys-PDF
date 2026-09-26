@@ -93,6 +93,7 @@ static void window_destroy(Window *w)
     free(w->links);
     if (w->preview.tex)
         SDL_DestroyTexture(w->preview.tex);
+    math_forget_renderer(w->ren);
     SDL_DestroyRenderer(w->ren);
     SDL_DestroyWindow(w->win);
     for (int i = 0; i < nwindows; i++) {
@@ -507,6 +508,8 @@ static bool script_step(void)
         uint64_t until = SDL_GetTicks() + (uint64_t)atoi(tok + 6);
         while (SDL_GetTicks() < until) {
             input_expire(SDL_GetTicks());
+            if (math_poll())
+                need_redraw_all = true;
             if (!idle_work())
                 SDL_Delay(5);
         }
@@ -671,6 +674,10 @@ int main(int argc, char **argv)
         } else {
             blink_on = true;
         }
+        if (math_poll()) /* a formula was typeset */
+            need_redraw_all = true;
+        if (math_busy())
+            wait = wait < 0 ? 40 : SDL_min(wait, 40);
         autosave(now, &wait);
         reload_due(now, &wait);
         input_expire(now);
@@ -705,6 +712,7 @@ int main(int argc, char **argv)
     while (ndocs)
         doc_unref(docs[0]);
     ipc_stop();
+    math_shutdown();
     font_shutdown();
     SDL_Quit();
     FPDF_DestroyLibrary();

@@ -13,7 +13,7 @@ args = sys.argv[sys.argv.index('--') + 1:]
 for d in ('logs', 'data', 'cfg', f'run/{name}'):
     os.makedirs(f'{work}/{d}', exist_ok=True)
 env = dict(os.environ, XDG_DATA_HOME=f'{work}/data', XDG_CONFIG_HOME=f'{work}/cfg',
-           XDG_RUNTIME_DIR=f'{work}/run/{name}', SDL_VIDEODRIVER='offscreen', SDL_RENDER_DRIVER='software',
+           XDG_RUNTIME_DIR=f'{work}/run/{name}', XDG_CACHE_HOME=f'{work}/cache', SDL_VIDEODRIVER='offscreen', SDL_RENDER_DRIVER='software',
            ASAN_OPTIONS='detect_leaks=1:halt_on_error=1', UBSAN_OPTIONS='print_stacktrace=1:halt_on_error=1')
 binary = os.environ.get('BIN', f'{repo}/nomadys-pdf-asan')
 try:

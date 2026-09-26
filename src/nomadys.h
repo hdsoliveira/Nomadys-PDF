@@ -30,7 +30,7 @@
 #define MAX_DOCS 64
 #define CACHE_SLOTS 16
 #define LOADED_PAGE_CAP 48
-#define CMD_MAX 1024
+#define CMD_MAX 4096
 #define NMARKS 26
 #define JUMPS_MAX 100
 
@@ -320,6 +320,12 @@ struct Window {
     int cmdlen;
     PromptFn prompt_done;
     int prompt_arg;
+    /* comments are edited in a box next to the highlight (comment.c) */
+    bool prompt_box;
+    int cmdpos;              /* cursor, byte offset into cmd */
+    int box_page;            /* -1: centred */
+    PRect box_anchor;
+    float box_maxw, box_scroll;
     char **comp;             /* completion candidates (commands.c) */
     int ncomp, comp_at, comp_start;
     /* key sequences */
@@ -455,6 +461,8 @@ Font *font_open(SDL_Renderer *ren, const char *family, double points, float dens
 void font_close(Font *f);
 void font_shutdown(void);
 int font_height(Font *f);
+int font_ascent(Font *f);
+float font_em(Font *f);
 int font_width(Font *f, const char *s);
 void font_fit(Font *f, char *s, int maxw);         /* ellipsis; s needs 3 spare bytes */
 void font_draw(Font *f, float x, float y, const char *s, uint32_t rgb);   /* y = top */
@@ -468,7 +476,6 @@ int ui_bar_height(Window *w);
 int ui_tabbar_height(Window *w);
 void ui_draw_overlays(Window *w, uint64_t now);
 void ui_draw_notes(Window *w, View *v, int top);
-void ui_draw_comment(Window *w, const char *text);
 void ui_draw_help(Window *w);
 
 /* ---------- utilities (ui.c) ---------- */
@@ -478,6 +485,26 @@ void *xmalloc(size_t n);
 void *xcalloc(size_t n, size_t size);
 void *xrealloc(void *p, size_t n);
 char *xstrdup(const char *s);
+/* math.c: "$...$" in comments, typeset by pdflatex in the background */
+typedef enum { MATH_PENDING, MATH_READY, MATH_FAILED } MathStatus;
+typedef struct {
+    SDL_Texture *tex;        /* white, tinted with SDL_SetTextureColorMod */
+    int w, h, baseline;      /* pixels; baseline from the top */
+    const char *error;       /* MATH_FAILED: the LaTeX error, valid until the next math_get */
+} MathImage;
+MathStatus math_get(SDL_Renderer *ren, const char *src, size_t len, bool display, float scale, MathImage *out);
+bool math_poll(void);                                     /* true when a formula finished */
+bool math_busy(void);
+void math_forget_renderer(SDL_Renderer *ren);
+void math_shutdown(void);
+
+/* comment.c: comments with equations, shown and edited in a box */
+void comment_draw(Window *w, const char *text);          /* the comment under the cursor */
+void comment_editor_open(Window *w, int page, PRect anchor);
+bool comment_editor_key(Window *w, const char *tok);    /* false: not handled */
+void comment_editor_insert(Window *w, const char *text); /* typed text */
+void comment_editor_draw(Window *w);
+
 /* export.c */
 int export_write(Doc *d, FILE *f, int *ncomments);       /* Markdown; returns highlights */
 void export_notes(Window *w, View *v, const char *arg, bool force);

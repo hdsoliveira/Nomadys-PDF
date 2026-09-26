@@ -92,7 +92,7 @@ Everything by keyboard. Highlights are standard PDF annotations: other readers
 | `v` | text cursor (blinking): `h j k l w b 0 $` move |
 | then `v` | start/stop selecting text |
 | then `C` `V` `B` `N` `M` | highlight in pastel yellow / red / green / pink / blue (`highlight_colors` in the config) |
-| then `c` | highlight (yellow) and type a comment (`Enter` saves) |
+| then `c` | highlight (yellow) and write a comment in a box next to it (see below) |
 | `Ctrl-v` | free cursor, for figures and areas: `h j k l` move, `w b J K` (or `Ctrl-h/j/k/l`) move faster |
 | then `v`, `C` `V` `B` `N` `M` / `c` | select a rectangle, highlight it in a colour / with a comment |
 | `c` on a highlight | edit its comment (shown in a box while the cursor is on it) |
@@ -101,6 +101,36 @@ Everything by keyboard. Highlights are standard PDF annotations: other readers
 | `Esc` | cancel the selection, then leave the cursor |
 
 Highlights with a comment get a small dot in their corner.
+
+**Comments with equations.** The comment box opens right next to the
+highlight. Write plain text; anything between `$...$` is an equation, typeset
+by LaTeX as you write, and `$$...$$` is an equation on its own line:
+
+```
+Neo-Hookean: $W = \frac{\mu}{2}(I_1 - 3)$ with $\mu = G$
+$$\sigma = E\,\varepsilon$$
+```
+
+| Key in the box | Action |
+|---|---|
+| `Enter` | save |
+| `Shift-Enter` | new line |
+| `Esc` | cancel (the comment stays as it was) |
+| arrows, `Home` `End` | move; a formula shows its source while the cursor is inside it |
+| `Backspace` `Del` `Ctrl-w` `Ctrl-u` | delete a character / the word before / everything |
+| `Ctrl-v` | paste |
+
+`\$` is a literal dollar. Errors are shown under the text ("LaTeX: Undefined
+control sequence."). The formula is typeset by `pdflatex` (TeX Live) with
+`amsmath` and `amssymb`, in the background, and cached in
+`~/.cache/nomadys-pdf/math/`, so each formula is typeset only once. Your own
+macros go in `~/.config/nomadys-pdf/math.tex` (e.g.
+`\newcommand{\R}{\mathbb{R}}`). Without TeX Live, comments still work and
+formulas stay as written.
+
+The comment is stored in the PDF as the text you typed, so other readers show
+`$\sigma = E\varepsilon$` as is, and `:export` gives Markdown that Obsidian
+and similar apps render with the equations.
 
 **Export to Markdown.** `:export` writes every highlight and comment, plus the
 marks, to `paper-notes.md` next to `paper.pdf` (or `:export name.md`; a
@@ -275,6 +305,8 @@ One feature per file in `src/`; `nomadys.h` has the shared types and a module ma
 | `ipc.c` | socket for VimTeX requests, inotify for auto-reload |
 | `print.c` | printing through CUPS (`lp`, `lpstat`) |
 | `export.c` | `:export`: highlights and comments to Markdown |
+| `comment.c` | comment box: layout of text and equations, editing |
+| `math.c` | equations: `pdflatex` in the background, cache, textures |
 | `links.c` | link hints (`f`), reference preview (`F`), clicking links |
 | `panel.c` | the marks / notes / contents panel |
 | `font.c` | UI text through fontconfig and FreeType |

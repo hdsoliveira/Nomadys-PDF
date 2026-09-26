@@ -243,59 +243,15 @@ void ui_draw_overlays(Window *w, uint64_t now)
         preview_draw(w);
     if (cfg.mode_indicator)
         draw_mode(w);
-    if (w->mode == MODE_PROMPT)
+    if (w->mode == MODE_PROMPT && w->prompt_box)
+        comment_editor_draw(w);
+    else if (w->mode == MODE_PROMPT)
         draw_prompt(w);
     else if (now < w->msg_until && w->msg[0])
         draw_message(w);
 }
 
 /* Word-wrapped comment box at the bottom of the window. */
-void ui_draw_comment(Window *w, const char *text)
-{
-    const Theme *t = wtheme(w);
-    int p = pad(w), lh = font_height(w->font) + p / 2;
-    int bw = SDL_min(w->W - 4 * p, (int)(640 * w->density)), maxw = bw - 2 * p;
-    char lines[8][256];
-    int n = 0;
-    const char *s = text;
-    while (*s && n < 8) {
-        char cur[256] = "";
-        const char *last_space = NULL, *start = s;
-        size_t len = 0;
-        while (*s && *s != '\n' && len < sizeof cur - 4) {
-            const char *c = s;
-            utf8_next(&s);
-            memcpy(cur + len, c, (size_t)(s - c));
-            len += (size_t)(s - c);
-            cur[len] = 0;
-            if (*c == ' ')
-                last_space = s;
-            if (font_width(w->font, cur) > maxw) {
-                if (last_space && last_space > start) {
-                    len -= (size_t)(s - last_space);
-                    s = last_space;
-                } else {
-                    len -= (size_t)(s - c);
-                    s = c;
-                }
-                cur[len] = 0;
-                break;
-            }
-        }
-        if (*s == '\n')
-            s++;
-        snprintf(lines[n++], sizeof lines[0], "%s", cur);
-        if (len == 0 && *s)
-            utf8_next(&s); /* a single glyph wider than the box */
-    }
-    int bh = n * lh + p;
-    float x = (w->W - bw) / 2.0f, y = (float)(w->H - ui_bar_height(w) - 2 * p - bh);
-    ui_fill(w, x, y, (float)bw, (float)bh, t->comment_bg, 245);
-    ui_fill(w, x, y, 3 * w->density, (float)bh, t->comment_marker, 255);
-    for (int i = 0; i < n; i++)
-        font_draw(w->font, x + p, y + p / 2.0f + i * lh, lines[i], t->comment_fg);
-}
-
 /* A small corner marker on highlights that carry a comment. */
 void ui_draw_notes(Window *w, View *v, int top)
 {

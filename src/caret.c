@@ -272,6 +272,7 @@ static bool edit_note_comment(Window *w, View *v)
         return false;
     char *old = note_comment(v->doc, page, note);
     prompt_open(w, "comment: ", old ? old : "", comment_done_edit, (page << 16) | note);
+    comment_editor_open(w, page, v->doc->slots[page].notes[note].r);
     free(old);
     return true;
 }
@@ -280,8 +281,10 @@ void caret_mark(Window *w, View *v, bool comment, uint32_t color)
 {
     v->mark_color = color;
     if (v->selecting) {
-        if (comment)
+        if (comment) {
             prompt_open(w, "comment: ", "", comment_done_selection, 0);
+            comment_editor_open(w, v->caret.page, box(v, v->caret));
+        }
         else
             highlight_selection(w, v, NULL);
     } else if (!(comment && edit_note_comment(w, v))) {
@@ -411,8 +414,10 @@ void area_mark(Window *w, View *v, bool comment, uint32_t color)
         ui_message(w, "empty area: move the cursor after v");
         return;
     }
-    if (comment)
+    if (comment) {
         prompt_open(w, "comment: ", "", area_done, 0);
+        comment_editor_open(w, v->area_page, r);
+    }
     else
         area_done(w, NULL);
 }
@@ -482,7 +487,7 @@ void cursor_draw(Window *w, View *v, int top, bool blink_on)
     if (cursor_note(w, v, &page, &note)) {
         char *text = note_comment(v->doc, page, note);
         if (text && *text)
-            ui_draw_comment(w, text);
+            comment_draw(w, text);
         free(text);
     }
 }

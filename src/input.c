@@ -262,6 +262,7 @@ void prompt_open(Window *w, const char *label, const char *initial, PromptFn don
     w->cmdlen = (int)strlen(w->cmd);
     w->prompt_done = done;
     w->prompt_arg = arg;
+    w->prompt_box = false;
     w->redraw = true;
 }
 
@@ -285,7 +286,7 @@ static void prompt_special(Window *w, const char *tok)
     command_complete_reset(w);
     if (!strcmp(tok, "<Esc>")) {
         w->mode = w->prompt_return;
-    } else if (!strcmp(tok, "<Enter>")) {
+    } else if (!strcmp(tok, "<Enter>") || !strcmp(tok, "<S-Enter>")) {
         w->mode = w->prompt_return;
         char text[CMD_MAX];
         snprintf(text, sizeof text, "%s", w->cmd);
@@ -638,6 +639,10 @@ void input_expire(uint64_t now)
 
 void input_token(Window *w, const char *tok)
 {
+    if (w->mode == MODE_PROMPT && w->prompt_box) { /* the comment box */
+        comment_editor_key(w, tok);
+        return;
+    }
     if (w->mode == MODE_FORM || w->mode == MODE_PROMPT) {
         const char *text = !strcmp(tok, "<lt>") ? "<" : tok;
         w->redraw = true;
@@ -799,6 +804,19 @@ int help_lines(HelpLine **out)
         HelpLine *l = help_add(&lines, &n, &cap);
         command_describe(i, l->keys, sizeof l->keys, &l->text);
     }
+    static const struct { const char *keys, *text; } box[] = {
+        {"$...$", "an equation, typeset by LaTeX as you write"}, {"$$...$$", "an equation on its own line"},
+        {"Enter", "save"}, {"Shift-Enter", "new line"}, {"Esc", "cancel"},
+        {"arrows Home End", "move (a formula shows its source with the cursor inside)"},
+        {"Ctrl-w Ctrl-u Ctrl-v", "delete a word / delete everything / paste"},
+    };
+    snprintf(help_add(&lines, &n, &cap)->keys, sizeof lines->keys, "Comment box (c)");
+    lines[n - 1].header = true;
+    for (size_t i = 0; i < SDL_arraysize(box); i++) {
+        HelpLine *l = help_add(&lines, &n, &cap);
+        snprintf(l->keys, sizeof l->keys, "%s", box[i].keys);
+        l->text = box[i].text;
+    }
     snprintf(help_add(&lines, &n, &cap)->keys, sizeof lines->keys, "Forms (inside a field)");
     lines[n - 1].header = true;
     for (size_t i = 0; i < SDL_arraysize(form); i++) {
@@ -822,6 +840,8 @@ bool input_key_event(Window *w, const SDL_KeyboardEvent *e)
     char tok[TOKEN_LEN];
     if ((e->mod & SDL_KMOD_CTRL) && e->key >= 32 && e->key < 127) {
         snprintf(tok, sizeof tok, "<C-%c>", (char)e->key);
+    } else if ((e->key == SDLK_RETURN || e->key == SDLK_KP_ENTER) && (e->mod & SDL_KMOD_SHIFT)) {
+        snprintf(tok, sizeof tok, "<S-Enter>");
     } else if (e->key == SDLK_TAB) {
         snprintf(tok, sizeof tok, (e->mod & SDL_KMOD_SHIFT) ? "<S-Tab>" : "<Tab>");
     } else {
@@ -840,6 +860,11 @@ void input_text_event(Window *w, const char *text)
 {
     if (w->mode == MODE_FORM) {
         form_text(w, text);
+        w->redraw = true;
+        return;
+    }
+    if (w->mode == MODE_PROMPT && w->prompt_box) {
+        comment_editor_insert(w, text);
         w->redraw = true;
         return;
     }

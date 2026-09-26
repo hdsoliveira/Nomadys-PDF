@@ -325,6 +325,7 @@ void panel_rename(Window *w)
     } else if (w->panel_tab == PANEL_NOTES) {
         char *c = note_comment(d, it->page, it->note);
         prompt_open(w, "comment: ", c ? c : "", renamed, w->sel);
+        comment_editor_open(w, -1, (PRect){0}); /* centred, over the panel */
         free(c);
     }
 }
