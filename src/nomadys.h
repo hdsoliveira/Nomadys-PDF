@@ -50,6 +50,7 @@ typedef struct {
     uint32_t panel_bg, panel_fg, panel_selected_bg, panel_selected_fg, panel_header;
     uint32_t comment_bg, comment_fg, comment_marker;
     uint32_t selection, search_match, caret, form_focus;
+    uint32_t mode_normal, mode_cursor, mode_visual, mode_area, mode_insert, mode_command; /* mode badge */
     uint32_t page_bg, page_fg;           /* dark mode: page paper and ink colours */
     uint32_t shadow;                     /* soft shadow around pages */
 } Theme;
@@ -61,6 +62,7 @@ typedef struct {
     bool subpixel_text;
     bool show_tabs;
     bool page_shadow;        /* draw a soft shadow around pages */
+    bool mode_indicator;     /* small coloured badge with the current mode */
     int dark_images;         /* DARK_IMAGES_*: how dark mode treats images */
     bool restore_position;   /* reopen a file where it was left */
     uint32_t highlights[5];  /* colours of new highlights for C V B N M, 0xRRGGBB */
@@ -351,6 +353,7 @@ int input_wait_ms(uint64_t now);                           /* pending ambiguous 
 void input_expire(uint64_t now);
 void prompt_open(Window *w, const char *label, const char *initial, PromptFn done, int arg);
 bool prompt_uses_document(Window *w);
+const char *prompt_kind(Window *w);                     /* COMMAND, SEARCH, COMMENT, EDIT */
 void scroll(Window *w, double dx, double dy);
 void goto_page(Window *w, View *v, int page);            /* a jump: Ctrl-o returns */
 

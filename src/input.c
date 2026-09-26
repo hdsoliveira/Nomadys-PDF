@@ -233,6 +233,15 @@ static void a_search(Window *w, View *v, int c, const char *a)
 
 /* Whether the open prompt's action refers to the document (a comment, a mark
  * name): such a prompt is cancelled when the document is reloaded. */
+const char *prompt_kind(Window *w)
+{
+    if (w->prompt_done == command_run)
+        return "COMMAND";
+    if (w->prompt_done == run_search)
+        return "SEARCH";
+    return !strncmp(w->prompt_label, "comment", 7) ? "COMMENT" : "EDIT";
+}
+
 bool prompt_uses_document(Window *w)
 {
     return w->mode == MODE_PROMPT && w->prompt_done != command_run && w->prompt_done != run_search;

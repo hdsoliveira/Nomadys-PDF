@@ -192,6 +192,41 @@ void ui_draw_help(Window *w)
     free(lines);
 }
 
+/* The current mode, as a small coloured badge in the bottom-left corner. */
+static void draw_mode(Window *w)
+{
+    const Theme *t = wtheme(w);
+    View *v = cur_view(w);
+    const char *label = "NORMAL";
+    uint32_t color = t->mode_normal;
+    switch (w->mode) {
+    case MODE_NORMAL: break;
+    case MODE_CARET:
+        label = v->selecting ? "VISUAL" : "CURSOR";
+        color = v->selecting ? t->mode_visual : t->mode_cursor;
+        break;
+    case MODE_AREA:
+        label = v->area_selecting ? "VISUAL" : "AREA";
+        color = v->area_selecting ? t->mode_visual : t->mode_area;
+        break;
+    case MODE_FORM: label = "INSERT", color = t->mode_insert; break;
+    case MODE_PANEL: label = "PANEL", color = t->tab_accent; break;
+    case MODE_HELP: label = "HELP", color = t->tab_accent; break;
+    case MODE_PROMPT:
+        label = prompt_kind(w);
+        color = !strcmp(label, "COMMAND") || !strcmp(label, "SEARCH") ? t->mode_command : t->mode_insert;
+        break;
+    }
+    int p = pad(w), h = font_height(w->font) + p / 2, tw = font_width(w->font, label);
+    float y = (float)(w->H - p - h);
+    if (w->mode == MODE_PROMPT) /* above the prompt line and its completions */
+        y -= ui_bar_height(w) * (w->ncomp > 1 ? 2 : 1);
+    /* dark text on light colours, light text on dark ones */
+    int lum = (int)(((color >> 16) & 0xFF) * 299 + ((color >> 8) & 0xFF) * 587 + (color & 0xFF) * 114) / 1000;
+    ui_fill(w, (float)p, y, (float)(tw + p), (float)h, color, 220);
+    font_draw(w->font, p + p / 2.0f, y + p / 4.0f, label, lum > 150 ? 0x1E1E1E : 0xFAFAFA);
+}
+
 void ui_draw_overlays(Window *w, uint64_t now)
 {
     if (w->show_tabs || now < w->tabs_flash_until)
@@ -200,6 +235,8 @@ void ui_draw_overlays(Window *w, uint64_t now)
         panel_draw(w);
     if (w->mode == MODE_HELP)
         ui_draw_help(w);
+    if (cfg.mode_indicator)
+        draw_mode(w);
     if (w->mode == MODE_PROMPT)
         draw_prompt(w);
     else if (now < w->msg_until && w->msg[0])

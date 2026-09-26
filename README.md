@@ -34,6 +34,12 @@ nomadys-pdf file.pdf [other.pdf ...]    # each file opens in a tab
 Press `\c` for a help screen with every key (`\c` again or `Esc` closes it).
 It is generated from the keymaps in `input.c`, so it is always up to date.
 
+A small coloured badge in the bottom-left corner shows the mode: `NORMAL`,
+`CURSOR`, `VISUAL` (selecting), `AREA`, `INSERT` (filling a form field),
+`COMMAND`, `SEARCH`, `COMMENT`, `PANEL`, `HELP`. Its colours come from the theme
+(`mode_normal`, `mode_cursor`, `mode_visual`, `mode_area`, `mode_insert`,
+`mode_command`); `mode_indicator = false` hides it.
+
 ### Reading
 
 | Key | Action |

@@ -17,6 +17,7 @@ Config cfg = {
     .subpixel_text = false,
     .show_tabs = false,
     .page_shadow = true,
+    .mode_indicator = true,
     .restore_position = true,
     .highlights = {0xFFEE93, 0xFF9E9E, 0xA8E6A3, 0xFFB3DE, 0xA7C7F2}, /* pastel yellow, red, green, pink, blue */
     .zoom = 0,
@@ -34,6 +35,8 @@ Config cfg = {
         .panel_selected_fg = 0xFFFFFF, .panel_header = 0x8A8A8A,
         .comment_bg = 0xFFF8C4, .comment_fg = 0x222222, .comment_marker = 0xE64B35,
         .selection = 0x3C8CE7, .search_match = 0xFF9D00, .caret = 0xE64B35, .form_focus = 0x4DBBD5,
+        .mode_normal = 0x7A7A7A, .mode_cursor = 0x3C8CE7, .mode_visual = 0x8E5CC7, .mode_area = 0xE07A2E,
+        .mode_insert = 0x3E9E4F, .mode_command = 0xC9A227,
         .page_bg = 0xFFFFFF, .page_fg = 0x000000, .shadow = 0x000000,
     },
     .dark_theme = {
@@ -46,6 +49,8 @@ Config cfg = {
         .panel_selected_fg = 0xFFFFFF, .panel_header = 0x7A7A7A,
         .comment_bg = 0x2B2A1E, .comment_fg = 0xF2EBC0, .comment_marker = 0xF39B7F,
         .selection = 0x3C8CE7, .search_match = 0xFF9D00, .caret = 0xF39B7F, .form_focus = 0x4DBBD5,
+        .mode_normal = 0x6A6A6A, .mode_cursor = 0x5AA2F0, .mode_visual = 0xB08AE0, .mode_area = 0xF39B5F,
+        .mode_insert = 0x6CC47E, .mode_command = 0xE3C25A,
         .page_bg = 0x1C1C1C, .page_fg = 0xE4E4E4, .shadow = 0x000000,
     },
 };
@@ -66,6 +71,8 @@ static const struct { const char *name; size_t off; } theme_keys[] = {
     COLOR(panel_header),
     COLOR(comment_bg), COLOR(comment_fg), COLOR(comment_marker),
     COLOR(selection), COLOR(search_match), COLOR(caret), COLOR(form_focus),
+    COLOR(mode_normal), COLOR(mode_cursor), COLOR(mode_visual), COLOR(mode_area), COLOR(mode_insert),
+    COLOR(mode_command),
     COLOR(page_bg), COLOR(page_fg), COLOR(shadow),
 };
 
@@ -149,6 +156,8 @@ static bool set_global_key(const char *k, const char *v)
             cfg.dark_images = DARK_IMAGES_INVERT;
         else
             return false;
+    } else if (!strcmp(k, "mode_indicator")) {
+        cfg.mode_indicator = parse_bool(v);
     } else if (!strcmp(k, "page_shadow"))
         cfg.page_shadow = parse_bool(v);
     else if (!strcmp(k, "show_tabs"))
