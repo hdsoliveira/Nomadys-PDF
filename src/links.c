@@ -345,11 +345,30 @@ void hints_key(Window *w, const char *tok)
         follow(w, v, &l);
 }
 
+/* Mixes two colours, f = 0 gives a, 1 gives b. */
+static uint32_t mix(uint32_t a, uint32_t b, float f)
+{
+    uint32_t out = 0;
+    for (int sh = 0; sh <= 16; sh += 8) {
+        float ca = (float)((a >> sh) & 0xFF), cb = (float)((b >> sh) & 0xFF);
+        out |= (uint32_t)(ca + (cb - ca) * f + 0.5f) << sh;
+    }
+    return out;
+}
+
 void hints_draw(Window *w)
 {
     View *v = cur_view(w);
     const Theme *t = wtheme(w);
     int top = top_of(w), p = (int)(3 * w->density), n = (int)strlen(w->hint_typed);
+    /* letters in black or white, whichever reads better on the badge */
+    uint32_t bg = t->search_match;
+    int lum = (int)(((bg >> 16) & 0xFF) * 299 + ((bg >> 8) & 0xFF) * 587 + (bg & 0xFF) * 114) / 1000;
+    uint32_t ink = lum > 140 ? 0x101010 : 0xFFFFFF;
+    if (lum <= 140) /* mid-tone badges (gruvbox light): darken so white reads well */
+        bg = mix(bg, 0x000000, 0.4f);
+    uint32_t typed = mix(ink, bg, 0.55f);
+    int fh = font_height(w->font);
     for (int i = 0; i < w->nlinks; i++) {
         Link *l = &w->links[i];
         if (strncmp(l->label, w->hint_typed, n))
@@ -357,16 +376,15 @@ void hints_draw(Window *w)
         float x0, y0, x1, y1;
         page_to_screen(v, l->page, l->r.l, l->r.t, &x0, &y0, top);
         page_to_screen(v, l->page, l->r.r, l->r.b, &x1, &y1, top);
-        float x = SDL_min(x0, x1), y = SDL_min(y0, y1);
-        ui_fill(w, x, y, SDL_fabsf(x1 - x0), SDL_fabsf(y1 - y0), t->search_match, 45);
-        const char *rest = l->label + n;
+        float x = SDL_min(x0, x1), y = SDL_min(y0, y1), by = y - fh * 0.6f;
+        ui_fill(w, x, y, SDL_fabsf(x1 - x0), SDL_fabsf(y1 - y0), bg, 45);
         int tw = font_width(w->font, l->label);
-        ui_fill(w, x - p, y - font_height(w->font) * 0.6f, (float)(tw + 2 * p), (float)font_height(w->font),
-                t->search_match, 240);
+        ui_fill(w, x - p - 1, by - 1, (float)(tw + 2 * p + 2), (float)fh + 2, ink, 255); /* thin outline */
+        ui_fill(w, x - p, by, (float)(tw + 2 * p), (float)fh, bg, 255);
         char done[4];
         snprintf(done, sizeof done, "%.*s", n, l->label);
-        font_draw(w->font, x, y - font_height(w->font) * 0.6f, done, 0x8A6A2A); /* typed part, dimmed */
-        font_draw(w->font, x + font_width(w->font, done), y - font_height(w->font) * 0.6f, rest, 0x1E1E1E);
+        font_draw(w->font, x, by, done, typed); /* typed part, dimmed */
+        font_draw(w->font, x + font_width(w->font, done), by, l->label + n, ink);
     }
 }
 
