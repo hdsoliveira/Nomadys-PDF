@@ -56,7 +56,7 @@ static Window *window_new(View *v)
         view_free(v);
         return NULL;
     }
-    Window *w = calloc(1, sizeof *w);
+    Window *w = xcalloc(1, sizeof *w);
     w->win = SDL_CreateWindow("Nomadys-PDF", 900, 1100, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     if (!w->win) {
         fprintf(stderr, "nomadys-pdf: %s\n", SDL_GetError());
@@ -325,6 +325,7 @@ static void reload_due(uint64_t now, int *wait)
             d->reload_at = 0; /* our own save, or the file is gone for now */
             continue;
         }
+        bool dropped = d->modified; /* edits not yet saved are lost with the old version */
         if (!doc_reload(d)) {
             d->reload_at = ++d->reload_tries < 40 ? now + 250 : 0;
             continue;
@@ -336,8 +337,19 @@ static void reload_due(uint64_t now, int *wait)
                 if (w->tabs[t]->doc != d)
                     continue;
                 view_doc_reloaded(w->tabs[t]);
-                if (t == w->cur && w->mode != MODE_HELP && w->mode != MODE_PROMPT)
+                if (t != w->cur)
+                    continue;
+                if (prompt_uses_document(w)) {
+                    command_complete_reset(w);
+                    ui_message(w, "PDF reloaded: edit cancelled");
                     w->mode = MODE_NORMAL;
+                } else if (w->mode != MODE_HELP && w->mode != MODE_PROMPT) {
+                    w->mode = MODE_NORMAL;
+                } else if (w->mode == MODE_PROMPT) {
+                    w->prompt_return = MODE_NORMAL; /* e.g. ':' typed from the panel */
+                }
+                if (dropped)
+                    ui_message_long(w, 6000, "PDF changed on disk: your unsaved edits were dropped");
             }
             w->redraw = true;
         }
@@ -419,7 +431,7 @@ static void autosave(uint64_t now, int *wait)
         return;
     for (int i = 0; i < ndocs; i++) {
         Doc *d = docs[i];
-        if (!d->modified || d->focus_page >= 0)
+        if (!d->modified || d->save_failed || d->focus_page >= 0)
             continue;
         uint64_t due = d->changed_at + (uint64_t)cfg.autosave_delay_ms;
         if (now < due) {
@@ -429,9 +441,9 @@ static void autosave(uint64_t now, int *wait)
         }
         char err[512];
         if (!doc_save(d, err, sizeof err)) {
-            d->changed_at = now + 10000; /* retry later */
+            d->save_failed = true; /* say it once; try again after the next change */
             for (int k = 0; k < nwindows; k++)
-                ui_message(windows[k], "%s", err);
+                ui_message_long(windows[k], 5000, "%s", err);
         }
     }
 }
@@ -474,6 +486,11 @@ static bool script_step(void)
         snprintf(path, sizeof path, "%s/%.*s.bmp", script_dir, (int)strlen(tok) - 7, tok + 6);
         capture_path = path;
         draw(w, SDL_GetTicks());
+    } else if (!strncmp(tok, "<resize:", 8)) {
+        int rw = 0, rh = 0;
+        if (sscanf(tok + 8, "%d,%d", &rw, &rh) == 2)
+            SDL_SetWindowSize(w->win, SDL_max(1, rw), SDL_max(1, rh));
+        w->redraw = true;
     } else if (!strncmp(tok, "<wait:", 6)) {
         uint64_t until = SDL_GetTicks() + (uint64_t)atoi(tok + 6);
         while (SDL_GetTicks() < until) {
@@ -590,7 +607,7 @@ int main(int argc, char **argv)
         SDL_Event e = {0};
         e.type = ipc_event;
         e.user.code = IPC_REQUEST;
-        e.user.data1 = strdup(request);
+        e.user.data1 = xstrdup(request);
         SDL_PushEvent(&e);
     }
     blink_at = SDL_GetTicks() + BLINK_MS;
@@ -664,6 +681,7 @@ int main(int argc, char **argv)
     while (ndocs)
         doc_unref(docs[0]);
     ipc_stop();
+    font_shutdown();
     SDL_Quit();
     FPDF_DestroyLibrary();
     return 0;

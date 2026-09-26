@@ -43,7 +43,7 @@ static void c_write_quit(Window *w, View *v, const char *a)
 static char *expand_home(const char *path)
 {
     const char *home = getenv("HOME");
-    char *out = malloc(strlen(path) + (home ? strlen(home) : 0) + 1);
+    char *out = xmalloc(strlen(path) + (home ? strlen(home) : 0) + 1);
     if (path[0] == '~' && home)
         sprintf(out, "%s%s", home, path + 1);
     else
@@ -177,8 +177,8 @@ static void add_candidate(Window *w, const char *s)
     for (int i = 0; i < w->ncomp; i++)
         if (!strcmp(w->comp[i], s))
             return;
-    w->comp = realloc(w->comp, (w->ncomp + 1) * sizeof *w->comp);
-    w->comp[w->ncomp++] = strdup(s);
+    w->comp = xrealloc(w->comp, (w->ncomp + 1) * sizeof *w->comp);
+    w->comp[w->ncomp++] = xstrdup(s);
 }
 
 static bool is_pdf_or_dir(const char *p)
@@ -208,7 +208,7 @@ static void build_candidates(Window *w)
     const char *arg = space + strspn(space, " ");
     w->comp_start = (int)(arg - line);
     char *prefix = expand_home(arg);
-    char *pattern = malloc(strlen(prefix) + 2);
+    char *pattern = xmalloc(strlen(prefix) + 2);
     sprintf(pattern, "%s*", prefix);
     glob_t g;
     if (glob(pattern, GLOB_MARK, NULL, &g) == 0)

@@ -41,7 +41,7 @@ static char *find_font(const char *family, int *index)
     FcChar8 *file = NULL;
     char *out = NULL;
     if (FcPatternGetString(match, FC_FILE, 0, &file) == FcResultMatch)
-        out = strdup((const char *)file);
+        out = xstrdup((const char *)file);
     if (FcPatternGetInteger(match, FC_INDEX, 0, index) != FcResultMatch)
         *index = 0;
     FcPatternDestroy(match);
@@ -56,7 +56,7 @@ Font *font_open(SDL_Renderer *ren, const char *family, double points, float dens
     char *file = find_font(family, &index);
     if (!file)
         file = find_font("monospace", &index);
-    Font *f = calloc(1, sizeof *f);
+    Font *f = xcalloc(1, sizeof *f);
     f->ren = ren;
     if (!file || FT_New_Face(ft, file, index, &f->face)) {
         free(file);
@@ -70,7 +70,7 @@ Font *font_open(SDL_Renderer *ren, const char *family, double points, float dens
     f->ascent = (int)(f->face->size->metrics.ascender >> 6);
     f->height = (int)((f->face->size->metrics.ascender - f->face->size->metrics.descender) >> 6);
     f->cap = 256;
-    f->glyphs = calloc(f->cap, sizeof *f->glyphs);
+    f->glyphs = xcalloc(f->cap, sizeof *f->glyphs);
     return f;
 }
 
@@ -101,7 +101,7 @@ static void grow(Font *f)
     Glyph *old = f->glyphs;
     int oldcap = f->cap;
     f->cap *= 2;
-    f->glyphs = calloc(f->cap, sizeof *f->glyphs);
+    f->glyphs = xcalloc(f->cap, sizeof *f->glyphs);
     for (int i = 0; i < oldcap; i++)
         if (old[i].cp)
             *slot(f, old[i].cp) = old[i];
@@ -128,7 +128,7 @@ static Glyph *glyph(Font *f, unsigned cp)
     g->w = (int)s->bitmap.width;
     g->h = (int)s->bitmap.rows;
     if (g->w > 0 && g->h > 0 && s->bitmap.pixel_mode == FT_PIXEL_MODE_GRAY) {
-        uint32_t *px = malloc((size_t)g->w * g->h * 4);
+        uint32_t *px = xmalloc((size_t)g->w * g->h * 4);
         for (int y = 0; y < g->h; y++)
             for (int x = 0; x < g->w; x++)
                 px[y * g->w + x] = ((uint32_t)s->bitmap.buffer[y * s->bitmap.pitch + x] << 24) | 0xFFFFFF;
@@ -177,4 +177,13 @@ void font_fit(Font *f, char *s, int maxw)
         while (n > 0 && ((unsigned char)s[n] & 0xC0) == 0x80);
         strcpy(s + n, "\u2026");
     }
+}
+
+/* Releases FreeType and fontconfig's caches at exit. */
+void font_shutdown(void)
+{
+    if (ft)
+        FT_Done_FreeType(ft);
+    ft = NULL;
+    FcFini();
 }

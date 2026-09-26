@@ -61,6 +61,7 @@ static void ffi_on_change(FPDF_FORMFILLINFO *info)
 {
     Doc *d = doc_of(info);
     d->modified = true;
+    d->save_failed = false;
     d->changed_at = SDL_GetTicks();
 }
 
@@ -118,9 +119,9 @@ static void attach(Doc *d, FPDF_DOCUMENT pdf)
     d->nloaded = 0;
     d->notes_scanned = 0;
     d->npages = FPDF_GetPageCount(pdf);
-    d->pw = calloc(d->npages ? d->npages : 1, sizeof *d->pw);
-    d->ph = calloc(d->npages ? d->npages : 1, sizeof *d->ph);
-    d->slots = calloc(d->npages ? d->npages : 1, sizeof *d->slots);
+    d->pw = xcalloc(d->npages ? d->npages : 1, sizeof *d->pw);
+    d->ph = xcalloc(d->npages ? d->npages : 1, sizeof *d->ph);
+    d->slots = xcalloc(d->npages ? d->npages : 1, sizeof *d->slots);
     for (int i = 0; i < d->npages; i++) {
         FS_SIZEF s = {612, 792};
         FPDF_GetPageSizeByIndexF(pdf, i, &s);
@@ -181,6 +182,10 @@ static void detach(Doc *d)
 bool doc_reload(Doc *d)
 {
     FPDF_DOCUMENT pdf = FPDF_LoadDocument(d->path, NULL);
+    if (pdf && FPDF_GetPageCount(pdf) < 1) {
+        FPDF_CloseDocument(pdf); /* half written, or broken: keep the old one */
+        return false;
+    }
     if (!pdf)
         return false; /* still being written */
     detach(d);
@@ -210,6 +215,12 @@ Doc *doc_open(const char *path, char *err, size_t errlen)
         return NULL;
     }
     FPDF_DOCUMENT pdf = FPDF_LoadDocument(real, NULL);
+    if (pdf && FPDF_GetPageCount(pdf) < 1) {
+        FPDF_CloseDocument(pdf);
+        snprintf(err, errlen, "%s: the PDF has no pages", path);
+        free(real);
+        return NULL;
+    }
     if (!pdf) {
         static const char *why[] = {"ok", "unknown error", "cannot open file", "not a PDF or damaged",
                                     "password protected", "unsupported security", "page not found"};
@@ -218,7 +229,7 @@ Doc *doc_open(const char *path, char *err, size_t errlen)
         free(real);
         return NULL;
     }
-    Doc *d = calloc(1, sizeof *d);
+    Doc *d = xcalloc(1, sizeof *d);
     d->path = real;
     d->refs = 1;
     attach(d, pdf);
@@ -295,6 +306,8 @@ static void evict(Doc *d)
 
 FPDF_PAGE doc_page(Doc *d, int i)
 {
+    if (!doc_page_ok(d, i))
+        return NULL;
     PageSlot *s = &d->slots[i];
     s->used = ++use_clock;
     if (s->page)
@@ -313,6 +326,8 @@ FPDF_PAGE doc_page(Doc *d, int i)
 
 FPDF_TEXTPAGE doc_text(Doc *d, int i)
 {
+    if (!doc_page_ok(d, i))
+        return NULL;
     FPDF_PAGE p = doc_page(d, i);
     if (!p)
         return NULL;
@@ -326,6 +341,7 @@ void doc_mark_changed(Doc *d, int page)
     if (page >= 0)
         d->slots[page].version++;
     d->modified = true;
+    d->save_failed = false;
     d->changed_at = SDL_GetTicks();
     need_redraw_all = true;
 }
@@ -378,8 +394,13 @@ static int write_block(FPDF_FILEWRITE *self, const void *data, unsigned long siz
 /* Incremental save to a temporary file, then atomic rename over the original. */
 bool doc_save(Doc *d, char *err, size_t errlen)
 {
+    /* the atomic rename below would replace even a read-only file */
+    if (access(d->path, W_OK) != 0 && errno != ENOENT) {
+        snprintf(err, errlen, "save failed: %s is read-only", strrchr(d->path, '/') + 1);
+        return false;
+    }
     size_t n = strlen(d->path) + 32;
-    char *tmp = malloc(n);
+    char *tmp = xmalloc(n);
     snprintf(tmp, n, "%s.nomadys-XXXXXX", d->path);
     int fd = mkstemp(tmp);
     if (fd < 0) {
@@ -422,7 +443,7 @@ static void add_rect(PageSlot *s, int *cap, PRect r)
 {
     if (s->nimages == *cap) {
         *cap = *cap ? *cap * 2 : 8;
-        s->images = realloc(s->images, *cap * sizeof *s->images);
+        s->images = xrealloc(s->images, *cap * sizeof *s->images);
     }
     s->images[s->nimages++] = r;
 }
@@ -459,6 +480,8 @@ static void collect(PageSlot *s, int *cap, FPDF_PAGEOBJECT o, Mat m, int depth)
  * page is a scan: it is dropped so that dark mode still applies. */
 void doc_page_images(Doc *d, int i)
 {
+    if (!doc_page_ok(d, i))
+        return;
     PageSlot *s = &d->slots[i];
     if (s->images_ready)
         return;
@@ -495,6 +518,8 @@ static int widget_cmp(const void *a, const void *b)
 /* Fillable widgets of a page in reading order (top to bottom, left to right). */
 void doc_page_widgets(Doc *d, int i)
 {
+    if (!doc_page_ok(d, i))
+        return;
     PageSlot *s = &d->slots[i];
     if (s->widgets_ready || !d->form)
         return;
@@ -502,7 +527,7 @@ void doc_page_widgets(Doc *d, int i)
     if (!p)
         return;
     int n = FPDFPage_GetAnnotCount(p);
-    s->widgets = calloc(n ? n : 1, sizeof *s->widgets);
+    s->widgets = xcalloc(n ? n : 1, sizeof *s->widgets);
     for (int k = 0; k < n; k++) {
         FPDF_ANNOTATION a = FPDFPage_GetAnnot(p, k);
         if (!a)
@@ -529,6 +554,8 @@ bool doc_has_forms(Doc *d)
 
 bool doc_focus_widget(Doc *d, int page, int w)
 {
+    if (!doc_page_ok(d, page) || w < 0 || w >= d->slots[page].nwidgets)
+        return false;
     FPDF_PAGE p = doc_page(d, page);
     if (!p)
         return false;
@@ -559,6 +586,8 @@ void doc_kill_focus(Doc *d)
 /* Selectable characters and their line numbers, for caret mode. */
 void doc_page_chars(Doc *d, int i)
 {
+    if (!doc_page_ok(d, i))
+        return;
     PageSlot *s = &d->slots[i];
     if (s->chars_ready)
         return;
@@ -569,8 +598,8 @@ void doc_page_chars(Doc *d, int i)
     if (n < 0)
         n = 0;
     s->nchars = n;
-    s->boxes = calloc(n ? n : 1, sizeof *s->boxes);
-    s->line = calloc(n ? n : 1, sizeof *s->line);
+    s->boxes = xcalloc(n ? n : 1, sizeof *s->boxes);
+    s->line = xcalloc(n ? n : 1, sizeof *s->line);
     int line = -1;
     float lt = 0, lb = 0;
     for (int k = 0; k < n; k++) {

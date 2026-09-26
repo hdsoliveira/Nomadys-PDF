@@ -11,6 +11,9 @@
 /* ---------- text caret ---------- */
 static PageSlot *chars(View *v, int page)
 {
+    static PageSlot none; /* a page that no longer exists has no characters */
+    if (!doc_page_ok(v->doc, page))
+        return &none;
     doc_page_chars(v->doc, page);
     return &v->doc->slots[page];
 }
@@ -235,13 +238,15 @@ static void collect_line(View *v, int page, PRect r, void *p)
     c->page = page;
     if (c->n == c->cap) {
         c->cap = c->cap ? c->cap * 2 : 16;
-        c->quads = realloc(c->quads, c->cap * sizeof *c->quads);
+        c->quads = xrealloc(c->quads, c->cap * sizeof *c->quads);
     }
     c->quads[c->n++] = r;
 }
 
 static void highlight_selection(Window *w, View *v, const char *comment)
 {
+    if (!v->selecting)
+        return; /* e.g. the PDF was reloaded meanwhile */
     MarkCtx c = {.page = -1, .comment = comment, .color = v->mark_color, .doc = v->doc};
     selection_lines(v, collect_line, &c);
     flush_marks(&c);
@@ -307,11 +312,11 @@ void caret_copy(Window *w, View *v)
         if (!tp || last < first)
             continue;
         int n = last - first + 1;
-        unsigned short *u = malloc(((size_t)n + 1) * sizeof *u);
+        unsigned short *u = xmalloc(((size_t)n + 1) * sizeof *u);
         int got = FPDFText_GetText(tp, first, n, u);
         char *s = utf16_to_utf8(u, got > 0 ? got : 0);
         size_t sl = strlen(s);
-        c.buf = realloc(c.buf, c.len + sl + 1);
+        c.buf = xrealloc(c.buf, c.len + sl + 1);
         memcpy(c.buf + c.len, s, sl + 1);
         c.len += sl;
         free(s);

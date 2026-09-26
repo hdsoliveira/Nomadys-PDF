@@ -16,7 +16,7 @@ static PanelItem *add(Window *w, int *cap)
 {
     if (w->nitems == *cap) {
         *cap = *cap ? *cap * 2 : 64;
-        w->items = realloc(w->items, *cap * sizeof *w->items);
+        w->items = xrealloc(w->items, *cap * sizeof *w->items);
     }
     PanelItem *it = &w->items[w->nitems++];
     memset(it, 0, sizeof *it);
@@ -46,7 +46,7 @@ static char *covered_text(Doc *d, int page, Note *n)
             continue;
         char *t = utf16_to_utf8(u, got);
         size_t tl = strlen(t);
-        all = realloc(all, len + tl + 2);
+        all = xrealloc(all, len + tl + 2);
         if (len)
             all[len++] = ' ';
         memcpy(all + len, t, tl + 1);

@@ -20,7 +20,7 @@ static int page_matches(View *v, int page, Match **out)
     while (FPDFText_FindNext(h)) {
         if (n == cap) {
             cap = cap ? cap * 2 : 16;
-            *out = realloc(*out, cap * sizeof **out);
+            *out = xrealloc(*out, cap * sizeof **out);
         }
         (*out)[n++] = (Match){FPDFText_GetSchResultIndex(h), FPDFText_GetSchCount(h)};
     }

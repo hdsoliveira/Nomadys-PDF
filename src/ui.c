@@ -277,6 +277,21 @@ void ui_draw_notes(Window *w, View *v, int top)
     }
 }
 
+/* ---------- memory ---------- */
+static void *checked(void *p)
+{
+    if (!p) {
+        fputs("nomadys-pdf: out of memory\n", stderr);
+        abort();
+    }
+    return p;
+}
+
+void *xmalloc(size_t n) { return checked(malloc(n ? n : 1)); }
+void *xcalloc(size_t n, size_t size) { return checked(calloc(n ? n : 1, size ? size : 1)); }
+void *xrealloc(void *p, size_t n) { return checked(realloc(p, n ? n : 1)); }
+char *xstrdup(const char *s) { return checked(strdup(s)); }
+
 /* ---------- UTF helpers ---------- */
 unsigned utf8_next(const char **s)
 {
@@ -310,7 +325,7 @@ int utf8_to_utf16(const char *s, unsigned short *out, int cap)
 
 char *utf16_to_utf8(const unsigned short *s, int n)
 {
-    char *out = malloc((size_t)n * 4 + 1), *o = out;
+    char *out = xmalloc((size_t)n * 4 + 1), *o = out;
     for (int i = 0; i < n; i++) {
         unsigned c = s[i];
         if (c >= 0xD800 && c < 0xDC00 && i + 1 < n && s[i + 1] >= 0xDC00 && s[i + 1] < 0xE000)

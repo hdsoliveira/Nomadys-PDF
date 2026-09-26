@@ -53,10 +53,10 @@ static char *run_synctex(const char *mode, const char *flag1, const char *arg1, 
         return NULL;
     }
     size_t len = 0, cap = 4096;
-    char *out = malloc(cap);
+    char *out = xmalloc(cap);
     for (;;) {
         if (len + 1024 > cap)
-            out = realloc(out, cap *= 2);
+            out = xrealloc(out, cap *= 2);
         ssize_t r = read(fd[0], out + len, cap - len - 1);
         if (r < 0 && errno == EINTR)
             continue;

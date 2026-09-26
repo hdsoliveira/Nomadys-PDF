@@ -13,6 +13,7 @@
 #include <string.h>
 #include <sys/inotify.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/un.h>
 #include <unistd.h>
 
@@ -58,6 +59,10 @@ static void post(int code, char *text, int wd)
 
 static void read_request(int client)
 {
+    /* a client that connects and stays silent must not block this thread,
+     * which also watches the files for reloads */
+    struct timeval tv = {0, 500000};
+    setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
     char buf[8192];
     size_t len = 0;
     for (;;) {
@@ -70,7 +75,7 @@ static void read_request(int client)
     close(client);
     buf[len] = 0;
     if (len)
-        post(IPC_REQUEST, strdup(buf), 0);
+        post(IPC_REQUEST, xstrdup(buf), 0);
 }
 
 static void read_notify(void)
@@ -80,7 +85,7 @@ static void read_notify(void)
     for (char *p = buf; n > 0 && p < buf + n;) {
         struct inotify_event *ev = (struct inotify_event *)p;
         if (ev->len)
-            post(IPC_FILE, strdup(ev->name), ev->wd);
+            post(IPC_FILE, xstrdup(ev->name), ev->wd);
         p += sizeof *ev + ev->len;
     }
 }

@@ -3,9 +3,9 @@ PDFIUM  := third_party/pdfium
 PREFIX  ?= $(HOME)/.local
 CC      ?= cc
 CFLAGS  ?= -O2 -g
-CFLAGS  += -std=c11 -D_GNU_SOURCE -Wall -Wextra -Wno-unused-parameter \
+override CFLAGS += -std=c11 -D_GNU_SOURCE -Wall -Wextra -Wno-unused-parameter \
            -I$(PDFIUM)/include $(shell pkg-config --cflags sdl3 freetype2 fontconfig)
-LDLIBS  += -L$(PDFIUM)/lib -lpdfium $(shell pkg-config --libs sdl3 freetype2 fontconfig) -lm \
+override LDLIBS += -L$(PDFIUM)/lib -lpdfium $(shell pkg-config --libs sdl3 freetype2 fontconfig) -lm \
            -Wl,-rpath,'$$ORIGIN/$(PDFIUM)/lib:$$ORIGIN/../lib/nomadys-pdf'
 
 SRC := $(wildcard src/*.c)

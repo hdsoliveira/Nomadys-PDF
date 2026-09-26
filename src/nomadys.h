@@ -148,6 +148,7 @@ struct Doc {
     int nloaded;
     int refs;
     bool modified;
+    bool save_failed;        /* autosave waits for the next change to retry */
     uint64_t changed_at;
     FormTimer timers[MAX_TIMERS];
     int next_timer_id;
@@ -165,6 +166,9 @@ struct Doc {
     long long saved_mtime_ns; /* our own last save, not an external change */
 };
 
+/* Every page accessor checks this: a reload can shrink the document under
+ * a pending action that still holds an old page number. */
+static inline bool doc_page_ok(const Doc *d, int i) { return i >= 0 && i < d->npages; }
 Doc *doc_open(const char *path, char *err, size_t errlen);
 void doc_ref(Doc *d);
 void doc_unref(Doc *d);
@@ -345,6 +349,7 @@ void input_text_event(Window *w, const char *text);
 int input_wait_ms(uint64_t now);                           /* pending ambiguous key, or -1 */
 void input_expire(uint64_t now);
 void prompt_open(Window *w, const char *label, const char *initial, PromptFn done, int arg);
+bool prompt_uses_document(Window *w);
 void scroll(Window *w, double dx, double dy);
 void goto_page(Window *w, View *v, int page);            /* a jump: Ctrl-o returns */
 
@@ -415,6 +420,7 @@ void panel_draw(Window *w);
 /* ---------- UI text (font.c) ---------- */
 Font *font_open(SDL_Renderer *ren, const char *family, double points, float density);
 void font_close(Font *f);
+void font_shutdown(void);
 int font_height(Font *f);
 int font_width(Font *f, const char *s);
 void font_fit(Font *f, char *s, int maxw);         /* ellipsis; s needs 3 spare bytes */
@@ -433,6 +439,12 @@ void ui_draw_comment(Window *w, const char *text);
 void ui_draw_help(Window *w);
 
 /* ---------- utilities (ui.c) ---------- */
+/* Allocation that cannot return NULL: out of memory ends the program with a
+ * message instead of undefined behaviour later. */
+void *xmalloc(size_t n);
+void *xcalloc(size_t n, size_t size);
+void *xrealloc(void *p, size_t n);
+char *xstrdup(const char *s);
 int utf8_to_utf16(const char *s, unsigned short *out, int cap);
 char *utf16_to_utf8(const unsigned short *s, int n);
 unsigned utf8_next(const char **s);

@@ -49,6 +49,8 @@ static uint32_t note_color(FPDF_ANNOTATION a)
 
 void notes_page(Doc *d, int page)
 {
+    if (!doc_page_ok(d, page))
+        return;
     PageSlot *s = &d->slots[page];
     if (s->notes_version == s->version + 1)
         return;
@@ -57,7 +59,7 @@ void notes_page(Doc *d, int page)
         return;
     free_notes(s);
     int n = FPDFPage_GetAnnotCount(p);
-    s->notes = calloc(n ? n : 1, sizeof *s->notes);
+    s->notes = xcalloc(n ? n : 1, sizeof *s->notes);
     for (int i = 0; i < n; i++) {
         FPDF_ANNOTATION a = FPDFPage_GetAnnot(p, i);
         if (!a)
@@ -68,7 +70,7 @@ void notes_page(Doc *d, int page)
             Note *nt = &s->notes[s->nnotes++];
             *nt = (Note){.idx = i, .subtype = type, .r = norm(r)};
             size_t nq = FPDFAnnot_CountAttachmentPoints(a);
-            nt->quads = calloc(nq ? nq : 1, sizeof *nt->quads);
+            nt->quads = xcalloc(nq ? nq : 1, sizeof *nt->quads);
             for (size_t q = 0; q < nq; q++) {
                 FS_QUADPOINTSF qp;
                 if (!FPDFAnnot_GetAttachmentPoints(a, q, &qp))
@@ -100,6 +102,8 @@ bool notes_scan(Doc *d, int pages)
 
 int note_at(Doc *d, int page, float x, float y)
 {
+    if (!doc_page_ok(d, page))
+        return -1;
     notes_page(d, page);
     PageSlot *s = &d->slots[page];
     for (int i = s->nnotes - 1; i >= 0; i--) /* topmost first */
@@ -114,7 +118,7 @@ int note_at(Doc *d, int page, float x, float y)
 static void set_string(FPDF_ANNOTATION a, const char *key, const char *text)
 {
     size_t n = strlen(text) * 2 + 2; /* worst case: every byte a UTF-16 unit */
-    unsigned short *u = malloc(n * sizeof *u);
+    unsigned short *u = xmalloc(n * sizeof *u);
     utf8_to_utf16(text, u, (int)n);
     FPDFAnnot_SetStringValue(a, key, u);
     free(u);
@@ -173,6 +177,8 @@ bool note_create_area(Doc *d, int page, PRect r, const char *comment, uint32_t c
 
 static FPDF_ANNOTATION open_note(Doc *d, int page, int note)
 {
+    if (!doc_page_ok(d, page))
+        return NULL;
     notes_page(d, page);
     PageSlot *s = &d->slots[page];
     FPDF_PAGE p = doc_page(d, page);
@@ -187,7 +193,7 @@ char *note_comment(Doc *d, int page, int note)
     unsigned long bytes = FPDFAnnot_GetStringValue(a, "Contents", NULL, 0);
     char *out = NULL;
     if (bytes > 2) {
-        unsigned short *u = malloc(bytes);
+        unsigned short *u = xmalloc(bytes);
         FPDFAnnot_GetStringValue(a, "Contents", u, bytes);
         out = utf16_to_utf8(u, (int)(bytes / 2) - 1);
         free(u);
@@ -209,6 +215,8 @@ bool note_set_comment(Doc *d, int page, int note, const char *comment)
 
 bool note_delete(Doc *d, int page, int note)
 {
+    if (!doc_page_ok(d, page))
+        return false;
     notes_page(d, page);
     PageSlot *s = &d->slots[page];
     FPDF_PAGE p = doc_page(d, page);

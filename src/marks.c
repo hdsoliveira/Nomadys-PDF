@@ -38,7 +38,7 @@ static char *marks_path_for(uint64_t h)
         snprintf(dir, sizeof dir, "%s/nomadys-pdf/marks", xdg);
     else
         snprintf(dir, sizeof dir, "%s/.local/share/nomadys-pdf/marks", home ? home : "/tmp");
-    char *path = malloc(strlen(dir) + 24);
+    char *path = xmalloc(strlen(dir) + 24);
     sprintf(path, "%s/%016llx", dir, (unsigned long long)h);
     return path;
 }

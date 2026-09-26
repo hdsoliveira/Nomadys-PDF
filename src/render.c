@@ -13,7 +13,7 @@ static uint64_t cache_clock;
 
 View *view_new(Doc *d)
 {
-    View *v = calloc(1, sizeof *v);
+    View *v = xcalloc(1, sizeof *v);
     v->doc = d;
     v->fit_width = cfg.zoom <= 0;
     v->dark = cfg.dark;
@@ -22,10 +22,10 @@ View *view_new(Doc *d)
     v->caret.page = -1;
     v->pending_pos = cfg.restore_position ? d->last : (Pos){-1, 0};
     int n = d->npages ? d->npages : 1;
-    v->px = calloc(n, sizeof *v->px);
-    v->py = calloc(n, sizeof *v->py);
-    v->pwpx = calloc(n, sizeof *v->pwpx);
-    v->phpx = calloc(n, sizeof *v->phpx);
+    v->px = xcalloc(n, sizeof *v->px);
+    v->py = xcalloc(n, sizeof *v->py);
+    v->pwpx = xcalloc(n, sizeof *v->pwpx);
+    v->phpx = xcalloc(n, sizeof *v->phpx);
     return v;
 }
 
@@ -59,10 +59,10 @@ void view_doc_reloaded(View *v)
 {
     Pos p = v->lay_w ? view_pos(v) : v->pending_pos;
     int n = v->doc->npages ? v->doc->npages : 1;
-    v->px = realloc(v->px, n * sizeof *v->px);
-    v->py = realloc(v->py, n * sizeof *v->py);
-    v->pwpx = realloc(v->pwpx, n * sizeof *v->pwpx);
-    v->phpx = realloc(v->phpx, n * sizeof *v->phpx);
+    v->px = xrealloc(v->px, n * sizeof *v->px);
+    v->py = xrealloc(v->py, n * sizeof *v->py);
+    v->pwpx = xrealloc(v->pwpx, n * sizeof *v->pwpx);
+    v->phpx = xrealloc(v->phpx, n * sizeof *v->phpx);
     view_invalidate_cache(v);
     v->lay_w = 0;
     v->content_h = 0;
@@ -113,7 +113,7 @@ void view_layout(View *v, int W, int H, int top)
             widest = SDL_max(widest, w);
         }
         int avail = W - 2 * GAP - (v->dual ? GAP : 0);
-        v->zoom = SDL_max(0.05, avail / widest);
+        v->zoom = SDL_clamp(avail / widest, 0.05, 40.0); /* a 1-point page must not explode */
     }
     if (v->lay_w == W && v->lay_zoom == v->zoom && v->lay_dual == v->dual)
         return;
@@ -316,8 +316,8 @@ static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w,
             continue;
         if (cfg.dark_images == DARK_IMAGES_SMART && !looks_like_photo(px, stride, l, t, rr, b))
             continue;
-        if (!m)
-            m = calloc((size_t)w * h, 1);
+        if (!m && !(m = calloc((size_t)w * h, 1)))
+            return NULL; /* no memory for the mask: recolour everything */
         for (int y = t; y < b; y++)
             memset(m + (size_t)y * w + l, 1, rr - l);
     }
@@ -413,7 +413,7 @@ static SDL_Texture *shadow_texture(Window *win, int r, float strength)
     if (win->shadow)
         SDL_DestroyTexture(win->shadow);
     int n = 2 * r + 2;
-    uint32_t *px = malloc((size_t)n * n * 4);
+    uint32_t *px = xmalloc((size_t)n * n * 4);
     for (int y = 0; y < n; y++) {
         for (int x = 0; x < n; x++) {
             /* distance outside the 2x2 core, per axis */
@@ -443,9 +443,20 @@ static void draw_shadow(Window *win, View *v, float x, float y, float w, float h
     float xs[3] = {sx, sx + R, sx + R + w}, ws[3] = {R, w, R};
     float ys[3] = {sy, sy + R, sy + R + h}, hs[3] = {R, h, R};
     float us[3] = {0, R, R + 2}, uw[3] = {R, 2, R};
+    SDL_FRect screen = {0, 0, (float)win->W, (float)win->H};
     for (int j = 0; j < 3; j++)
         for (int i = 0; i < 3; i++) {
-            SDL_FRect src = {us[i], us[j], uw[i], uw[j]}, dst = {xs[i], ys[j], ws[i], hs[j]};
+            SDL_FRect src = {us[i], us[j], uw[i], uw[j]}, dst = {xs[i], ys[j], ws[i], hs[j]}, vis;
+            /* stretched slices are uniform along the stretch, so clipping them to
+             * the window is exact; a huge page must not become a huge texture */
+            if (i == 1 || j == 1) {
+                if (!SDL_GetRectIntersectionFloat(&dst, &screen, &vis))
+                    continue;
+                if (i == 1)
+                    dst.x = vis.x, dst.w = vis.w;
+                if (j == 1)
+                    dst.y = vis.y, dst.h = vis.h;
+            }
             SDL_RenderTexture(win->ren, t, &src, &dst);
         }
 }

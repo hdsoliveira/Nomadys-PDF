@@ -2,3 +2,4 @@ build/
 /nomadys-pdf
 *.bmp
 third_party/pdfium/
+/nomadys-pdf-asan

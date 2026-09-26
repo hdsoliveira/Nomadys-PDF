@@ -227,6 +227,13 @@ static void a_search(Window *w, View *v, int c, const char *a)
     prompt_open(w, "/", "", run_search, 0);
 }
 
+/* Whether the open prompt's action refers to the document (a comment, a mark
+ * name): such a prompt is cancelled when the document is reloaded. */
+bool prompt_uses_document(Window *w)
+{
+    return w->mode == MODE_PROMPT && w->prompt_done != command_run && w->prompt_done != run_search;
+}
+
 void prompt_open(Window *w, const char *label, const char *initial, PromptFn done, int arg)
 {
     w->prompt_return = w->mode;
@@ -684,7 +691,7 @@ static HelpLine *help_add(HelpLine **lines, int *n, int *cap)
 {
     if (*n == *cap) {
         *cap = *cap ? *cap * 2 : 64;
-        *lines = realloc(*lines, *cap * sizeof **lines);
+        *lines = xrealloc(*lines, *cap * sizeof **lines);
     }
     HelpLine *l = &(*lines)[(*n)++];
     memset(l, 0, sizeof *l);
