@@ -71,6 +71,7 @@ void view_doc_reloaded(View *v)
     v->selecting = v->area_selecting = false;
     v->caret.page = -1;
     v->match_page = -1;
+    v->query_absent = false; /* the text may have changed */
     v->flash_until = 0;
 }
 

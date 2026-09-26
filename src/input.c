@@ -143,15 +143,18 @@ static void a_search_next(Window *w, View *v, int c, const char *a)
     (void)a;
     if (!v->query[0])
         ui_message(w, "no search yet: use /");
-    for (int i = 0; i < n1(c) && v->query[0]; i++)
-        search_run(w, v, 1, false);
+    /* a count repeats the search, bounded and stopping at the first miss */
+    for (int i = 0; i < SDL_min(n1(c), 500) && v->query[0]; i++)
+        if (!search_run(w, v, 1, false))
+            break;
 }
 
 static void a_search_prev(Window *w, View *v, int c, const char *a)
 {
     (void)a;
-    for (int i = 0; i < n1(c) && v->query[0]; i++)
-        search_run(w, v, -1, false);
+    for (int i = 0; i < SDL_min(n1(c), 500) && v->query[0]; i++)
+        if (!search_run(w, v, -1, false))
+            break;
 }
 
 static void a_quit(Window *w, View *v, int c, const char *a)
@@ -212,6 +215,7 @@ static void run_search(Window *w, const char *text)
 {
     View *v = cur_view(w);
     snprintf(v->query, sizeof v->query, "%s", text);
+    v->query_absent = false;
     search_run(w, v, 1, true);
 }
 

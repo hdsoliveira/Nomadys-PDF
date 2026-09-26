@@ -251,6 +251,7 @@ typedef struct {
     /* search.c */
     char query[CMD_MAX];
     int match_page, match_start, match_len;
+    bool query_absent;       /* the whole document was searched in vain */
 } View;
 
 View *view_new(Doc *d);

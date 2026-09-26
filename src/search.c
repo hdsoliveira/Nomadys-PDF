@@ -45,6 +45,10 @@ bool search_run(Window *w, View *v, int dir, bool from_current)
 {
     if (!v->query[0])
         return false;
+    if (v->query_absent) { /* already searched everything: do not freeze again */
+        ui_message(w, "not found: %s", v->query);
+        return false;
+    }
     int npages = v->doc->npages;
     bool continuing = v->match_page >= 0 && !from_current;
     int start_page = continuing ? v->match_page : view_top_page(v);
@@ -73,6 +77,7 @@ bool search_run(Window *w, View *v, int dir, bool from_current)
         free(m);
     }
     v->match_page = -1;
+    v->query_absent = true;
     ui_message(w, "not found: %s", v->query);
     return false;
 }
