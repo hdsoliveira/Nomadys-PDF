@@ -256,6 +256,7 @@ colour and the comment:
 
 Running it again replaces the file; a Markdown file that `:export` did not
 write is never overwritten unless you use `:export!`.
+`npdf --export paper.pdf` prints the same to the terminal.
 
 **Only some colours.** Give each colour a meaning (say green = to cite,
 red = problems) and export just those: `:export green`, `:export red
@@ -263,7 +264,6 @@ commented` (only red ones with a comment), `:export review.md red green`.
 In the panel's Highlights tab, `C V B N M` show or hide a colour, `c` keeps
 only those with a comment, `a` shows all again and `e` exports what is
 shown.
-`npdf --export paper.pdf` prints the same to the terminal.
 
 ### LaTeX with VimTeX
 
