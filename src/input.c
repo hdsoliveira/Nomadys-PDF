@@ -412,6 +412,7 @@ static void a_panel_go(Window *w, View *v, int c, const char *a) { (void)v, (voi
 static void a_panel_delete(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_delete(w); }
 static void a_panel_uncomment(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_delete_comment(w); }
 static void a_panel_rename(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_rename(w); }
+static void a_panel_filter(Window *w, View *v, int c, const char *a) { (void)v, (void)c; panel_filter(w, a[0]); }
 static void a_panel_close(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_close(w); }
 static void a_panel_next_tab(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_switch(w, -2); }
 static void a_panel_prev_tab(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_switch(w, -1); }
@@ -690,6 +691,11 @@ static const Binding panel_map[] = {
     {"r", a_panel_rename, "rename the mark / edit the comment"},
     {"d", a_panel_uncomment, "delete only the comment"},
     {"x", a_panel_delete, "delete the highlight (with its comment) or the mark"},
+    {"C", a_panel_filter, "Highlights: show / hide a colour"}, {"V", a_panel_filter, "Highlights: show / hide a colour"},
+    {"B", a_panel_filter, "Highlights: show / hide a colour"}, {"N", a_panel_filter, "Highlights: show / hide a colour"},
+    {"M", a_panel_filter, "Highlights: show / hide a colour"},
+    {"c", a_panel_filter, "Highlights: only those with a comment"}, {"a", a_panel_filter, "Highlights: all again"},
+    {"e", a_panel_filter, "Highlights: export what is shown to Markdown"},
     {"<Tab>", a_panel_next_tab, "next / previous panel tab"}, {"l", a_panel_next_tab, "next / previous panel tab"},
     {"<S-Tab>", a_panel_prev_tab, "next / previous panel tab"}, {"h", a_panel_prev_tab, "next / previous panel tab"},
     {"1", a_panel_tab, "go to panel tab 1-4"}, {"2", a_panel_tab, "go to panel tab 1-4"},

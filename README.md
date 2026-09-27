@@ -256,6 +256,13 @@ colour and the comment:
 
 Running it again replaces the file; a Markdown file that `:export` did not
 write is never overwritten unless you use `:export!`.
+
+**Only some colours.** Give each colour a meaning (say green = to cite,
+red = problems) and export just those: `:export green`, `:export red
+commented` (only red ones with a comment), `:export review.md red green`.
+In the panel's Highlights tab, `C V B N M` show or hide a colour, `c` keeps
+only those with a comment, `a` shows all again and `e` exports what is
+shown.
 `npdf --export paper.pdf` prints the same to the terminal.
 
 ### LaTeX with VimTeX
@@ -339,7 +346,7 @@ listed above the line and `Tab` / `Shift-Tab` cycle through them (`:` then
 | `:recent` | open a recent file (`\o`) |
 | `:find` | find any PDF in your folders (`\f`) |
 | `:session` | reopen the tabs of the last session |
-| `:export [file.md]` | highlights, comments and marks to Markdown (`:export!` overwrites a file it did not write) |
+| `:export [file.md] [colours] [commented]` | highlights, comments and marks to Markdown, all or only some colours (`:export green`); `:export!` overwrites a file it did not write |
 | `:reload` | reload the PDF from disk |
 | `:print`, `Ctrl-p` | print through CUPS; options in any order: pages `3-7,10`, copies `x2`, printer `@name` (`Tab` lists them), `duplex`. Unsaved highlights and form entries are saved first, so they are printed too |
 | `:help` | every key |

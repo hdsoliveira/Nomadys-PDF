@@ -15,6 +15,65 @@
 
 static const char *color_names[5] = {"yellow", "red", "green", "pink", "blue"}; /* C V B N M */
 
+/* Which configured highlight colour c is (0-4, the keys C V B N M), or 5. */
+int note_color_index(uint32_t c)
+{
+    int best = -1, best_d = 1 << 30;
+    for (int i = 0; i < 5; i++) {
+        uint32_t h = cfg.highlights[i];
+        int dr = (int)((c >> 16) & 0xFF) - (int)((h >> 16) & 0xFF);
+        int dg = (int)((c >> 8) & 0xFF) - (int)((h >> 8) & 0xFF);
+        int db = (int)(c & 0xFF) - (int)(h & 0xFF);
+        int dist = dr * dr + dg * dg + db * db;
+        if (dist < best_d)
+            best_d = dist, best = i;
+    }
+    return best >= 0 && best_d < 90 * 90 * 3 ? best : 5;
+}
+
+/* ---------- which notes: by colour, with a comment ---------- */
+bool note_filter_word(const char *word, NoteFilter *f)
+{
+    for (int i = 0; i < 5; i++)
+        if (!strcasecmp(word, color_names[i])) {
+            f->colors |= 1u << i;
+            return true;
+        }
+    if (!strcasecmp(word, "other") || !strcasecmp(word, "others")) {
+        f->colors |= 1u << 5;
+        return true;
+    }
+    if (!strcasecmp(word, "commented") || !strcasecmp(word, "comments") || !strcasecmp(word, "comment")) {
+        f->commented = true;
+        return true;
+    }
+    return false;
+}
+
+bool note_filter_pass(const NoteFilter *f, int subtype, uint32_t color, bool has_comment)
+{
+    if (!f)
+        return true;
+    if (f->commented && !has_comment)
+        return false;
+    if (!f->colors)
+        return true;
+    if (subtype == FPDF_ANNOT_STAMP) /* an image has no colour */
+        return false;
+    return f->colors & (1u << note_color_index(color));
+}
+
+/* "red, green, with comments", or "" for everything. */
+void note_filter_describe(const NoteFilter *f, char *out, size_t cap)
+{
+    out[0] = 0;
+    for (int i = 0; f && i < 6; i++)
+        if (f->colors & (1u << i))
+            snprintf(out + strlen(out), cap - strlen(out), "%s%s", out[0] ? ", " : "", i < 5 ? color_names[i] : "other colours");
+    if (f && f->commented)
+        snprintf(out + strlen(out), cap - strlen(out), "%s", out[0] ? ", with comments" : "with comments");
+}
+
 /* The name of the configured highlight colour closest to c, or its hex code. */
 static const char *color_name(uint32_t c, char *buf, size_t cap)
 {
@@ -170,25 +229,38 @@ static const char *base_name(const char *path)
 }
 
 /* Writes the Markdown; returns the number of highlights. */
-int export_write(Doc *d, FILE *f, int *ncomments)
+int export_write(Doc *d, FILE *f, int *ncomments, const NoteFilter *only)
 {
     int total = 0, comments = 0;
+    bool *pass = NULL; /* per note of the page being written */
     for (int page = 0; page < d->npages; page++) {
         notes_page(d, page);
-        total += d->slots[page].nnotes;
+        PageSlot *s = &d->slots[page];
+        for (int i = 0; i < s->nnotes; i++)
+            total += note_filter_pass(only, s->notes[i].subtype, s->notes[i].color, s->notes[i].has_comment);
     }
+    char which[160];
+    note_filter_describe(only, which, sizeof which);
     char when[64];
     time_t now = time(NULL);
     strftime(when, sizeof when, "%Y-%m-%d %H:%M", localtime(&now));
     fprintf(f, EXPORT_TAG "\n# %s — highlights\n\n", base_name(d->path));
     fprintf(f, "Exported by Nomadys-PDF on %s from `%s`.\n\n", when, d->path);
+    if (which[0])
+        fprintf(f, "Only the highlights that are: %s.\n\n", which);
     for (int page = 0; page < d->npages; page++) {
         PageSlot *s = &d->slots[page];
-        if (!s->nnotes)
+        int shown = 0;
+        pass = xrealloc(pass, (size_t)(s->nnotes ? s->nnotes : 1) * sizeof *pass);
+        for (int i = 0; i < s->nnotes; i++)
+            shown += pass[i] = note_filter_pass(only, s->notes[i].subtype, s->notes[i].color, s->notes[i].has_comment);
+        if (!shown)
             continue;
         fprintf(f, "## Page %d\n\n", page + 1);
         Order *o = page_order(d, page);
         for (int i = 0; i < s->nnotes; i++) {
+            if (!pass[o[i].note])
+                continue;
             const Note *n = &s->notes[o[i].note];
             char hex[16];
             const char *color = color_name(n->color, hex, sizeof hex);
@@ -231,8 +303,9 @@ int export_write(Doc *d, FILE *f, int *ncomments)
                 fprintf(f, "- `%c` %s — page %d\n", 'a' + m, name[0] ? name : "(no name)", d->marks[m].pos.page + 1);
             }
     }
+    free(pass);
     if (!total && !nmarks)
-        fprintf(f, "No highlights, comments or marks yet.\n");
+        fprintf(f, which[0] ? "No highlights of that kind.\n" : "No highlights, comments or marks yet.\n");
     if (ncomments)
         *ncomments = comments;
     return total;
@@ -272,9 +345,23 @@ static bool ours(const char *path)
     return yes;
 }
 
-void export_notes(Window *w, View *v, const char *arg, bool force)
+/* :export [file.md] [colours] [commented]: the words that name colours or
+ * "commented" choose the notes, the other one is the file. */
+void export_notes(Window *w, View *v, const char *arg, bool force, const NoteFilter *base)
 {
-    char *path = target_path(v->doc, arg);
+    NoteFilter only = base ? *base : (NoteFilter){0};
+    char file[1024] = "", word[1024];
+    for (const char *p = arg; *p;) {
+        p += strspn(p, " ");
+        size_t n = strcspn(p, " ");
+        if (!n)
+            break;
+        snprintf(word, sizeof word, "%.*s", (int)SDL_min(n, sizeof word - 1), p);
+        p += n;
+        if (!note_filter_word(word, &only) && !file[0])
+            snprintf(file, sizeof file, "%s", word);
+    }
+    char *path = target_path(v->doc, file);
     if (!force && !ours(path)) {
         ui_message_long(w, 6000, "%s exists and was not made by :export — use :export! to overwrite", base_name(path));
         free(path);
@@ -289,15 +376,17 @@ void export_notes(Window *w, View *v, const char *arg, bool force)
         free(path);
         return;
     }
-    int comments = 0, n = export_write(v->doc, f, &comments);
+    int comments = 0, n = export_write(v->doc, f, &comments, &only);
     bool ok = !ferror(f);
     ok &= fclose(f) == 0;
     if (!ok || rename(tmp, path)) {
         unlink(tmp);
         ui_message_long(w, 6000, "cannot write %s", path);
     } else {
-        ui_message_long(w, 5000, "%d highlight%s, %d comment%s → %s", n, n == 1 ? "" : "s", comments,
-                        comments == 1 ? "" : "s", base_name(path));
+        char which[160];
+        note_filter_describe(&only, which, sizeof which);
+        ui_message_long(w, 5000, "%d highlight%s, %d comment%s%s%s → %s", n, n == 1 ? "" : "s", comments,
+                        comments == 1 ? "" : "s", which[0] ? " — only " : "", which, base_name(path));
     }
     free(tmp);
     free(path);

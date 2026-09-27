@@ -863,7 +863,7 @@ int main(int argc, char **argv)
         if (!d)
             fprintf(stderr, "npdf: %s\n", argc == 3 ? err : "usage: npdf --export file.pdf");
         else
-            export_write(d, stdout, NULL);
+            export_write(d, stdout, NULL, NULL);
         FPDF_DestroyLibrary();
         return d ? 0 : 1;
     }

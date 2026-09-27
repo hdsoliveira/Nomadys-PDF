@@ -44,6 +44,10 @@
 typedef struct { float l, t, r, b; } PRect; /* page space: y up, t > b */
 
 typedef struct Window Window;
+typedef struct {
+    unsigned colors;         /* bits 0-4: C V B N M colours, bit 5: others; 0 = every colour */
+    bool commented;          /* only those with a comment */
+} NoteFilter;
 
 /* A reading position independent of zoom: page and fraction of its height. */
 typedef struct { int page; float y; } Pos;
@@ -462,6 +466,7 @@ struct Window {
     PanelItem *items;        /* entries of the current panel tab */
     int nitems, sel, first;
     PanelTab panel_tab;
+    NoteFilter panel_filter; /* Highlights tab: colours shown, only with comments */
     int panel_counts[PANEL_NTABS];
     /* link hints and reference preview (links.c) */
     Link *links;
@@ -593,6 +598,7 @@ void panel_delete_comment(Window *w);
 void panel_rename(Window *w);
 void panel_switch(Window *w, int tab);                    /* tab index, or -1 / -2 for prev / next */
 void panel_draw(Window *w);
+void panel_filter(Window *w, char key);                    /* C V B N M c a e in the Highlights tab */
 
 /* ---------- UI text (font.c) ---------- */
 Font *font_open(SDL_Renderer *ren, const char *family, double points, float density);
@@ -756,8 +762,12 @@ void about_draw(Window *w);
 SDL_Surface *image_surface(const unsigned char *data, size_t len);
 
 /* export.c */
-int export_write(Doc *d, FILE *f, int *ncomments);       /* Markdown; returns highlights */
-void export_notes(Window *w, View *v, const char *arg, bool force);
+int export_write(Doc *d, FILE *f, int *ncomments, const NoteFilter *only); /* Markdown; returns highlights */
+void export_notes(Window *w, View *v, const char *arg, bool force, const NoteFilter *only);
+int note_color_index(uint32_t c);                         /* 0-4: C V B N M; 5: another colour */
+bool note_filter_word(const char *word, NoteFilter *f);   /* "red", "green", "commented"... */
+bool note_filter_pass(const NoteFilter *f, int subtype, uint32_t color, bool has_comment);
+void note_filter_describe(const NoteFilter *f, char *out, size_t cap);
 
 /* links.c */
 void links_start(Window *w, bool preview);

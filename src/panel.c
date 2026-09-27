@@ -102,6 +102,8 @@ static void build_notes(Window *w, Doc *d, int *cap)
         notes_page(d, page);
         PageSlot *s = &d->slots[page];
         for (int i = 0; i < s->nnotes; i++) {
+            if (!note_filter_pass(&w->panel_filter, s->notes[i].subtype, s->notes[i].color, s->notes[i].has_comment))
+                continue;
             PanelItem *it = add(w, cap);
             it->page = page;
             it->note = i;
@@ -221,6 +223,31 @@ void panel_switch(Window *w, int tab)
     if (tab == -1 || tab == -2)
         tab = (w->panel_tab + (tab == -2 ? 1 : PANEL_NTABS - 1)) % PANEL_NTABS;
     w->panel_tab = SDL_clamp(tab, 0, PANEL_NTABS - 1);
+    w->sel = w->first = 0;
+    build(w);
+    w->redraw = true;
+}
+
+/* Highlights tab: C V B N M show / hide a colour, c only those with a
+ * comment, a all again, e exports what is shown. */
+void panel_filter(Window *w, char key)
+{
+    if (w->panel_tab != PANEL_NOTES) {
+        ui_message(w, "filters are for the Highlights tab (4)");
+        return;
+    }
+    const char *colors = "CVBNM";
+    NoteFilter *f = &w->panel_filter;
+    if (strchr(colors, key) && key)
+        f->colors ^= 1u << (strchr(colors, key) - colors);
+    else if (key == 'c')
+        f->commented = !f->commented;
+    else if (key == 'a')
+        *f = (NoteFilter){0};
+    else if (key == 'e') {
+        export_notes(w, cur_view(w), "", false, f);
+        return;
+    }
     w->sel = w->first = 0;
     build(w);
     w->redraw = true;
@@ -350,7 +377,11 @@ static void draw_tabs(Box *b, Window *w)
     float x = b->x + b->pad, y = b->y + b->pad / 2.0f;
     for (int k = 0; k < PANEL_NTABS; k++) {
         char label[64];
-        snprintf(label, sizeof label, "%s  %d", tab_names[k], w->panel_counts[k]);
+        bool filtered = k == PANEL_NOTES && (w->panel_filter.colors || w->panel_filter.commented);
+        if (filtered && k == (int)w->panel_tab)
+            snprintf(label, sizeof label, "%s  %d of %d", tab_names[k], w->nitems, w->panel_counts[k]);
+        else
+            snprintf(label, sizeof label, "%s  %d", tab_names[k], w->panel_counts[k]);
         int tw = font_width(w->font, label);
         bool cur = k == (int)w->panel_tab;
         if (cur)
@@ -413,6 +444,8 @@ static const char *empty_hint(Window *w, char *buf, size_t cap)
 {
     if (w->panel_tab == PANEL_MARKS)
         snprintf(buf, cap, "No marks yet. Mark the current position with %sm and a letter.", leader_label());
+    else if (w->panel_tab == PANEL_NOTES && (w->panel_filter.colors || w->panel_filter.commented))
+        snprintf(buf, cap, "No highlights of that kind. a shows them all.");
     else if (w->panel_tab == PANEL_NOTES)
         snprintf(buf, cap, "No highlights. In a cursor (v or Ctrl-v), select with v, then C V B N M or c.");
     else
@@ -422,6 +455,15 @@ static const char *empty_hint(Window *w, char *buf, size_t cap)
 
 static const char *footer(Window *w)
 {
+    static char filtered[300];
+    if (w->panel_tab == PANEL_NOTES) {
+        char which[160];
+        note_filter_describe(&w->panel_filter, which, sizeof which);
+        snprintf(filtered, sizeof filtered, "%s%s%sC V B N M colour   c with comments%s   e export %s   Enter go   r comment   x delete",
+                 which[0] ? "only " : "", which, which[0] ? "   " : "", which[0] ? "   a all" : "",
+                 which[0] ? "these" : "");
+        return filtered;
+    }
     static const char *keys[PANEL_NTABS] = {
         [PANEL_OPEN_TABS] = "Enter switch to it   x close it   Tab next panel tab   Esc close",
         [PANEL_CONTENTS] = "Enter go   j/k move   Tab next panel tab   Esc close",

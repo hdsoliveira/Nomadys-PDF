@@ -110,8 +110,8 @@ static void c_rotate(Window *w, View *v, const char *a)
 
 static void c_print(Window *w, View *v, const char *a) { print_document(w, v, a); }
 
-static void c_export(Window *w, View *v, const char *a) { export_notes(w, v, a, false); }
-static void c_export_force(Window *w, View *v, const char *a) { export_notes(w, v, a, true); }
+static void c_export(Window *w, View *v, const char *a) { export_notes(w, v, a, false, NULL); }
+static void c_export_force(Window *w, View *v, const char *a) { export_notes(w, v, a, true, NULL); }
 
 static void c_image(Window *w, View *v, const char *a)
 {
@@ -205,7 +205,7 @@ static const Command commands[] = {
     {"rotate", ARG_NUMBER, c_rotate, "rotate the view: :rotate 90, -90, 180"},
     {"dark", ARG_NONE, c_dark, "dark mode"},
     {"light", ARG_NONE, c_light, "light mode"},
-    {"export", ARG_MD, c_export, "highlights and comments to Markdown (paper-notes.md)"},
+    {"export", ARG_MD, c_export, "highlights and comments to Markdown (paper-notes.md); :export red green commented"},
     {"export!", ARG_MD, c_export_force, "the same, overwriting any file"},
     {"image", ARG_IMAGE, c_image, "put a PNG / JPEG on the page (then move and resize it)"},
     {"about", ARG_NONE, c_about, "version, author, contact (also \\a)"},
