@@ -2,6 +2,8 @@
  * Each window owns a Font with a glyph texture cache for its renderer. */
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
+#include <stdio.h>
 
 #include <fontconfig/fontconfig.h>
 #include <ft2build.h>
@@ -26,6 +28,21 @@ struct Font {
 static FT_Library ft;
 
 /* File of the best match for a fontconfig pattern such as "JetBrains Mono". */
+/* The config's font was not found: fontconfig used this one instead (""). */
+char font_fallback[160];
+
+/* True if one of the match's family names is the one asked for (the part
+ * before any ":style=..."), ignoring case. */
+static bool same_family(FcPattern *match, const char *family)
+{
+    size_t n = strcspn(family, ":");
+    FcChar8 *name;
+    for (int i = 0; FcPatternGetString(match, FC_FAMILY, i, &name) == FcResultMatch; i++)
+        if (strlen((const char *)name) == n && !strncasecmp((const char *)name, family, n))
+            return true;
+    return false;
+}
+
 static char *find_font(const char *family, int *index)
 {
     FcPattern *pat = FcNameParse((const FcChar8 *)family);
@@ -38,8 +55,12 @@ static char *find_font(const char *family, int *index)
     FcPatternDestroy(pat);
     if (!match)
         return NULL;
-    FcChar8 *file = NULL;
+    FcChar8 *file = NULL, *got = NULL;
     char *out = NULL;
+    font_fallback[0] = 0;
+    if (strcmp(family, "monospace") && !same_family(match, family) &&
+        FcPatternGetString(match, FC_FAMILY, 0, &got) == FcResultMatch)
+        snprintf(font_fallback, sizeof font_fallback, "font \"%.60s\" not found, using %.60s", family, (const char *)got);
     if (FcPatternGetString(match, FC_FILE, 0, &file) == FcResultMatch)
         out = xstrdup((const char *)file);
     if (FcPatternGetInteger(match, FC_INDEX, 0, index) != FcResultMatch)

@@ -24,8 +24,10 @@ leader = \                 # leader key: \ , ; or "space"
 # %l line, %c column, %f file
 synctex_editor = nvim --headless -c "VimtexInverseSearch %l '%f'"
 
-# UI font (tabs, command line, messages, panel): any installed font
-font = monospace           # e.g. JetBrains Mono, DejaVu Sans, Go Mono
+# UI font (tabs, help, panel, command line, comments, messages): any
+# installed family; `fc-list : family` lists them (Nerd Fonts too, e.g.
+# "CaskaydiaCove NF"). A name not found is reported, and a default is used.
+font = monospace           # e.g. CaskaydiaCove NF, JetBrains Mono, DejaVu Sans
 font_size = 10.5           # points
 
 [light]

@@ -531,6 +531,7 @@ void panel_draw(Window *w);
 
 /* ---------- UI text (font.c) ---------- */
 Font *font_open(SDL_Renderer *ren, const char *family, double points, float density);
+extern char font_fallback[160];                             /* set when the config's font is missing */
 void font_close(Font *f);
 void font_shutdown(void);
 int font_height(Font *f);

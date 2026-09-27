@@ -42,6 +42,12 @@ static void update_size(Window *w)
         w->density = density;
         font_close(w->font);
         w->font = font_open(w->ren, cfg.font, cfg.font_size, density);
+        static bool warned;
+        if (font_fallback[0] && !warned) { /* a typo in the config's font: say so once */
+            warned = true;
+            fprintf(stderr, "npdf: %s (fc-list : family lists the fonts)\n", font_fallback);
+            ui_message_long(w, 8000, "%s (fc-list : family lists the fonts)", font_fallback);
+        }
     }
 }
 
