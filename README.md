@@ -140,9 +140,17 @@ in the free cursor (`Ctrl-v`) press `I` for a file (PNG, JPEG, BMP; `Tab`
 completes) or `P` to paste an image from the clipboard; or type `:image
 file.png` anywhere. With a rectangle marked (`v`) the picture fits inside it;
 otherwise its top-left corner goes at the cross, at its natural size but never
-more than 80% of the page. Transparent PNGs stay transparent. The resolution
-is reduced to 250 dpi at the placed size and JPEG stays JPEG, so a phone photo
-adds a few hundred KB, not megabytes. Images are standard stamp annotations:
+more than 80% of the page. Transparent PNGs stay transparent.
+
+Quality: PDFium enlarges pictures without smoothing (blocky pixels), so an
+image is kept with more pixels than any screen shows: small ones (a
+signature, a screenshot) are enlarged with a bicubic filter to 360 dpi at
+their placed size, so they stay smooth up to ~250% zoom on a HiDPI screen;
+images up to 4096 pixels are kept exactly (a JPEG is copied byte for byte);
+only huge ones are reduced, with a bicubic filter, and never below 4096
+pixels on the longer side. Measured: a 24-megapixel photo goes in in 0.7 s
+and adds 1.9 MB; a screenshot in 0.2 s; memory returns to normal right after.
+Pictures over 120 megapixels are refused (decoding takes 4 bytes a pixel). Images are standard stamp annotations:
 other readers show them, `x` deletes them, and the panel lists them.
 
 **Moving and resizing** an image or a highlighted area, even long after it was

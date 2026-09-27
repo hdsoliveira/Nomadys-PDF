@@ -1,2 +1,5 @@
 594c2fe35d49488b4382dbfaec8f98366defca819d916ac95becf3e75f4200b3  third_party/stb/stb_image.h
-cbd5f0ad7a9cf4468affb36354a1d2338034f2c12473cf1a8e32053cb6914a05  third_party/stb/stb_image_write.h
+53fb7594806ed8243fca35ee2505ea054b08f1577ee0bbe80c4bb54982bc4933  third_party/stb/stb_image_write.h
+# stb_image.h v2.30 and stb_image_write.h v1.16 from github.com/nothings/stb (master, 2026-09-27).
+# stb_image_write.h is patched in stbiw__jpg_writeBits: "bitBuf = (bitBuf & 0xFFFF) << 8" instead of
+# "bitBuf <<= 8", which overflowed a signed int on big JPEGs (undefined behaviour; found by UBSan).
