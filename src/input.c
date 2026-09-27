@@ -458,6 +458,22 @@ static void a_object_ratio(Window *w, View *v, int c, const char *a) { (void)v, 
 static void a_object_done(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_done(w, true); }
 static void a_object_cancel(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_done(w, false); }
 static void a_object_delete(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_delete(w); }
+static void a_object_turn(Window *w, View *v, int c, const char *a) { (void)v; for (int i = 0; i < n1(c) % 4; i++) object_rotate(w, a[0] == 'r' ? 1 : -1); }
+static void a_crop_begin(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_crop_begin(w); }
+static void a_crop_reset(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_crop_reset(w); }
+static void a_crop_done(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_crop_done(w, true); }
+static void a_crop_cancel(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_crop_done(w, false); }
+
+/* h j k l cut that side (Ctrl: more), H J K L give it back. */
+static void a_crop_side(Window *w, View *v, int c, const char *a)
+{
+    (void)v;
+    bool fast = !strncmp(a, "<C-", 3);
+    char k = fast ? a[3] : a[0];
+    bool back = k >= 'A' && k <= 'Z';
+    int side = strchr("hH", k) ? 0 : strchr("lL", k) ? 1 : strchr("kK", k) ? 2 : 3;
+    object_crop(w, side, (fast ? 0.1f : 0.02f) * (float)n1(c) * (back ? -1 : 1));
+}
 
 /* ---------- keymaps ---------- */
 /* A titled group on the help screen; "<#>" is never typed, so it never runs. */
@@ -598,9 +614,26 @@ static const Binding object_map[] = {
     {"=", a_object_ratio, "image: back to its own proportions"},
     {"H", a_object_resize, "narrower / wider"}, {"L", a_object_resize, "narrower / wider"},
     {"K", a_object_resize, "shorter / taller"}, {"J", a_object_resize, "shorter / taller"},
+    GROUP("Images"),
+    {"r", a_object_turn, "turn 90° clockwise / counter-clockwise"},
+    {"R", a_object_turn, "turn 90° clockwise / counter-clockwise"},
+    {"c", a_crop_begin, "crop (the picture is kept whole: cropping can be undone any time)"},
     GROUP("Finishing"),
     {"<Enter>", a_object_done, "done"}, {"<Esc>", a_object_cancel, "undo: put it back where it was"},
     {"x", a_object_delete, "delete it"},
+};
+
+static const Binding crop_map[] = {
+    GROUP("Cutting"),
+    {"h", a_crop_side, "cut the left / bottom / top / right side"}, {"j", a_crop_side, "cut the left / bottom / top / right side"},
+    {"k", a_crop_side, "cut the left / bottom / top / right side"}, {"l", a_crop_side, "cut the left / bottom / top / right side"},
+    {"<C-h>", a_crop_side, "cut faster"}, {"<C-j>", a_crop_side, "cut faster"},
+    {"<C-k>", a_crop_side, "cut faster"}, {"<C-l>", a_crop_side, "cut faster"},
+    {"H", a_crop_side, "give that side back"}, {"J", a_crop_side, "give that side back"},
+    {"K", a_crop_side, "give that side back"}, {"L", a_crop_side, "give that side back"},
+    {"u", a_crop_reset, "uncrop: the whole picture again"},
+    GROUP("Finishing"),
+    {"<Enter>", a_crop_done, "done (back to moving and resizing)"}, {"<Esc>", a_crop_cancel, "cancel this cropping"},
 };
 
 static const Binding preview_map[] = {
@@ -621,6 +654,7 @@ static const Binding *keymap(Mode m, int *n)
     case MODE_HELP: *n = SDL_arraysize(help_map); return help_map;
     case MODE_PREVIEW: *n = SDL_arraysize(preview_map); return preview_map;
     case MODE_OBJECT: *n = SDL_arraysize(object_map); return object_map;
+    case MODE_CROP: *n = SDL_arraysize(crop_map); return crop_map;
     default: *n = 0; return NULL;
     }
 }
@@ -929,6 +963,7 @@ int help_lines(HelpLine **out)
     help_title(&lines, &n, &cap, "Forms", true);
     help_static(&lines, &n, &cap, form, SDL_arraysize(form));
     help_section(&lines, &n, &cap, "Move/resize", object_map, SDL_arraysize(object_map), false);
+    help_section(&lines, &n, &cap, "Crop", crop_map, SDL_arraysize(crop_map), false);
     /* drop titles with nothing under them (groups of keys shared with Reading) */
     int k = 0;
     for (int i = 0; i < n; i++) {

@@ -209,6 +209,18 @@ bool note_set_comment(Doc *d, int page, int note, const char *comment);
 bool note_delete(Doc *d, int page, int note);
 int note_create_image(Doc *d, int page, PRect r, FPDF_PAGEOBJECT image); /* annotation index, or -1 */
 int note_move(Doc *d, int page, int annot, PRect r);     /* new annotation index, or -1 */
+
+/* How a placed image is shown: the picture is drawn into its appearance
+ * box, cropped (the part u0..u1, v0..v1 of it, 0-1, v up) and turned;
+ * whatever falls outside the box is clipped by every reader. Nothing is
+ * re-encoded, so cropping can always be undone. */
+typedef struct {
+    float box[4];            /* appearance box: l, b, r, t */
+    float u0, v0, u1, v1;
+    int turns;               /* quarter turns clockwise */
+} ImageView;
+bool note_image_view(Doc *d, int page, int annot, ImageView *iv, int *pxw, int *pxh);
+bool note_image_apply(Doc *d, int page, int annot, const ImageView *iv, PRect r);
 int note_of_annot(Doc *d, int page, int annot);           /* note index, or -1 */
 
 /* ---------- views / tabs (render.c) ---------- */
@@ -223,7 +235,7 @@ typedef struct {
 } CacheEntry;
 
 typedef enum { MODE_NORMAL, MODE_FORM, MODE_CARET, MODE_AREA, MODE_PANEL, MODE_PROMPT, MODE_HELP,
-               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT } Mode;
+               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT, MODE_CROP } Mode;
 
 typedef struct { int page, ch; } TextPos;
 
@@ -342,6 +354,10 @@ struct Window {
     PRect obj_rect, obj_orig;
     float obj_ratio;         /* the picture's width / height */
     bool obj_image;
+    bool obj_view_ok;        /* an image placed here: it can be cropped and turned */
+    ImageView obj_view, obj_view_orig, crop_view;
+    PRect crop_rect;         /* before cropping started, for Esc */
+    int obj_pxw, obj_pxh;
     Mode obj_return;
     char **comp;             /* completion candidates (commands.c) */
     int ncomp, comp_at, comp_start;
@@ -554,6 +570,11 @@ void object_scale(Window *w, float f);
 void object_proportions(Window *w);
 void object_done(Window *w, bool keep);
 void object_delete(Window *w);
+void object_rotate(Window *w, int dir);                   /* quarter turns: 1 clockwise, -1 back */
+void object_crop_begin(Window *w);
+void object_crop(Window *w, int side, float amount);      /* side 0-3: left right top bottom */
+void object_crop_reset(Window *w);
+void object_crop_done(Window *w, bool keep);
 void object_draw(Window *w, View *v, int top);
 
 /* export.c */

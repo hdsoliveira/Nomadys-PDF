@@ -155,11 +155,21 @@ placed: put the cross on it and press `e` (a new image starts there directly).
 | `H` `L` | narrower / wider |
 | `K` `J` | shorter / taller |
 | `=` | an image back to its own proportions |
+| `r` `R` | turn an image 90° clockwise / counter-clockwise |
+| `c` | crop an image (below) |
 | `Enter` | done |
 | `Esc` | undo: back where it was |
 | `x` | delete it |
 
 Highlighted text stays with its words; areas and images move.
+
+**Cropping** (`c` on an image): `h` `j` `k` `l` cut the left / bottom / top /
+right side as you see it (`Ctrl-` cuts faster), `H` `J` `K` `L` give that side
+back, `u` shows the whole picture again, `Enter` returns to moving and
+resizing, `Esc` cancels this cropping. The picture itself is never cut or
+re-encoded: the PDF keeps it whole and only shows a part of it, so a crop can
+be undone at any time, even after the file was closed. Turning works the same
+way (no quality loss).
 
 **Export to Markdown.** `:export` writes every highlight and comment, plus the
 marks, to `paper-notes.md` next to `paper.pdf` (or `:export name.md`; a

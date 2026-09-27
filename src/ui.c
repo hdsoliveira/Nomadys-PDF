@@ -172,6 +172,7 @@ static void draw_mode(Window *w)
     case MODE_HINTS: label = w->hint_preview ? "PREVIEW" : "FOLLOW", color = t->search_match; break;
     case MODE_PREVIEW: label = "PREVIEW", color = t->search_match; break;
     case MODE_OBJECT: label = w->obj_image ? "IMAGE" : "MOVE", color = t->mode_visual; break;
+    case MODE_CROP: label = "CROP", color = t->search_match; break;
     case MODE_PROMPT:
         label = prompt_kind(w);
         color = !strcmp(label, "COMMAND") || !strcmp(label, "SEARCH") ? t->mode_command : t->mode_insert;

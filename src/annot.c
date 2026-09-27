@@ -1,5 +1,6 @@
 /* Markup annotations: highlights with optional comments ("notes").
  * They are standard PDF annotations, so other readers show them too. */
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -274,6 +275,96 @@ int note_move(Doc *d, int page, int annot, PRect r)
     finish_note(d, page, n, r, comment, color);
     free(comment);
     return FPDFPage_GetAnnotCount(p) - 1;
+}
+
+#define VIEW_KEY "NomadysImage" /* ImageView, kept in the annotation */
+
+static FPDF_PAGEOBJECT stamp_image(FPDF_ANNOTATION a)
+{
+    for (int i = 0; i < FPDFAnnot_GetObjectCount(a); i++) {
+        FPDF_PAGEOBJECT o = FPDFAnnot_GetObject(a, i);
+        if (o && FPDFPageObj_GetType(o) == FPDF_PAGEOBJ_IMAGE)
+            return o;
+    }
+    return NULL;
+}
+
+/* The view of an image placed by us: saved with it, or, for one never
+ * cropped or turned, its matrix (then the picture fills the box). */
+bool note_image_view(Doc *d, int page, int annot, ImageView *iv, int *pxw, int *pxh)
+{
+    FPDF_PAGE p = doc_page(d, page);
+    FPDF_ANNOTATION a = p ? FPDFPage_GetAnnot(p, annot) : NULL;
+    if (!a)
+        return false;
+    FPDF_PAGEOBJECT o = FPDFAnnot_GetSubtype(a) == FPDF_ANNOT_STAMP ? stamp_image(a) : NULL;
+    unsigned int w = 0, h = 0;
+    bool ok = o && FPDFImageObj_GetImagePixelSize(o, &w, &h) && w && h;
+    char buf[256] = "";
+    unsigned long n = ok ? FPDFAnnot_GetStringValue(a, VIEW_KEY, NULL, 0) : 0;
+    if (n > 2 && n < sizeof buf) {
+        unsigned short u[128];
+        FPDFAnnot_GetStringValue(a, VIEW_KEY, u, sizeof u);
+        char *s = utf16_to_utf8(u, (int)(n / 2) - 1);
+        snprintf(buf, sizeof buf, "%s", s);
+        free(s);
+    }
+    if (ok && buf[0]) {
+        ok = sscanf(buf, "%f %f %f %f %f %f %f %f %d", &iv->box[0], &iv->box[1], &iv->box[2], &iv->box[3], &iv->u0,
+                    &iv->v0, &iv->u1, &iv->v1, &iv->turns) == 9;
+    } else if (ok) {
+        FS_MATRIX m;
+        ok = FPDFPageObj_GetMatrix(o, &m) && m.b == 0 && m.c == 0 && m.a > 0 && m.d > 0;
+        *iv = (ImageView){{m.e, m.f, m.e + m.a, m.f + m.d}, 0, 0, 1, 1, 0};
+    }
+    ok = ok && iv->u1 > iv->u0 && iv->v1 > iv->v0 && iv->box[2] > iv->box[0] && iv->box[3] > iv->box[1];
+    iv->turns = ((iv->turns % 4) + 4) % 4;
+    *pxw = (int)w, *pxh = (int)h;
+    FPDFPage_CloseAnnot(a);
+    return ok;
+}
+
+/* The image matrix for a view: the part shown fills the box, turned. */
+static FS_MATRIX view_matrix(const ImageView *iv)
+{
+    float cw = iv->u1 - iv->u0, ch = iv->v1 - iv->v0;
+    /* u' = pu*u + r0, v' = qv*v + s0: the part shown becomes 0..1 */
+    float pu = 1 / cw, r0 = -iv->u0 / cw, qv = 1 / ch, s0 = -iv->v0 / ch;
+    /* u'' = A*u + B*v + C, v'' = D*u + E*v + F after the turn */
+    float A, B, C, D, E, F;
+    switch (iv->turns) {
+    case 1: A = 0, B = qv, C = s0, D = -pu, E = 0, F = 1 - r0; break;       /* (v', 1 - u') */
+    case 2: A = -pu, B = 0, C = 1 - r0, D = 0, E = -qv, F = 1 - s0; break;  /* (1 - u', 1 - v') */
+    case 3: A = 0, B = -qv, C = 1 - s0, D = pu, E = 0, F = r0; break;       /* (1 - v', u') */
+    default: A = pu, B = 0, C = r0, D = 0, E = qv, F = s0; break;
+    }
+    float bw = iv->box[2] - iv->box[0], bh = iv->box[3] - iv->box[1];
+    return (FS_MATRIX){bw * A, bh * D, bw * B, bh * E, iv->box[0] + bw * C, iv->box[1] + bh * F};
+}
+
+bool note_image_apply(Doc *d, int page, int annot, const ImageView *iv, PRect r)
+{
+    FPDF_PAGE p = doc_page(d, page);
+    FPDF_ANNOTATION a = p ? FPDFPage_GetAnnot(p, annot) : NULL;
+    FPDF_PAGEOBJECT o = a ? stamp_image(a) : NULL;
+    if (!o) {
+        if (a)
+            FPDFPage_CloseAnnot(a);
+        return false;
+    }
+    FS_MATRIX m = view_matrix(iv);
+    FPDFImageObj_SetMatrix(o, m.a, m.b, m.c, m.d, m.e, m.f);
+    FPDFAnnot_UpdateObject(a, o);
+    FS_RECTF rect = {r.l, r.t, r.r, r.b};
+    FPDFAnnot_SetRect(a, &rect);
+    char buf[256];
+    snprintf(buf, sizeof buf, "%g %g %g %g %g %g %g %g %d", iv->box[0], iv->box[1], iv->box[2], iv->box[3], iv->u0,
+             iv->v0, iv->u1, iv->v1, iv->turns);
+    set_string(a, VIEW_KEY, buf);
+    FPDFPage_CloseAnnot(a);
+    doc_reload_page(d, page);
+    doc_mark_changed(d, page);
+    return true;
 }
 
 static FPDF_ANNOTATION open_note(Doc *d, int page, int note)

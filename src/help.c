@@ -112,6 +112,7 @@ static int tab_for_mode(Window *w)
     case MODE_PREVIEW: return 5;
     case MODE_FORM: return 7;
     case MODE_OBJECT: return 8;
+    case MODE_CROP: return 9;
     default: return 0;
     }
 }
