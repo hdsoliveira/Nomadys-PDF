@@ -92,11 +92,11 @@ Everything by keyboard. Highlights are standard PDF annotations: other readers
 
 | Key | Action |
 |---|---|
-| `v` | text cursor (blinking): `h j k l w b 0 $` move |
+| `v` | text cursor (a steady block; rings close in on it when it appears): `h j k l w b 0 $` move |
 | then `v` | start/stop selecting text |
 | then `C` `V` `B` `N` `M` | highlight in pastel yellow / red / green / pink / blue (`highlight_colors` in the config) |
 | then `c` | highlight (yellow) and write a comment in a box next to it (see below) |
-| `Ctrl-v` | free cursor, for figures and areas: `h j k l` move, `w b J K` (or `Ctrl-h/j/k/l`) move faster |
+| `Ctrl-v` | free cursor (a thin outlined cross), for figures and areas: `h j k l` move, `w b J K` (or `Ctrl-h/j/k/l`) move faster |
 | then `v`, `C` `V` `B` `N` `M` / `c` | select a rectangle, highlight it in a colour / with a comment |
 | `c` on a highlight | edit its comment (shown in a box while the cursor is on it) |
 | `x` on a highlight | delete it |

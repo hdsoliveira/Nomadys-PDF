@@ -142,6 +142,7 @@ bool caret_enter(Window *w, View *v)
                 v->selecting = false;
                 remember_x(v);
                 w->mode = MODE_CARET;
+                w->locate_at = SDL_GetTicks();
                 w->redraw = true;
                 return true;
             }
@@ -357,6 +358,7 @@ void area_enter(Window *w, View *v)
     }
     v->area_selecting = false;
     w->mode = MODE_AREA;
+    w->locate_at = SDL_GetTicks();
     ui_message(w, "free cursor: hjkl move (J K faster), v selects, C V B N M highlight, c comments");
     w->redraw = true;
 }
@@ -450,7 +452,29 @@ static void fill_page_rect(View *v, int page, PRect r, void *p)
     ui_fill(c->w, SDL_min(x0, x1), SDL_min(y0, y1), SDL_fabsf(x1 - x0), SDL_fabsf(y1 - y0), c->rgb, c->a);
 }
 
-void cursor_draw(Window *w, View *v, int top, bool blink_on)
+bool cursor_locating(Window *w, uint64_t now) { return w->locate_at && now < w->locate_at + LOCATE_MS; }
+
+/* Two rings closing in on the cursor right after it appears, so the eye
+ * finds it at once (the cursors do not blink). */
+static void draw_locate(Window *w, float cx, float cy, uint32_t halo)
+{
+    uint64_t now = SDL_GetTicks();
+    if (!cursor_locating(w, now))
+        return;
+    float t = (float)(now - w->locate_at) / LOCATE_MS;
+    for (int k = 0; k < 2; k++) {
+        float u = (t - 0.3f * k) / 0.7f; /* the second ring starts a little later */
+        if (u <= 0 || u >= 1)
+            continue;
+        float ease = 1 - (1 - u) * (1 - u) * (1 - u);
+        float r = (110 - 96 * ease) * w->density, th = 3.5f * w->density;
+        uint8_t a = (uint8_t)(255 * SDL_min(1.0f, (1 - u) * 2.5f));
+        ui_ring(w, cx, cy, r + 1.5f * w->density, th + 3 * w->density, halo, (uint8_t)(a * 0.7f));
+        ui_ring(w, cx, cy, r, th, wtheme(w)->caret, a);
+    }
+}
+
+void cursor_draw(Window *w, View *v, int top)
 {
     const Theme *t = wtheme(w);
     Mode m = w->mode == MODE_PROMPT ? w->prompt_return : w->mode;
@@ -460,26 +484,30 @@ void cursor_draw(Window *w, View *v, int top, bool blink_on)
             DrawCtx c = {w, top, t->selection, 90};
             selection_lines(v, fill_page_rect, &c);
         }
-        if (blink_on) {
-            PRect r = box(v, v->caret);
-            float x0, y0, x1, y1;
-            page_to_screen(v, v->caret.page, r.l, r.t, &x0, &y0, top);
-            page_to_screen(v, v->caret.page, r.r, r.b, &x1, &y1, top);
-            /* block over the character, translucent so the letter stays readable */
-            ui_fill(w, SDL_min(x0, x1), SDL_min(y0, y1), SDL_max(SDL_fabsf(x1 - x0), th),
-                    SDL_fabsf(y1 - y0), t->caret, 150);
-        }
+        PRect r = box(v, v->caret);
+        float x0, y0, x1, y1;
+        page_to_screen(v, v->caret.page, r.l, r.t, &x0, &y0, top);
+        page_to_screen(v, v->caret.page, r.r, r.b, &x1, &y1, top);
+        /* block over the character, translucent so the letter stays readable */
+        float bx = SDL_min(x0, x1), by = SDL_min(y0, y1), bw = SDL_max(SDL_fabsf(x1 - x0), th), bh = SDL_fabsf(y1 - y0);
+        ui_fill(w, bx, by, bw, bh, t->caret, 150);
+        draw_locate(w, bx + bw / 2, by + bh / 2, v->dark ? 0xFFFFFF : 0x1A1A1A);
     } else if (m == MODE_AREA) {
         if (v->area_selecting) {
             DrawCtx c = {w, top, t->selection, 70};
             fill_page_rect(v, v->area_page, area_rect(v), &c);
         }
-        if (blink_on) {
-            float x, y, arm = 14 * w->density, bar = 4 * w->density;
-            page_to_screen(v, v->area_page, v->area_x, v->area_y, &x, &y, top);
-            ui_fill(w, x - arm, y - bar / 2, 2 * arm, bar, t->caret, 255);
-            ui_fill(w, x - bar / 2, y - arm, bar, 2 * arm, t->caret, 255);
-        }
+        /* a thin cross with a contrasting outline: visible on text, figures
+         * and dark pages alike */
+        float x, y, arm = 10 * w->density, bar = SDL_max(2.0f, 2 * w->density), o = SDL_max(1.0f, w->density);
+        page_to_screen(v, v->area_page, v->area_x, v->area_y, &x, &y, top);
+        x = SDL_roundf(x), y = SDL_roundf(y);
+        uint32_t halo = v->dark ? 0xFFFFFF : 0x1A1A1A; /* the opposite of the page */
+        ui_fill(w, x - arm - o, y - bar / 2 - o, 2 * (arm + o), bar + 2 * o, halo, 220);
+        ui_fill(w, x - bar / 2 - o, y - arm - o, bar + 2 * o, 2 * (arm + o), halo, 220);
+        ui_fill(w, x - arm, y - bar / 2, 2 * arm, bar, t->caret, 255);
+        ui_fill(w, x - bar / 2, y - arm, bar, 2 * arm, t->caret, 255);
+        draw_locate(w, x, y, halo);
     } else {
         return;
     }

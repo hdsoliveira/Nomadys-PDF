@@ -326,6 +326,7 @@ struct Window {
     int box_page;            /* -1: centred */
     PRect box_anchor;
     float box_maxw, box_scroll;
+    uint64_t locate_at;      /* when the text or free cursor appeared (caret.c) */
     char **comp;             /* completion candidates (commands.c) */
     int ncomp, comp_at, comp_start;
     /* key sequences */
@@ -421,7 +422,9 @@ void area_move(Window *w, View *v, float dx, float dy);
 void area_toggle_select(Window *w, View *v);
 void area_mark(Window *w, View *v, bool comment, uint32_t color);
 bool cursor_note(Window *w, View *v, int *page, int *note); /* note under the cursor */
-void cursor_draw(Window *w, View *v, int top, bool blink_on);
+void cursor_draw(Window *w, View *v, int top);
+#define LOCATE_MS 650    /* rings closing on a cursor when it appears */
+bool cursor_locating(Window *w, uint64_t now);
 
 /* ---------- marks and jumps (marks.c) ---------- */
 void marks_load(Doc *d);
@@ -474,6 +477,7 @@ void font_fit(Font *f, char *s, int maxw);         /* ellipsis; s needs 3 spare 
 void font_draw(Font *f, float x, float y, const char *s, uint32_t rgb);   /* y = top */
 
 /* ---------- drawing helpers and overlays (ui.c) ---------- */
+void ui_ring(Window *w, float cx, float cy, float r, float th, uint32_t rgb, uint8_t a);
 uint32_t rgb_mix(uint32_t a, uint32_t b, float f);       /* f = 0: a, 1: b */
 void ui_fill(Window *w, float x, float y, float wd, float ht, uint32_t rgb, uint8_t a);
 void ui_frame(Window *w, float x, float y, float wd, float ht, float t, uint32_t rgb);

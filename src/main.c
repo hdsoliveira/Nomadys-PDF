@@ -6,12 +6,9 @@
 #include "nomadys.h"
 
 #define VERSION "0.2.0"
-#define BLINK_MS 530
 
 Window *windows[MAX_WINDOWS];
 int nwindows;
-static bool blink_on = true;
-static uint64_t blink_at;
 static const char *capture_path; /* test mode: save the next frame here */
 
 View *cur_view(Window *w) { return w->ntabs ? w->tabs[w->cur] : NULL; }
@@ -231,7 +228,7 @@ static void draw(Window *w, uint64_t now)
         page_to_screen(v, v->flash_page, v->flash_rect.r, v->flash_rect.b, &x1, &y1, top);
         ui_fill(w, SDL_min(x0, x1), SDL_min(y0, y1), SDL_fabsf(x1 - x0), SDL_fabsf(y1 - y0), wtheme(w)->caret, 70);
     }
-    cursor_draw(w, v, top, blink_on);
+    cursor_draw(w, v, top);
     if (w->mode == MODE_FORM)
         form_draw_focus(w, v, top);
     ui_draw_overlays(w, now);
@@ -637,7 +634,6 @@ int main(int argc, char **argv)
         e.user.data1 = xstrdup(request);
         SDL_PushEvent(&e);
     }
-    blink_at = SDL_GetTicks() + BLINK_MS;
     bool prefetching = false;
     while (nwindows) {
         uint64_t now = SDL_GetTicks();
@@ -647,11 +643,14 @@ int main(int argc, char **argv)
             if (t >= 0)
                 wait = wait < 0 ? t : SDL_min(wait, t);
         }
-        bool blinking = false;
         for (int i = 0; i < nwindows; i++) {
             Window *x = windows[i];
-            Mode m = x->mode == MODE_PROMPT ? x->prompt_return : x->mode;
-            blinking |= m == MODE_CARET || m == MODE_AREA;
+            if (cursor_locating(x, now) || (x->locate_at && now - x->locate_at < LOCATE_MS + 100)) {
+                x->redraw = true; /* animation frames, then one to clear it */
+                wait = wait < 0 ? 16 : SDL_min(wait, 16);
+                if (!cursor_locating(x, now))
+                    x->locate_at = 0;
+            }
             uint64_t until[3] = {x->msg_until, x->tabs_flash_until, x->ntabs ? cur_view(x)->flash_until : 0};
             for (int k = 0; k < 3; k++) {
                 if (until[k] > now) {
@@ -661,18 +660,6 @@ int main(int argc, char **argv)
                     x->redraw = true; /* overlay just expired */
                 }
             }
-        }
-        if (blinking) {
-            if (now >= blink_at) {
-                blink_on = !blink_on;
-                blink_at = now + BLINK_MS;
-                for (int i = 0; i < nwindows; i++)
-                    windows[i]->redraw |= windows[i]->mode == MODE_CARET || windows[i]->mode == MODE_AREA;
-            }
-            int left = (int)(blink_at - now);
-            wait = wait < 0 ? left : SDL_min(wait, left);
-        } else {
-            blink_on = true;
         }
         if (math_poll()) /* a formula was typeset */
             need_redraw_all = true;

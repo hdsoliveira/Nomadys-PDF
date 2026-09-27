@@ -209,6 +209,28 @@ void ui_draw_overlays(Window *w, uint64_t now)
 }
 
 /* Word-wrapped comment box at the bottom of the window. */
+/* A ring (annulus) centred on (cx, cy): outer radius r, width th. */
+void ui_ring(Window *w, float cx, float cy, float r, float th, uint32_t rgb, uint8_t a)
+{
+    enum { SEG = 72 };
+    SDL_Vertex v[2 * (SEG + 1)];
+    int idx[6 * SEG];
+    SDL_FColor c = {((rgb >> 16) & 0xFF) / 255.0f, ((rgb >> 8) & 0xFF) / 255.0f, (rgb & 0xFF) / 255.0f, a / 255.0f};
+    float ri = SDL_max(0.0f, r - th);
+    for (int i = 0; i <= SEG; i++) {
+        float ang = (float)i / SEG * 2 * SDL_PI_F, cs = SDL_cosf(ang), sn = SDL_sinf(ang);
+        v[2 * i] = (SDL_Vertex){{cx + r * cs, cy + r * sn}, c, {0, 0}};
+        v[2 * i + 1] = (SDL_Vertex){{cx + ri * cs, cy + ri * sn}, c, {0, 0}};
+    }
+    for (int i = 0; i < SEG; i++) {
+        int o = 2 * i;
+        int q[6] = {o, o + 1, o + 2, o + 1, o + 3, o + 2};
+        memcpy(idx + 6 * i, q, sizeof q);
+    }
+    SDL_SetRenderDrawBlendMode(w->ren, SDL_BLENDMODE_BLEND);
+    SDL_RenderGeometry(w->ren, NULL, v, 2 * (SEG + 1), idx, 6 * SEG);
+}
+
 /* Mixes two 0xRRGGBB colours: f = 0 gives a, 1 gives b. */
 uint32_t rgb_mix(uint32_t a, uint32_t b, float f)
 {
