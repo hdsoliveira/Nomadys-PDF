@@ -513,6 +513,8 @@ static void handle_event(SDL_Event *e)
             handle_request(e->user.data1);
         else if (e->user.code == IPC_FINDER)
             picker_refresh();
+        else if (e->user.code == IPC_INDEX || e->user.code == IPC_LIBRARY)
+            library_event(e->user.code);
         else if (e->user.code == IPC_BIBTEX)
             cite_result(window_by_id((SDL_WindowID)(uintptr_t)e->user.data2), e->user.data1);
         else if (e->user.code == IPC_FILE)
@@ -810,6 +812,14 @@ static void usage(void)
 int main(int argc, char **argv)
 {
     const char *forward = NULL, *editor = NULL;
+    if (argc == 4 && !strcmp(argv[1], "--index-worker")) { /* the library index, a process apart (library.c) */
+        config_load();
+        FPDF_LIBRARY_CONFIG lib = {.version = 2};
+        FPDF_InitLibraryWithConfig(&lib);
+        int code = library_worker(argv[2], atoi(argv[3]));
+        FPDF_DestroyLibrary();
+        return code;
+    }
     while (argc > 2 && argv[1][0] == '-' && strcmp(argv[1], "--help") && strcmp(argv[1], "--version")) {
         if (!strcmp(argv[1], "--test-script"))
             script = argv[2];
@@ -1006,6 +1016,7 @@ int main(int argc, char **argv)
     while (ndocs)
         doc_unref(docs[0]);
     ipc_stop();
+    library_shutdown();
     recent_shutdown();
     math_shutdown();
     font_shutdown();

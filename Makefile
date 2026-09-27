@@ -5,7 +5,7 @@ CC      ?= cc
 CFLAGS  ?= -O2 -g
 override CFLAGS += -std=c11 -D_GNU_SOURCE -Wall -Wextra -Wno-unused-parameter \
            -I$(PDFIUM)/include -isystem third_party/stb $(shell pkg-config --cflags sdl3 freetype2 fontconfig)
-override LDLIBS += -L$(PDFIUM)/lib -lpdfium $(shell pkg-config --libs sdl3 freetype2 fontconfig) -lm \
+override LDLIBS += -L$(PDFIUM)/lib -lpdfium $(shell pkg-config --libs sdl3 freetype2 fontconfig) -lz -lm \
            -Wl,-rpath,'$$ORIGIN/$(PDFIUM)/lib:$$ORIGIN/../lib/nomadys-pdf'
 
 SRC := $(wildcard src/*.c)

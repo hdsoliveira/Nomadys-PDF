@@ -63,9 +63,11 @@ A small coloured badge in the bottom-left corner shows the mode: `NORMAL`,
 | `r` / `R` | rotate the view 90° clockwise / counter-clockwise (the file is not changed) |
 | `i` | dark mode (images keep their colours) |
 | `/` `n` `N` | search / next / previous (`Esc` clears) |
-| `\g` | all pages as thumbnails: `h j k l` choose, `J K` a screen, `+ -` size, `Enter` go there (`Ctrl-o` returns), `Esc` close |
+| `\g` | all pages as thumbnails: `h j k l` choose, `J K` a screen, `+ -` size, `Enter` go there (`Ctrl-o` returns), `Esc` close; there the pages can also be changed (below) |
 | `\o` | open a recent file: type parts of its name (fuzzy), `Ctrl-j` `Ctrl-k` move, `Enter` open |
 | `\f` | find any PDF in your folders (`pdf_dirs`, the home folder by default; hidden folders skipped), the same way; newest first. The list of the last search shows at once while a new one runs (the whole home folder takes about a second) |
+| `\/` | search the **text of all your PDFs** (those in `pdf_dirs`): words in any order on the same page, pages with them together first; `Tab` switches to comments and highlights; `Enter` opens the PDF at that page with the word highlighted (`n` `N` go on) |
+| `\n` | search the **comments and highlights of all your PDFs** (with nothing typed: every comment) |
 
 **Search** is incremental: while you type after `/` the view goes to the
 first match from where you were (`Esc` goes back there, `Enter` keeps it, as
@@ -265,6 +267,24 @@ In the panel's Highlights tab, `C V B N M` show or hide a colour, `c` keeps
 only those with a comment, `a` shows all again and `e` exports what is
 shown.
 
+### Changing the pages
+
+In the page grid (`\g`) the selected page, or several chosen with `v`
+(then move to the other end), can be changed; the file itself changes, and
+`u` / `Ctrl-r` undo and redo it (the document before each change is kept in
+`~/.cache/nomadys-pdf/undo` until the PDF is closed). Marks follow their
+pages. A signed PDF is left alone, since this would break its signature.
+
+| Key in `\g` | Action |
+|---|---|
+| `v` | choose several pages |
+| `x` or `d` | delete them |
+| `r` / `R` | turn them right / left (in the file, not only the view) |
+| `<` / `>` | move them one place earlier / later (`3>`: three places) |
+| `y` | save them as a new PDF (the name is asked, `paper-p3-7.pdf` offered) |
+| `i` | insert another PDF after the selected page (`:insert file`, `Tab` completes) |
+| `u` / `Ctrl-r` | undo / redo |
+
 ### LaTeX with VimTeX
 
 - **Auto-reload:** when LaTeX writes a new PDF, it reloads in place (same
@@ -339,12 +359,16 @@ listed above the line and `Tab` / `Shift-Tab` cycle through them (`:` then
 | `:noh` | clear the search highlight |
 | `:image file.png` | put a picture on the page, then move / resize it |
 | `:pages` | all pages as thumbnails (`\g`) |
+| `:extract 3-7 [file.pdf]` | pages 3 to 7 as a new PDF (`paper-p3-7.pdf` by default) |
+| `:delete 3-7` | delete pages (`u` undoes it) |
+| `:insert other.pdf` / `:append other.pdf` | another PDF's pages after this page / at the end |
 | `:bibtex` | copy the paper's BibTeX entry: its DOI (or arXiv number) is found in the PDF and the entry fetched from doi.org / arxiv.org (needs curl) |
 | `:merge copy.pdf` | bring in a co-author's highlights and comments, without duplicates |
 | `:diff old.pdf` | compare with an older version (`]c` `[c`); `:nodiff` hides it |
 | `:present` | presentation (`F5`) |
 | `:recent` | open a recent file (`\o`) |
 | `:find` | find any PDF in your folders (`\f`) |
+| `:library words` / `:comments words` | search the text / the comments and highlights of all your PDFs (`\/`, `\n`) |
 | `:session` | reopen the tabs of the last session |
 | `:export [file.md] [colours] [commented]` | highlights, comments and marks to Markdown, all or only some colours (`:export green`); `:export!` overwrites a file it did not write |
 | `:reload` | reload the PDF from disk |
@@ -385,6 +409,13 @@ Built to stay light with big PDFs and many tabs:
   page shows what was drawn of it at the previous zoom, stretched, so
   scrolling and zooming never wait; zooming ten steps on such a page renders
   only the last one (5 s instead of 38 s in the test with 120 000 strokes).
+- **The library index** (for `\/` and `\n`) is made by three background
+  processes at low priority, apart from the reader so a broken PDF cannot
+  take it down, and kept in `~/.cache/nomadys-pdf/index` (about 9 KB per PDF,
+  compressed). The first time takes about 16 ms per PDF (4 minutes for 14 000);
+  afterwards only new or changed files are read. Network and FUSE mounts
+  inside `pdf_dirs` are skipped (they could download every file). A search
+  over 2 700 PDFs answers in under 0.2 s.
 - Freed memory is given back to the system when idle (`malloc_trim`).
 - **Idle**: no timers, no polling; the program sleeps until something happens.
 - **Saving** rewrites the file compactly (0.1 s for a 255 MB paper) and waits
@@ -498,7 +529,9 @@ One feature per file in `src/`; `nomadys.h` has the shared types and a module ma
 | `diff.c` | `:diff`: words of both versions, patience diff, drawing, `]c` `[c` |
 | `present.c` | presentation mode |
 | `recent.c` | recent files, the session, the fuzzy file picker, the PDF finder (`\f`) |
+| `library.c` | `\/` `\n`: the index workers (`npdf --index-worker`), searching it in threads, the result list |
 | `grid.c` | the page grid (thumbnails drawn while idle) |
+| `pages.c` | deleting, turning, moving, extracting and inserting pages; their undo snapshots |
 | `help.c` | the help screen (`\c`): tabs, groups, keycaps, search |
 | `panel.c` | the marks / notes / contents panel |
 | `font.c` | UI text through fontconfig and FreeType |

@@ -173,7 +173,7 @@ typedef struct {
     int turns;               /* quarter turns clockwise */
 } ImageView;
 
-typedef enum { U_CREATE, U_DELETE, U_COMMENT, U_EDIT } UndoKind;
+typedef enum { U_CREATE, U_DELETE, U_COMMENT, U_EDIT, U_PAGES } UndoKind;
 typedef struct {
     UndoKind kind;
     int page, group;         /* a group is undone at once */
@@ -182,6 +182,7 @@ typedef struct {
     bool has_view;
     ImageView vbefore, vafter;
     char *text_before, *text_after; /* U_COMMENT */
+    Mark *marks_before, *marks_after; /* U_PAGES: text_before / text_after are snapshot files */
 } Undo;
 
 struct Doc {
@@ -269,6 +270,19 @@ void doc_undo_clear(Doc *d);
 void doc_purge_deleted(Doc *d);                           /* closing: hidden deletions go */
 int undo_group_begin(Doc *d);
 void undo_group_end(Doc *d);
+void undo_pages(Doc *d, int page, char *snapshot, const Mark *marks_before); /* takes the snapshot path */
+char *pages_snapshot(Doc *d);                              /* the document as it is, to a temporary file */
+bool pages_restore(Doc *d, const char *snapshot, const Mark *marks); /* back to a snapshot (undo) */
+void doc_pages_changed(Doc *d);
+void pages_delete(Window *w, Doc *d, int first, int last);
+void pages_rotate(Window *w, Doc *d, int first, int last, int quarters);
+int pages_move(Window *w, Doc *d, int first, int last, int dest); /* where they went, or -1 */
+bool pages_extract(Window *w, Doc *d, int first, int last, const char *path);
+void pages_insert(Window *w, Doc *d, const char *path, int after);
+bool pages_parse_range(const char *s, int npages, int *first, int *last); /* "3-7" */
+void pages_default_name(Doc *d, int first, int last, char *out, size_t cap);
+bool doc_replace_pdf(Doc *d, const char *path);
+bool pdf_write(FPDF_DOCUMENT pdf, const char *path, char *err, size_t errlen);
 typedef struct { int added, already, skipped, first_page; bool pages_differ; } MergeResult;
 bool doc_merge(Doc *d, const char *path, MergeResult *res, char *err, size_t cap);
 void undo_edit(Doc *d, int page, int annot, PRect before, PRect after, const ImageView *vbefore, const ImageView *vafter);
@@ -285,7 +299,7 @@ typedef struct {
 } CacheEntry;
 
 typedef enum { MODE_NORMAL, MODE_FORM, MODE_CARET, MODE_AREA, MODE_PANEL, MODE_PROMPT, MODE_HELP,
-               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT, MODE_CROP, MODE_PICKER, MODE_GRID, MODE_PRESENT, MODE_THEMES, MODE_ABOUT } Mode;
+               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT, MODE_CROP, MODE_PICKER, MODE_LIBRARY, MODE_GRID, MODE_PRESENT, MODE_THEMES, MODE_ABOUT } Mode;
 
 typedef struct { int page, ch; } TextPos;
 
@@ -415,6 +429,11 @@ struct Window {
     int picker_sel, picker_first;
     Mode picker_return;
     bool picker_files;       /* the finder (\f), not the recent files */
+    /* library search (library.c) */
+    char lib_query[256];
+    bool lib_notes;          /* comments and highlights, not the text */
+    int lib_sel, lib_first;
+    Mode lib_return;
     /* split view (split.c): a second pane, its own view */
     View *split;
     bool split_side, split_focus;  /* side by side / above each other; the second pane has the keys */
@@ -423,6 +442,7 @@ struct Window {
     /* page grid (grid.c) */
     Thumb *thumbs;
     int grid_sel, grid_top, grid_size;
+    int grid_anchor;         /* v in the grid: the other end of the pages chosen, -1 none */
     Mode grid_return;
     /* presentation (present.c) */
     /* about screen (about.c) */
@@ -564,7 +584,7 @@ void jump_back(Window *w, View *v);                      /* "mm" */
 void jump_history(Window *w, View *v, int dir);          /* Ctrl-o / Ctrl-i */
 
 /* ---------- LaTeX: SyncTeX and the link with VimTeX (synctex.c, ipc.c) ---------- */
-enum { IPC_REQUEST = 1, IPC_FILE = 2, IPC_BIBTEX = 3, IPC_FINDER = 4 };
+enum { IPC_REQUEST = 1, IPC_FILE = 2, IPC_BIBTEX = 3, IPC_FINDER = 4, IPC_INDEX = 5, IPC_LIBRARY = 6 };
 extern Uint32 ipc_event;
 bool synctex_available(Doc *d);
 bool synctex_inverse(Window *w, View *v, int page, double x, double y);
@@ -689,6 +709,14 @@ int session_files(char ***out, int *current);             /* the last session's 
 void session_restore(Window *w);
 void picker_open(Window *w, bool files);                   /* files: \f, every PDF in pdf_dirs */
 void picker_refresh(void);
+int pdf_scan(const char *dirs, char ***paths, long long **when); /* every PDF in pdf_dirs */
+int library_worker(const char *dir, int part);            /* npdf --index-worker DIR K */
+void library_open(Window *w, bool notes);                 /* \/ text, \n comments and highlights */
+void library_event(int code);                             /* IPC_INDEX / IPC_LIBRARY */
+void library_key(Window *w, const char *tok);
+void library_text(Window *w, const char *text);
+void library_draw(Window *w);
+void library_shutdown(void);
 View *pane_view(Window *w, bool second);
 bool pane_enter(Window *w, bool second);                   /* false: no split, nothing to leave */
 bool pane_enter_focused(Window *w);

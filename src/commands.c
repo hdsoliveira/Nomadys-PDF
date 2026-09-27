@@ -13,7 +13,7 @@
 
 typedef void (*CommandFn)(Window *w, View *v, const char *arg);
 
-enum { ARG_NONE, ARG_FILE, ARG_NUMBER, ARG_PRINT, ARG_MD, ARG_IMAGE, ARG_THEME };
+enum { ARG_NONE, ARG_FILE, ARG_NUMBER, ARG_PRINT, ARG_MD, ARG_IMAGE, ARG_THEME, ARG_WORDS };
 
 typedef struct {
     const char *name;
@@ -127,6 +127,17 @@ static void c_image(Window *w, View *v, const char *a)
 
 static void c_recent(Window *w, View *v, const char *a) { (void)v, (void)a; picker_open(w, false); }
 static void c_find(Window *w, View *v, const char *a) { (void)v, (void)a; picker_open(w, true); }
+
+static void c_library(Window *w, View *v, const char *a, bool notes)
+{
+    (void)v;
+    library_open(w, notes);
+    if (*a)
+        library_text(w, a);
+}
+
+static void c_search_all(Window *w, View *v, const char *a) { c_library(w, v, a, false); }
+static void c_search_notes(Window *w, View *v, const char *a) { c_library(w, v, a, true); }
 static void c_session(Window *w, View *v, const char *a) { (void)v, (void)a; session_restore(w); }
 
 static void c_about(Window *w, View *v, const char *a) { (void)v, (void)a; about_open(w); }
@@ -185,6 +196,63 @@ static void c_hsplit(Window *w, View *v, const char *a) { c_split(w, v, a, false
 static void c_close(Window *w, View *v, const char *a) { (void)v, (void)a; split_close(w, true); }
 static void c_only(Window *w, View *v, const char *a) { (void)v, (void)a; split_close(w, false); }
 
+/* The page an insertion follows: the one chosen in the grid, or the one read. */
+static int here(Window *w, View *v) { return w->prompt_return == MODE_GRID ? w->grid_sel : view_top_page(v); }
+
+static void c_insert(Window *w, View *v, const char *a)
+{
+    if (!*a) {
+        ui_message(w, "usage: :insert other.pdf  (after this page; in the grid \\g: after the one selected)");
+        return;
+    }
+    char *path = expand_home(a);
+    pages_insert(w, v->doc, path, here(w, v));
+    free(path);
+}
+
+static void c_append(Window *w, View *v, const char *a)
+{
+    if (!*a) {
+        ui_message(w, "usage: :append other.pdf  (its pages at the end)");
+        return;
+    }
+    char *path = expand_home(a);
+    pages_insert(w, v->doc, path, v->doc->npages - 1);
+    free(path);
+}
+
+/* :extract 3-7 [file.pdf] */
+static void c_extract(Window *w, View *v, const char *a)
+{
+    int first, last, used = 0;
+    char range[64] = "";
+    sscanf(a, "%63s %n", range, &used);
+    if (!pages_parse_range(range, v->doc->npages, &first, &last)) {
+        ui_message(w, "usage: :extract 3-7 [file.pdf]  (pages 3 to 7 as a new PDF)");
+        return;
+    }
+    char name[4200];
+    if (used && a[used]) {
+        char *p = expand_home(a + used);
+        snprintf(name, sizeof name, "%s", p);
+        free(p);
+    } else {
+        pages_default_name(v->doc, first, last, name, sizeof name);
+    }
+    pages_extract(w, v->doc, first, last, name);
+}
+
+/* :delete 3-7 */
+static void c_delete_pages(Window *w, View *v, const char *a)
+{
+    int first, last;
+    if (!pages_parse_range(a, v->doc->npages, &first, &last)) {
+        ui_message(w, "usage: :delete 3-7  (u undoes it)");
+        return;
+    }
+    pages_delete(w, v->doc, first, last);
+}
+
 static void c_bibtex(Window *w, View *v, const char *a) { (void)a; cite_bibtex(w, v); }
 
 static void c_nodiff(Window *w, View *v, const char *a) { (void)a; diff_stop(w, v); }
@@ -215,11 +283,17 @@ static const Command commands[] = {
     {"split", ARG_FILE, c_hsplit, "split one above the other (also Ctrl-w s)"},
     {"close", ARG_NONE, c_close, "close this pane (also Ctrl-w q)"},
     {"only", ARG_NONE, c_only, "keep only this pane (also Ctrl-w o)"},
+    {"insert", ARG_FILE, c_insert, "insert another PDF after this page (in the grid: after the one selected)"},
+    {"append", ARG_FILE, c_append, "add another PDF's pages at the end"},
+    {"extract", ARG_WORDS, c_extract, "save pages as a new PDF: :extract 3-7 [file.pdf]"},
+    {"delete", ARG_WORDS, c_delete_pages, "delete pages: :delete 3-7 (u undoes it)"},
     {"bibtex", ARG_NONE, c_bibtex, "copy the paper's BibTeX entry (by its DOI or arXiv number, from the internet)"},
     {"merge", ARG_FILE, c_merge, "bring in a co-author's highlights and comments (without duplicates)"},
     {"nodiff", ARG_NONE, c_nodiff, "hide the comparison"},
     {"present", ARG_NONE, c_present, "presentation: fullscreen, one page at a time (also F5)"},
     {"pages", ARG_NONE, c_pages, "all pages as thumbnails (also \\g)"},
+    {"library", ARG_WORDS, c_search_all, "search the text of all your PDFs: :library snap-through (also \\/)"},
+    {"comments", ARG_WORDS, c_search_notes, "search the comments and highlights of all your PDFs (also \\n)"},
     {"find", ARG_NONE, c_find, "find any PDF in your folders (also \\f; pdf_dirs in the config)"},
     {"recent", ARG_NONE, c_recent, "open a recent file (also \\o)"},
     {"session", ARG_NONE, c_session, "reopen the tabs of the last session"},
@@ -237,7 +311,7 @@ void command_describe(int i, char *keys, size_t cap, const char **text)
 {
     const Command *c = &commands[i];
     snprintf(keys, cap, ":%s%s", c->name,
-             c->arg == ARG_FILE ? " file" : c->arg == ARG_MD ? " [file.md]" : c->arg == ARG_IMAGE ? " file.png" : c->arg == ARG_THEME ? " [name]" : c->arg == ARG_NUMBER ? " N" : c->arg == ARG_PRINT ? " [options]" : "");
+             c->arg == ARG_FILE ? " file" : c->arg == ARG_MD ? " [file.md]" : c->arg == ARG_IMAGE ? " file.png" : c->arg == ARG_THEME ? " [name]" : c->arg == ARG_NUMBER ? " N" : c->arg == ARG_PRINT ? " [options]" : c->arg == ARG_WORDS ? " [words]" : "");
     *text = c->help;
 }
 

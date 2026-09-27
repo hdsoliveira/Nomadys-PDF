@@ -9,6 +9,7 @@
  *          folder by default), found by a thread and kept for next time */
 #include <ctype.h>
 #include <dirent.h>
+#include <sys/vfs.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -267,9 +268,28 @@ static bool skip_dir(const char *name)
     return false;
 }
 
+/* A network or FUSE mount (rclone, sshfs, a cloud drive): reading it could
+ * download every file, so it is left out. */
+static bool remote(const char *dir)
+{
+    struct statfs fs;
+    if (statfs(dir, &fs) != 0)
+        return true;
+    switch ((unsigned long)fs.f_type) {
+    case 0x65735546: /* fuse */
+    case 0x6969:     /* nfs */
+    case 0xFF534D42: /* cifs */
+    case 0xFE534D42: /* smb2 */
+    case 0x517B:     /* smb */
+        return true;
+    default:
+        return false;
+    }
+}
+
 static void scan(const char *dir, int depth, Found *out, bool publish)
 {
-    if (depth > FIND_DEPTH || out->n >= FIND_MAX || SDL_GetAtomicInt(&finder_stop))
+    if (depth > FIND_DEPTH || out->n >= FIND_MAX || SDL_GetAtomicInt(&finder_stop) || remote(dir))
         return;
     DIR *d = opendir(dir);
     if (!d)
@@ -302,6 +322,8 @@ static void scan(const char *dir, int depth, Found *out, bool publish)
 
 static void finder_post(void)
 {
+    if (!ipc_event)
+        return; /* the index worker: no window to tell */
     SDL_Event e = {0};
     e.type = ipc_event;
     e.user.code = IPC_FINDER;
@@ -320,15 +342,11 @@ static void found_write(const Found *f)
     finish(o, tmp, path);
 }
 
-static int finder_run(void *arg)
+/* Every folder of a pdf_dirs list ("~/Papers, ~/Books"). */
+static void scan_dirs(const char *list, Found *out, bool publish)
 {
-    (void)arg;
-    SDL_LockMutex(found_lock);
-    bool publish = found.n == 0; /* nothing to show yet: show them as they come */
-    SDL_UnlockMutex(found_lock);
-    Found fresh = {0};
     char dirs[sizeof cfg.pdf_dirs];
-    snprintf(dirs, sizeof dirs, "%s", cfg.pdf_dirs);
+    snprintf(dirs, sizeof dirs, "%s", list);
     for (char *save = NULL, *d = strtok_r(dirs, ",:", &save); d; d = strtok_r(NULL, ",:", &save)) {
         while (*d == ' ')
             d++;
@@ -337,11 +355,31 @@ static int finder_run(void *arg)
         if (!*d)
             continue;
         char *dir = expand_home(d);
-        scan(dir, 0, publish ? &found : &fresh, publish);
+        scan(dir, 0, out, publish);
         free(dir);
         if (publish)
             finder_post();
     }
+}
+
+/* The PDFs of pdf_dirs, for the index (library.c); returns how many. */
+int pdf_scan(const char *dirs, char ***paths, long long **when)
+{
+    Found f = {0};
+    scan_dirs(dirs, &f, false);
+    *paths = f.path;
+    *when = f.when;
+    return f.n;
+}
+
+static int finder_run(void *arg)
+{
+    (void)arg;
+    SDL_LockMutex(found_lock);
+    bool publish = found.n == 0; /* nothing to show yet: show them as they come */
+    SDL_UnlockMutex(found_lock);
+    Found fresh = {0};
+    scan_dirs(cfg.pdf_dirs, publish ? &found : &fresh, publish);
     if (!SDL_GetAtomicInt(&finder_stop)) {
         SDL_LockMutex(found_lock);
         if (!publish) {

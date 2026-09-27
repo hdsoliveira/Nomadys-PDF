@@ -183,6 +183,7 @@ static void draw_mode(Window *w)
     case MODE_OBJECT: label = w->obj_image ? "IMAGE" : "MOVE", color = t->mode_visual; break;
     case MODE_CROP: label = "CROP", color = t->search_match; break;
     case MODE_PICKER: label = "OPEN", color = t->tab_accent; break;
+    case MODE_LIBRARY: label = "LIBRARY", color = t->tab_accent; break;
     case MODE_GRID: label = "PAGES", color = t->tab_accent; break;
     case MODE_PRESENT: label = "", color = 0; break;
     case MODE_THEMES: label = "THEME", color = t->tab_accent; break;
@@ -224,6 +225,8 @@ void ui_draw_overlays(Window *w, uint64_t now)
     }
     if (w->mode == MODE_PICKER)
         picker_draw(w);
+    if (w->mode == MODE_LIBRARY)
+        library_draw(w);
     if (w->mode == MODE_THEMES)
         theme_draw(w);
     if (w->mode == MODE_ABOUT)

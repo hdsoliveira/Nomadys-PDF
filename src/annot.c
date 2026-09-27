@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "nomadys.h"
 
@@ -215,8 +216,16 @@ static bool undoing; /* applying an undo or redo: not recorded again */
 
 static void undo_free(Undo *u)
 {
+    if (u->kind == U_PAGES) { /* snapshots of the document: temporary files */
+        if (u->text_before)
+            unlink(u->text_before);
+        if (u->text_after)
+            unlink(u->text_after);
+    }
     free(u->text_before);
     free(u->text_after);
+    free(u->marks_before);
+    free(u->marks_after);
 }
 
 static void push(Doc *d, Undo u)
@@ -251,6 +260,16 @@ static void record(Doc *d, UndoKind kind, int page, FPDF_ANNOTATION a)
     push(d, u);
 }
 
+/* Pages deleted, moved, turned or added: the document before is kept in a
+ * snapshot file, with the marks (their pages changed too). */
+void undo_pages(Doc *d, int page, char *snapshot, const Mark *marks_before)
+{
+    Undo u = {.kind = U_PAGES, .page = page, .text_before = snapshot, .group = d->undo_group_open};
+    u.marks_before = xmalloc(NMARKS * sizeof *u.marks_before);
+    memcpy(u.marks_before, marks_before, NMARKS * sizeof *u.marks_before);
+    push(d, u);
+}
+
 /* A move / resize / crop, from start to end of the edit. */
 void undo_edit(Doc *d, int page, int annot, PRect before, PRect after, const ImageView *vbefore, const ImageView *vafter)
 {
@@ -269,8 +288,18 @@ void undo_edit(Doc *d, int page, int annot, PRect before, PRect after, const Ima
     push(d, u);
 }
 
-static bool apply(Doc *d, const Undo *u, bool redo)
+static bool apply(Doc *d, Undo *u, bool redo)
 {
+    if (u->kind == U_PAGES) {
+        if (!redo && !u->text_after) { /* the state to redo, taken once */
+            u->text_after = pages_snapshot(d);
+            u->marks_after = xmalloc(NMARKS * sizeof *u->marks_after);
+            memcpy(u->marks_after, d->marks, NMARKS * sizeof *u->marks_after);
+            if (!u->text_after)
+                return false;
+        }
+        return pages_restore(d, redo ? u->text_after : u->text_before, redo ? u->marks_after : u->marks_before);
+    }
     int idx = annot_by_name(d, u->page, u->nm);
     switch (u->kind) {
     case U_CREATE: return set_hidden(d, u->page, u->nm, !redo);
@@ -286,6 +315,8 @@ static bool apply(Doc *d, const Undo *u, bool redo)
         doc_mark_changed(d, u->page);
         return true;
     }
+    case U_PAGES:
+        return false; /* above */
     case U_EDIT:
         if (idx < 0)
             return false;
@@ -303,6 +334,7 @@ static const char *what(const Undo *u)
     case U_DELETE: return "deletion";
     case U_COMMENT: return "comment";
     case U_EDIT: return u->has_view ? "image change" : "move / resize";
+    case U_PAGES: return "page change";
     }
     return "change";
 }
@@ -347,10 +379,14 @@ void doc_undo_clear(Doc *d)
 /* Closing: deleted annotations were only hidden (for undo); now they go. */
 void doc_purge_deleted(Doc *d)
 {
-    for (int k = 0; k < d->nundo; k++) {
-        if (d->undo[k].kind != U_DELETE && d->undo[k].kind != U_CREATE)
+    bool moved = false; /* pages changed since: the recorded page numbers may be others */
+    for (int k = 0; k < d->nundo; k++)
+        moved |= d->undo[k].kind == U_PAGES;
+    for (int k = 0; k < (moved ? d->npages : d->nundo); k++) {
+        int page = moved ? k : d->undo[k].page;
+        if (!moved && d->undo[k].kind != U_DELETE && d->undo[k].kind != U_CREATE)
             continue;
-        FPDF_PAGE p = doc_page(d, d->undo[k].page);
+        FPDF_PAGE p = doc_page(d, page);
         for (int i = p ? FPDFPage_GetAnnotCount(p) - 1 : -1; i >= 0; i--) {
             FPDF_ANNOTATION a = FPDFPage_GetAnnot(p, i);
             char mark[8];
@@ -359,8 +395,8 @@ void doc_purge_deleted(Doc *d)
                 FPDFPage_CloseAnnot(a);
             if (gone) {
                 FPDFPage_RemoveAnnot(p, i);
-                forget_widgets(&d->slots[d->undo[k].page]);
-                doc_mark_changed(d, d->undo[k].page);
+                forget_widgets(&d->slots[page]);
+                doc_mark_changed(d, page);
             }
         }
     }

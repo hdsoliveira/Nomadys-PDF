@@ -153,9 +153,12 @@ static void attach(Doc *d, FPDF_DOCUMENT pdf)
 }
 
 static void close_slot(Doc *d, int i);
+static void detach_doc(Doc *d, bool close);
+static void detach(Doc *d) { detach_doc(d, true); }
 
-/* Pages, forms and the PDFium document; the Doc itself (path, marks) stays. */
-static void detach(Doc *d)
+/* Pages, forms and (with close) the PDFium document; the Doc itself (path,
+ * marks) stays. */
+static void detach_doc(Doc *d, bool close)
 {
     doc_kill_focus(d);
     search_forget(d);
@@ -172,7 +175,8 @@ static void detach(Doc *d)
     if (d->form)
         FPDFDOC_ExitFormFillEnvironment(d->form);
     d->form = NULL;
-    FPDF_CloseDocument(d->pdf);
+    if (close)
+        FPDF_CloseDocument(d->pdf);
     free(d->pw);
     free(d->ph);
     free(d->slots);
@@ -194,6 +198,42 @@ bool doc_reload(Doc *d)
     d->modified = false;
     doc_undo_clear(d); /* another version of the file: its annotations may differ */
     need_redraw_all = true;
+    return true;
+}
+
+/* Page numbers mean other pages now: every cache keyed by (page, version)
+ * must miss, so the versions start above any used before. */
+static void new_versions(Doc *d)
+{
+    static unsigned stamp = 1u << 24;
+    stamp += 1u << 16;
+    for (int i = 0; i < d->npages; i++)
+        d->slots[i].version = stamp;
+}
+
+/* Pages were deleted, moved, turned or added in d->pdf: sizes and page
+ * slots again (pages.c). */
+void doc_pages_changed(Doc *d)
+{
+    render_cancel(d, -1);
+    detach_doc(d, false);
+    attach(d, d->pdf);
+    new_versions(d);
+    doc_mark_changed(d, -1);
+}
+
+/* Another state of the document (an undo of a page change): it replaces
+ * this one, which is unsaved until written. */
+bool doc_replace_pdf(Doc *d, const char *path)
+{
+    FPDF_DOCUMENT pdf = FPDF_LoadDocument(path, d->password);
+    if (!pdf)
+        return false;
+    render_cancel(d, -1);
+    detach(d);
+    attach(d, pdf);
+    new_versions(d);
+    doc_mark_changed(d, -1);
     return true;
 }
 
@@ -469,6 +509,31 @@ static int write_block(FPDF_FILEWRITE *self, const void *data, unsigned long siz
         size -= (unsigned long)n;
     }
     return !w->failed;
+}
+
+/* A whole PDF to path, through a temporary file (snapshots, extracted pages). */
+bool pdf_write(FPDF_DOCUMENT pdf, const char *path, char *err, size_t errlen)
+{
+    size_t n = strlen(path) + 32;
+    char *tmp = xmalloc(n);
+    snprintf(tmp, n, "%s.nomadys-XXXXXX", path);
+    int fd = mkstemp(tmp);
+    if (fd < 0) {
+        snprintf(err, errlen, "cannot write %s: %s", path, strerror(errno));
+        free(tmp);
+        return false;
+    }
+    FdWriter w = {{1, write_block}, fd, false};
+    bool ok = FPDF_SaveAsCopy(pdf, &w.base, FPDF_NO_INCREMENTAL) && !w.failed;
+    ok = (close(fd) == 0) && ok;
+    if (ok && rename(tmp, path) != 0)
+        ok = false;
+    if (!ok) {
+        snprintf(err, errlen, "cannot write %s: %s", path, strerror(errno ? errno : EIO));
+        unlink(tmp);
+    }
+    free(tmp);
+    return ok;
 }
 
 /* Save to a temporary file, then atomic rename over the original. */

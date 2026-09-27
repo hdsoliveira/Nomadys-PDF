@@ -101,6 +101,7 @@ void grid_open(Window *w, View *v)
         w->grid_size = 170;
     w->grid_return = w->mode;
     w->grid_sel = view_top_page(v);
+    w->grid_anchor = -1;
     w->grid_top = 0;
     w->mode = MODE_GRID;
     keep_visible(w, v);
@@ -221,6 +222,10 @@ void grid_draw(Window *w)
                 ui_fill(w, dx, dy, dw, dh, t->panel_header, 40);
             }
             bool sel = page == w->grid_sel;
+            bool chosen = w->grid_anchor >= 0 && page >= SDL_min(w->grid_anchor, w->grid_sel) &&
+                          page <= SDL_max(w->grid_anchor, w->grid_sel);
+            if (chosen) /* v: the pages the next change acts on */
+                ui_fill(w, dx, dy, dw, dh, t->caret, 60);
             if (sel) {
                 ui_frame(w, dx - 5 * th, dy - 5 * th, dw + 10 * th, dh + 10 * th, 3 * th, t->caret);
             } else {
@@ -233,8 +238,13 @@ void grid_draw(Window *w)
                       sel ? t->caret : page == current ? t->tab_accent : t->panel_fg);
         }
     }
-    char info[128];
-    snprintf(info, sizeof info - 4, "p. %d of %d   hjkl choose   Enter go there   + - size   Esc close", w->grid_sel + 1, n);
+    char info[200];
+    if (w->grid_anchor >= 0)
+        snprintf(info, sizeof info - 4, "pp. %d\u2013%d chosen   x delete   r R turn   < > move   y save as PDF   v stop",
+                 SDL_min(w->grid_anchor, w->grid_sel) + 1, SDL_max(w->grid_anchor, w->grid_sel) + 1);
+    else
+        snprintf(info, sizeof info - 4, "p. %d of %d   Enter go   v choose pages   x delete   r turn   < > move   y save as PDF   i insert a PDF   u undo",
+                 w->grid_sel + 1, n);
     int bar = ui_bar_height(w), p = (int)(8 * w->density);
     ui_fill(w, 0, (float)(w->H - bar), (float)w->W, (float)bar, t->bar_bg, 240);
     float x0 = cfg.mode_indicator ? (float)(3 * p + font_width(w->font, "PAGES")) : (float)p; /* after the mode badge */

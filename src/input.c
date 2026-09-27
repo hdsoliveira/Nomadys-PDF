@@ -465,6 +465,12 @@ static void a_split(Window *w, View *v, int c, const char *a)
         split_focus_other(w);
 }
 
+static void a_library(Window *w, View *v, int c, const char *a)
+{
+    (void)v, (void)c;
+    library_open(w, a[0] == 'n');
+}
+
 static void a_find(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; picker_open(w, true); }
 static void a_grid(Window *w, View *v, int c, const char *a) { (void)c, (void)a; grid_open(w, v); }
 static void a_grid_h(Window *w, View *v, int c, const char *a) { (void)v, (void)a; grid_move(w, -n1(c), 0); }
@@ -478,6 +484,80 @@ static void a_grid_last(Window *w, View *v, int c, const char *a) { (void)v, (vo
 static void a_grid_bigger(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; grid_zoom(w, 1); }
 static void a_grid_smaller(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; grid_zoom(w, -1); }
 static void a_grid_go(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; grid_go(w); }
+
+/* The pages a grid change acts on: those chosen with v, or the one selected. */
+static void grid_range(Window *w, int *first, int *last)
+{
+    *first = *last = w->grid_sel;
+    if (w->grid_anchor >= 0)
+        *first = SDL_min(w->grid_anchor, w->grid_sel), *last = SDL_max(w->grid_anchor, w->grid_sel);
+}
+
+static void a_grid_choose(Window *w, View *v, int c, const char *a)
+{
+    (void)v, (void)c, (void)a;
+    w->grid_anchor = w->grid_anchor >= 0 ? -1 : w->grid_sel;
+    w->redraw = true;
+}
+
+static void a_grid_delete(Window *w, View *v, int c, const char *a)
+{
+    (void)c, (void)a;
+    int first, last;
+    grid_range(w, &first, &last);
+    pages_delete(w, v->doc, first, last);
+    w->grid_sel = SDL_clamp(first, 0, v->doc->npages - 1);
+}
+
+static void a_grid_rotate(Window *w, View *v, int c, const char *a)
+{
+    (void)c;
+    int first, last, anchor = w->grid_anchor;
+    grid_range(w, &first, &last);
+    pages_rotate(w, v->doc, first, last, a[0] == 'R' ? -1 : 1);
+    w->grid_anchor = anchor; /* still chosen: turn again, or move them */
+}
+
+static void a_grid_shift(Window *w, View *v, int c, const char *a)
+{
+    int first, last, step = (a[0] == '<' ? -1 : 1) * n1(c);
+    grid_range(w, &first, &last);
+    bool chosen = w->grid_anchor >= 0;
+    int anchor_off = chosen ? w->grid_anchor - first : 0, sel_off = w->grid_sel - first;
+    int to = pages_move(w, v->doc, first, last, first + step);
+    if (to < 0)
+        return;
+    w->grid_sel = to + sel_off; /* the pages stay chosen where they went */
+    w->grid_anchor = chosen ? to + anchor_off : -1;
+    ui_message(w, "moved to p. %d   u undoes it", to + 1);
+}
+
+static void extract_done(Window *w, const char *text)
+{
+    View *v = cur_view(w);
+    int first = w->prompt_arg >> 16, last = w->prompt_arg & 0xFFFF;
+    if (!*text || !v)
+        return;
+    char *path = expand_home(text);
+    pages_extract(w, v->doc, first, last, path);
+    free(path);
+}
+
+static void a_grid_extract(Window *w, View *v, int c, const char *a)
+{
+    (void)c, (void)a;
+    int first, last;
+    grid_range(w, &first, &last);
+    char name[CMD_MAX - 8];
+    pages_default_name(v->doc, first, last, name, sizeof name);
+    prompt_open(w, "save the pages as: ", name, extract_done, first << 16 | last);
+}
+
+static void a_grid_insert(Window *w, View *v, int c, const char *a)
+{
+    (void)v, (void)c, (void)a;
+    prompt_open(w, ":", "insert ", command_run, 0); /* :insert after the page selected; Tab completes */
+}
 static void a_grid_close(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; grid_close(w); }
 static void a_present(Window *w, View *v, int c, const char *a) { (void)c, (void)a; present_start(w, v); }
 static void a_present_next(Window *w, View *v, int c, const char *a) { (void)v, (void)a; present_step(w, n1(c)); }
@@ -618,6 +698,8 @@ static const Binding normal_map[] = {
     {":", a_command, "command line: :w save, :q close tab, :e file, :42 page"},
     {"<leader>o", a_recent, "open a recent file (type to filter)"},
     {"<leader>f", a_find, "find any PDF in your folders (type to filter)"},
+    {"<leader>/", a_library, "search the text of all your PDFs"},
+    {"<leader>n", a_library, "search the comments and highlights of all your PDFs"},
     {"<leader>g", a_grid, "all pages as thumbnails"},
     {"<leader>T", a_themes, "choose the colour theme (tried as you move)"},
     {"<leader>a", a_about, "about Nomadys-PDF: version, author, contact"},
@@ -760,6 +842,15 @@ static const Binding grid_map[] = {
     {"<C-d>", a_grid_down, NULL}, {"<C-u>", a_grid_up, NULL}, {"<PageDown>", a_grid_down, NULL}, {"<PageUp>", a_grid_up, NULL},
     {"gg", a_grid_first, "first / last page"}, {"G", a_grid_last, "first / last page"},
     {"+", a_grid_bigger, "bigger / smaller thumbnails"}, {"-", a_grid_smaller, "bigger / smaller thumbnails"},
+    GROUP("Changing the pages (u undoes)"),
+    {"v", a_grid_choose, "choose several pages (then move to the other end)"},
+    {"x", a_grid_delete, "delete the page(s)"}, {"d", a_grid_delete, NULL},
+    {"r", a_grid_rotate, "turn right / left, in the file"}, {"R", a_grid_rotate, "turn right / left, in the file"},
+    {"<lt>", a_grid_shift, "move the page(s) one place earlier / later"},
+    {">", a_grid_shift, "move the page(s) one place earlier / later"},
+    {"y", a_grid_extract, "save the page(s) as a new PDF"},
+    {"i", a_grid_insert, "insert another PDF after this page"},
+    {"u", a_undo, "undo / redo"}, {"<C-r>", a_undo, "undo / redo"},
     GROUP("Finishing"),
     {"<Enter>", a_grid_go, "go to that page (Ctrl-o returns)"},
     {"<Esc>", a_grid_close, "close"}, {"q", a_grid_close, "close"}, {"<leader>g", a_grid_close, NULL},
@@ -904,7 +995,7 @@ static void token_run(Window *w, const char *tok);
 /* Modes that work on the pages: in a split, on the focused pane's. */
 static bool on_pages(Mode m)
 {
-    return m != MODE_GRID && m != MODE_PRESENT && m != MODE_HELP && m != MODE_PANEL && m != MODE_PICKER &&
+    return m != MODE_GRID && m != MODE_PRESENT && m != MODE_HELP && m != MODE_PANEL && m != MODE_PICKER && m != MODE_LIBRARY &&
            m != MODE_THEMES && m != MODE_ABOUT;
 }
 
@@ -928,6 +1019,10 @@ static void token_run(Window *w, const char *tok)
     }
     if (w->mode == MODE_PICKER) { /* typing filters the recent files */
         picker_key(w, tok);
+        return;
+    }
+    if (w->mode == MODE_LIBRARY) { /* typing searches every PDF */
+        library_key(w, tok);
         return;
     }
     if (w->mode == MODE_PROMPT && w->prompt_box) { /* the comment box */
@@ -1236,6 +1331,10 @@ void input_text_event(Window *w, const char *text)
     }
     if (w->mode == MODE_PICKER) {
         picker_text(w, text);
+        return;
+    }
+    if (w->mode == MODE_LIBRARY) {
+        library_text(w, text);
         return;
     }
     if (w->mode == MODE_THEMES) {
