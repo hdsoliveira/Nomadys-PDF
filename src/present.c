@@ -66,6 +66,15 @@ void present_start(Window *w, View *v)
     w->redraw = true;
 }
 
+void present_reset(Window *w)
+{
+    for (int i = 0; w->slides && i < SLIDES; i++)
+        if (w->slides[i].tex) {
+            SDL_DestroyTexture(w->slides[i].tex);
+            w->slides[i] = (Slide){0};
+        }
+}
+
 void present_free(Window *w)
 {
     if (!w->slides)

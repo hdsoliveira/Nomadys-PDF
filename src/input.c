@@ -467,6 +467,8 @@ static void a_present_blank(Window *w, View *v, int c, const char *a) { (void)v,
 static void a_present_stop(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; present_stop(w); }
 static void a_diff_next(Window *w, View *v, int c, const char *a) { (void)a; for (int i = 0; i < SDL_min(n1(c), 500); i++) diff_step(w, v, 1); }
 static void a_diff_prev(Window *w, View *v, int c, const char *a) { (void)a; for (int i = 0; i < SDL_min(n1(c), 500); i++) diff_step(w, v, -1); }
+static void a_copy_region(Window *w, View *v, int c, const char *a) { (void)c; image_copy_region(w, v, a[0] == 'Y'); }
+static void a_themes(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; theme_open(w); }
 static void a_image_file(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; prompt_open(w, ":", "image ", command_run, 0); }
 static void a_image_paste(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; image_paste(w); }
 static void a_object_edit(Window *w, View *v, int c, const char *a) { (void)c, (void)a; object_begin_at_cursor(w, v); }
@@ -567,6 +569,7 @@ static const Binding normal_map[] = {
     {":", a_command, "command line: :w save, :q close tab, :e file, :42 page"},
     {"<leader>o", a_recent, "open a recent file (type to filter)"},
     {"<leader>g", a_grid, "all pages as thumbnails"},
+    {"<leader>T", a_themes, "choose the colour theme (tried as you move)"},
     {"<F5>", a_present, "present: fullscreen, one page at a time"},
     {"<C-s>", a_save, "save"}, {"<C-p>", a_print, "print (opens :print; Enter prints everything)"},
     {"t", a_tabs, "show / hide tabs"},
@@ -603,6 +606,8 @@ static const Binding area_map[] = {
     {"<C-k>", a_area_move, "move faster"}, {"<C-l>", a_area_move, "move faster"},
     GROUP("Marking an area"),
     {"v", a_area_select, "start / stop the rectangle"},
+    {"y", a_copy_region, "copy the rectangle as an image (for slides)"},
+    {"Y", a_copy_region, "save the rectangle as a PNG next to the PDF"},
     {"C", a_area_mark, "highlight the area: pastel yellow"}, {"V", a_area_mark, "highlight the area: pastel red"},
     {"B", a_area_mark, "highlight the area: pastel green"}, {"N", a_area_mark, "highlight the area: pastel pink"},
     {"M", a_area_mark, "highlight the area: pastel blue"},
@@ -830,6 +835,10 @@ void input_expire(uint64_t now)
 
 void input_token(Window *w, const char *tok)
 {
+    if (w->mode == MODE_THEMES) { /* moving tries each theme */
+        theme_key(w, tok);
+        return;
+    }
     if (w->mode == MODE_PICKER) { /* typing filters the recent files */
         picker_key(w, tok);
         return;
@@ -1135,6 +1144,10 @@ void input_text_event(Window *w, const char *text)
     }
     if (w->mode == MODE_PICKER) {
         picker_text(w, text);
+        return;
+    }
+    if (w->mode == MODE_THEMES) {
+        theme_key(w, text);
         return;
     }
     if (w->mode == MODE_PROMPT && w->prompt_box) {

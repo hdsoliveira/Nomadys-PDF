@@ -59,6 +59,16 @@ static Thumb *find(Window *w, View *v, int page)
     return NULL;
 }
 
+/* The colours changed: thumbnails are drawn again, the grid stays open. */
+void grid_reset(Window *w)
+{
+    for (int i = 0; w->thumbs && i < THUMBS; i++)
+        if (w->thumbs[i].tex) {
+            SDL_DestroyTexture(w->thumbs[i].tex);
+            w->thumbs[i] = (Thumb){0};
+        }
+}
+
 void grid_free(Window *w)
 {
     if (!w->thumbs)

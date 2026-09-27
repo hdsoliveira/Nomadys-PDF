@@ -167,6 +167,12 @@ The comment is stored in the PDF as the text you typed, so other readers show
 `$\sigma = E\varepsilon$` as is, and `:export` gives Markdown that Obsidian
 and similar apps render with the equations.
 
+**Copying a region as an image** (for slides): in the free cursor mark a
+rectangle with `v`, then `y` copies it to the clipboard as a PNG, or `Y`
+saves it next to the PDF (`paper-p5-1.png`, ...). It is drawn at `copy_dpi`
+(300 by default, in the config) in the page's own colours, dark mode or not,
+with highlights and filled forms as they are.
+
 **Images.** Put a picture on the page (a signature, a screenshot, a figure):
 in the free cursor (`Ctrl-v`) press `I` for a file (PNG, JPEG, BMP; `Tab`
 completes) or `P` to paste an image from the clipboard; or type `:image
@@ -367,22 +373,33 @@ page_fg = #E4E4E4
 
 ## Themes
 
-Ready-made colour themes in `themes/`, each with a light and a dark mode
-(`i` switches): **gruvbox**, **tokyonight** (Day / Night), **dracula**
-(Alucard / Dracula), **nord** and **solarized**. One line in the config
-selects one:
+Nine colour themes, each with a light and a dark mode (`i` switches), from
+the official palettes: **gruvbox**, **tokyonight** (Day / Night), **catppuccin**
+(Latte / Mocha), **rosepine** (Dawn / Main), **kanagawa** (Lotus / Wave),
+**everforest**, **dracula** (Alucard / Dracula), **nord** and **solarized**.
+
+**Choosing one**: `\T` (or `:theme`) lists them with samples of both modes;
+moving with `j` `k` applies each at once, `i` shows the other mode, `Enter`
+keeps it and writes `include = NAME` in the config (the rest of the config is
+left as it is), `Esc` goes back. `:theme NAME` switches directly (`Tab`
+completes the names).
+
+**Your own**: `:theme new NAME` writes `~/.config/nomadys-pdf/themes/NAME.conf`,
+started from the theme in use, with every colour explained on its line:
 
 ```ini
-include = gruvbox
-theme = dark        # start in dark mode
+# Around the pages
+background = #282828         # the window behind and between the pages
+page_bg = #282828            # dark mode: the paper of the pages
+...
+search_match = #fabd2f       # search matches, link letters (f), the crop frame
 ```
 
-`make install` copies them to `~/.local/share/nomadys-pdf/themes/`. To make
-your own, copy one to `~/.config/nomadys-pdf/themes/mine.conf` and use
-`include = mine`; any key can also be overridden in the config after the
-include line. In dark mode `page_bg` / `page_fg` are the paper and ink of the
-pages themselves (figures keep their colours); in light mode pages stay white. `page_shadow = false` removes the soft shadow around pages; the
-`shadow` key sets its colour.
+Edit any `#rrggbb` and save: the open window shows it at once. A wrong value
+is reported with its line, and the rest still works. Your themes appear in the
+list as "yours". Keys can also be overridden in the config itself, in
+`[light]` / `[dark]` sections after the include line. `page_shadow = false`
+removes the soft shadow around pages.
 
 ![themes](docs/themes.png)
 

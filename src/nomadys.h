@@ -63,6 +63,7 @@ typedef struct {
     bool autosave;
     int autosave_delay_ms;
     bool subpixel_text;
+    int copy_dpi;            /* y / Y in the free cursor: the region as an image */
     bool show_tabs;
     bool page_shadow;        /* draw a soft shadow around pages */
     bool mode_indicator;     /* small coloured badge with the current mode */
@@ -75,6 +76,8 @@ typedef struct {
     double font_size;        /* UI font size in points */
     char leader[8];          /* leader key token, e.g. "\\" */
     char synctex_editor[1024]; /* inverse search command: %l line, %c column, %f file */
+    char theme[64];          /* the theme chosen (include = ...), "" = built in */
+    char theme_path[2048];
     Theme light, dark_theme;
 } Config;
 
@@ -82,6 +85,13 @@ enum { DARK_IMAGES_SMART, DARK_IMAGES_KEEP, DARK_IMAGES_INVERT };
 extern Config cfg;
 void config_load(void);
 const Theme *theme_of(bool dark);
+const char *config_file(void);
+extern char config_error[256];                           /* the first problem in the config or a theme */
+bool theme_peek(const char *name, Theme *light, Theme *dark);
+bool theme_apply(const char *name);
+int theme_list(char ***names, bool **yours);
+bool theme_save(const char *name, char *err, size_t cap);
+void theme_user_dir(char *out, size_t cap);
 const char *leader_label(void);
 
 /* ---------- document (doc.c) ---------- */
@@ -237,7 +247,7 @@ typedef struct {
 } CacheEntry;
 
 typedef enum { MODE_NORMAL, MODE_FORM, MODE_CARET, MODE_AREA, MODE_PANEL, MODE_PROMPT, MODE_HELP,
-               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT, MODE_CROP, MODE_PICKER, MODE_GRID, MODE_PRESENT } Mode;
+               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT, MODE_CROP, MODE_PICKER, MODE_GRID, MODE_PRESENT, MODE_THEMES } Mode;
 
 typedef struct { int page, ch; } TextPos;
 
@@ -370,6 +380,13 @@ struct Window {
     int grid_sel, grid_top, grid_size;
     Mode grid_return;
     /* presentation (present.c) */
+    /* theme list (theme.c) */
+    char **theme_names;
+    bool *theme_yours;
+    Theme *theme_samples;    /* light and dark of each, for the samples */
+    int ntheme, theme_sel, theme_first;
+    char theme_orig[64];     /* Esc goes back to it */
+    Mode theme_return;
     Slide *slides;
     int present_page;
     bool present_black, present_was_full;
@@ -504,6 +521,7 @@ void ipc_start(void);
 void ipc_stop(void);
 bool ipc_send(const char *msg);                          /* to a running instance */
 void ipc_watch(Doc *d);
+int ipc_watch_dir(const char *dir);
 
 /* ---------- printing (print.c) ---------- */
 void print_document(Window *w, View *v, const char *args);
@@ -592,6 +610,7 @@ void help_escape(Window *w);
 /* image.c: images put on a page (stamp annotations) */
 void image_insert_file(Window *w, const char *path);
 void image_paste(Window *w);                              /* from the clipboard */
+void image_copy_region(Window *w, View *v, bool to_file); /* y / Y: the marked region as a PNG */
 
 /* object.c: moving and resizing images and areas */
 void object_begin(Window *w, View *v, int page, int annot, float ratio);
@@ -624,6 +643,7 @@ void picker_draw(Window *w);
 void grid_open(Window *w, View *v);
 void grid_close(Window *w);
 void grid_free(Window *w);
+void grid_reset(Window *w);
 void grid_move(Window *w, int dx, int dy);
 void grid_edge(Window *w, bool last);
 void grid_screen(Window *w, int dir);
@@ -636,6 +656,7 @@ void grid_draw(Window *w);
 void present_start(Window *w, View *v);
 void present_stop(Window *w);
 void present_free(Window *w);
+void present_reset(Window *w);
 void present_go(Window *w, int page);
 void present_step(Window *w, int delta);
 void present_blank(Window *w);
@@ -650,6 +671,15 @@ void diff_free(Diff *d);
 void diff_refresh(View *v);                               /* the PDF was reloaded */
 void diff_step(Window *w, View *v, int dir);              /* ]c [c */
 void diff_draw(Window *w, View *v, int top);
+
+/* theme.c: choosing and editing themes while running */
+void theme_open(Window *w);
+void theme_key(Window *w, const char *tok);
+void theme_draw(Window *w);
+void theme_command(Window *w, const char *arg);         /* :theme [NAME | new NAME] */
+void theme_new(Window *w, const char *arg);
+void theme_watch(void);
+bool theme_file_changed(int wd, const char *name);
 
 /* export.c */
 int export_write(Doc *d, FILE *f, int *ncomments);       /* Markdown; returns highlights */

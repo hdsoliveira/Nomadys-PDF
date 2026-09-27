@@ -155,6 +155,13 @@ void ipc_stop(void)
     }
 }
 
+/* A folder whose files matter while running (the config, themes); its
+ * events come as IPC_FILE with this watch. Returns it, or -1. */
+int ipc_watch_dir(const char *dir)
+{
+    return notify_fd < 0 ? -1 : inotify_add_watch(notify_fd, dir, IN_CLOSE_WRITE | IN_MOVED_TO | IN_CREATE);
+}
+
 void ipc_watch(Doc *d)
 {
     if (notify_fd < 0 || d->watch_wd > 0)

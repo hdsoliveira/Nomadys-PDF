@@ -107,6 +107,7 @@ Most valuable for reading and reviewing papers by keyboard:
    *Done (src/export.c); also `npdf --export file.pdf` to stdout.*
 4. **Copy a region as an image** — free cursor (`Ctrl-v`), select, `y` copies
    a high-resolution image to the clipboard (for slides).
+   *Done (src/image.c): PNG at `copy_dpi` (300), `Y` saves it next to the PDF.*
 5. **Compare two versions of a PDF** (`:diff old.pdf`): highlight what changed
    (answers to reviewers, co-author edits). *Done (src/diff.c): patience diff on
    words, green / amber / red, `]c` `[c` with the old text, redone on reload.*
@@ -125,3 +126,21 @@ More ambitious:
 
 11. OCR for scanned PDFs (tesseract, if installed): search/select/highlight.
 12. Background rendering thread: smooth zoom/scroll on very heavy pages.
+
+## Done beyond the roadmap (2026-09-26/27)
+
+- Comments with LaTeX equations, edited in a box next to the highlight
+  (src/comment.c, src/math.c: pdflatex in the background, cached).
+- Images on the page (`I`, `P`, `:image`), moved, resized, cropped and turned
+  without re-encoding (src/image.c, src/object.c); resolution chosen so they
+  stay sharp (PDFium enlarges without smoothing).
+- Area highlights can be moved and resized (`e`).
+- Help screen in tabs with keycaps, search and "How to get here" (src/help.c).
+- Cursors steady, found by closing rings; thinner outlined cross.
+- Memory and speed: texture budget, global page cap, document compaction,
+  no idle wakeups, compact saving (the incremental save grew big PDFs).
+- Configurable UI font with a warning when it is not installed.
+- The command is `npdf`; config and data stay in `nomadys-pdf` folders.
+
+Left: 11 (OCR), 12 (background rendering; a paused/progressive render would
+be the simpler first step).

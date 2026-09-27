@@ -16,6 +16,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <strings.h>
 
 #include "nomadys.h"
 
@@ -473,4 +475,105 @@ void image_paste(Window *w)
         SDL_free(data);
     }
     ui_message_long(w, 5000, "no image in the clipboard (copy one, or take a screenshot to the clipboard)");
+}
+
+/* ---------- the marked region as an image (y / Y) ---------- */
+#define COPY_MAX_PIXELS (40 * 1000 * 1000)
+
+static Bytes clip_png;       /* what the clipboard hands out */
+
+static const void *clip_data(void *userdata, const char *mime, size_t *size)
+{
+    (void)userdata;
+    if (!mime || strcmp(mime, "image/png") || !clip_png.data) {
+        *size = 0;
+        return NULL;
+    }
+    *size = clip_png.len;
+    return clip_png.data;
+}
+
+static void clip_cleanup(void *userdata) { (void)userdata; }
+
+/* The region at copy_dpi as PNG bytes, in the page's own colours (a slide
+ * wants the figure as printed, not the dark mode). */
+static bool region_png(View *v, int page, PRect r, Bytes *out, int *ow, int *oh, int *dpi)
+{
+    FPDF_PAGE p = doc_page(v->doc, page);
+    if (!p)
+        return false;
+    float scale = cfg.copy_dpi / 72.0f;
+    float rw = r.r - r.l, rh = r.t - r.b;
+    if ((double)rw * scale * rh * scale > COPY_MAX_PIXELS) /* a huge region: fewer dots */
+        scale = SDL_sqrtf((float)COPY_MAX_PIXELS / (rw * rh));
+    int w = SDL_max(1, (int)(rw * scale + 0.5f)), h = SDL_max(1, (int)(rh * scale + 0.5f));
+    int pw = (int)(v->doc->pw[page] * scale + 0.5f), ph = (int)(v->doc->ph[page] * scale + 0.5f);
+    int x0 = (int)(r.l * scale + 0.5f), y0 = (int)((v->doc->ph[page] - r.t) * scale + 0.5f);
+    FPDF_BITMAP bmp = FPDFBitmap_Create(w, h, 0);
+    if (!bmp)
+        return false;
+    FPDFBitmap_FillRect(bmp, 0, 0, w, h, 0xFFFFFFFF);
+    FPDF_RenderPageBitmap(bmp, p, -x0, -y0, pw, ph, 0, FPDF_ANNOT | FPDF_PRINTING);
+    if (v->doc->form)
+        FPDF_FFLDraw(v->doc->form, bmp, p, -x0, -y0, pw, ph, 0, FPDF_ANNOT | FPDF_PRINTING);
+    uint8_t *px = FPDFBitmap_GetBuffer(bmp);
+    int stride = FPDFBitmap_GetStride(bmp);
+    uint8_t *rgb = xmalloc((size_t)w * h * 3);
+    for (int y = 0; y < h; y++)
+        for (int x = 0; x < w; x++) {
+            const uint8_t *s = px + (size_t)y * stride + x * 4;
+            uint8_t *q = rgb + ((size_t)y * w + x) * 3;
+            q[0] = s[2], q[1] = s[1], q[2] = s[0];
+        }
+    FPDFBitmap_Destroy(bmp);
+    *out = (Bytes){0};
+    bool ok = stbi_write_png_to_func(put_bytes, out, w, h, 3, rgb, w * 3) != 0;
+    free(rgb);
+    *ow = w, *oh = h, *dpi = (int)(scale * 72 + 0.5f);
+    memory_freed = true;
+    return ok;
+}
+
+void image_copy_region(Window *w, View *v, bool to_file)
+{
+    int page;
+    PRect r;
+    bool is_rect;
+    if (!area_target(v, &page, &r, &is_rect) || !is_rect) {
+        ui_message(w, "mark the region with v first, then y copies it (Y saves it)");
+        return;
+    }
+    Bytes png;
+    int iw, ih, dpi;
+    if (!region_png(v, page, r, &png, &iw, &ih, &dpi)) {
+        ui_message(w, "cannot draw that region");
+        return;
+    }
+    if (to_file) { /* next to the PDF: paper-p3-1.png, paper-p3-2.png, ... */
+        char path[4200];
+        size_t n = strlen(v->doc->path);
+        if (n > 4 && !strcasecmp(v->doc->path + n - 4, ".pdf"))
+            n -= 4;
+        for (int k = 1; k < 1000; k++) {
+            snprintf(path, sizeof path, "%.*s-p%d-%d.png", (int)n, v->doc->path, page + 1, k);
+            if (access(path, F_OK))
+                break;
+        }
+        FILE *f = fopen(path, "wb");
+        bool ok = f && fwrite(png.data, 1, png.len, f) == png.len;
+        ok = f && fclose(f) == 0 && ok;
+        free(png.data);
+        const char *name = strrchr(path, '/') ? strrchr(path, '/') + 1 : path;
+        ui_message_long(w, 6000, ok ? "saved %s (%d \u00d7 %d, %d dpi)" : "cannot write %s", name, iw, ih, dpi);
+    } else {
+        free(clip_png.data);
+        clip_png = png;
+        static const char *types[] = {"image/png"};
+        if (SDL_SetClipboardData(clip_data, clip_cleanup, NULL, types, 1))
+            ui_message_long(w, 6000, "copied the region as an image: %d \u00d7 %d, %d dpi (paste it anywhere)", iw, ih, dpi);
+        else
+            ui_message_long(w, 6000, "the clipboard refused the image: Y saves it as a file");
+    }
+    v->area_selecting = false;
+    w->redraw = true;
 }

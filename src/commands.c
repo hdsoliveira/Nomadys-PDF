@@ -13,7 +13,7 @@
 
 typedef void (*CommandFn)(Window *w, View *v, const char *arg);
 
-enum { ARG_NONE, ARG_FILE, ARG_NUMBER, ARG_PRINT, ARG_MD, ARG_IMAGE };
+enum { ARG_NONE, ARG_FILE, ARG_NUMBER, ARG_PRINT, ARG_MD, ARG_IMAGE, ARG_THEME };
 
 typedef struct {
     const char *name;
@@ -128,6 +128,8 @@ static void c_image(Window *w, View *v, const char *a)
 static void c_recent(Window *w, View *v, const char *a) { (void)v, (void)a; picker_open(w); }
 static void c_session(Window *w, View *v, const char *a) { (void)v, (void)a; session_restore(w); }
 
+static void c_theme(Window *w, View *v, const char *a) { (void)v; theme_command(w, a); }
+
 static void c_diff(Window *w, View *v, const char *a)
 {
     if (!*a) {
@@ -160,6 +162,7 @@ static const Command commands[] = {
     {"export", ARG_MD, c_export, "highlights and comments to Markdown (paper-notes.md)"},
     {"export!", ARG_MD, c_export_force, "the same, overwriting any file"},
     {"image", ARG_IMAGE, c_image, "put a PNG / JPEG on the page (then move and resize it)"},
+    {"theme", ARG_THEME, c_theme, "colour theme: :theme gruvbox, :theme (the list), :theme new NAME (yours)"},
     {"diff", ARG_FILE, c_diff, "compare with an older version: new text green, changed amber, deleted red"},
     {"nodiff", ARG_NONE, c_nodiff, "hide the comparison"},
     {"present", ARG_NONE, c_present, "presentation: fullscreen, one page at a time (also F5)"},
@@ -180,7 +183,7 @@ void command_describe(int i, char *keys, size_t cap, const char **text)
 {
     const Command *c = &commands[i];
     snprintf(keys, cap, ":%s%s", c->name,
-             c->arg == ARG_FILE ? " file" : c->arg == ARG_MD ? " [file.md]" : c->arg == ARG_IMAGE ? " file.png" : c->arg == ARG_NUMBER ? " N" : c->arg == ARG_PRINT ? " [options]" : "");
+             c->arg == ARG_FILE ? " file" : c->arg == ARG_MD ? " [file.md]" : c->arg == ARG_IMAGE ? " file.png" : c->arg == ARG_THEME ? " [name]" : c->arg == ARG_NUMBER ? " N" : c->arg == ARG_PRINT ? " [options]" : "");
     *text = c->help;
 }
 
@@ -271,6 +274,23 @@ static void build_candidates(Window *w)
                 add_candidate(w, cand);
             }
         free(list);
+        return;
+    }
+    if (c && c->arg == ARG_THEME) { /* theme names, and "new" */
+        const char *word = space + strspn(space, " ");
+        w->comp_start = (int)(word - line);
+        char **names;
+        bool *yours;
+        int n = theme_list(&names, &yours);
+        if (!strncmp("new", word, strlen(word)))
+            add_candidate(w, "new ");
+        for (int i = 0; i < n; i++) {
+            if (!strncmp(names[i], word, strlen(word)))
+                add_candidate(w, names[i]);
+            free(names[i]);
+        }
+        free(names);
+        free(yours);
         return;
     }
     if (!c || (c->arg != ARG_FILE && c->arg != ARG_MD && c->arg != ARG_IMAGE))

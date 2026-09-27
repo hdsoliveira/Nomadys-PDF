@@ -1,8 +1,10 @@
 # Nomadys-PDF: copy to ~/.config/nomadys-pdf/config
 # '#' starts a comment. Colours are #RRGGBB.
 
-# A ready-made colour theme (gruvbox, tokyonight, dracula, nord, solarized);
-# settings below it override the theme.
+# Colour theme: gruvbox, tokyonight, catppuccin, rosepine, kanagawa,
+# everforest, dracula, nord, solarized, or one of yours (:theme new NAME).
+# \T in the app lists them with previews and writes this line for you.
+# [light] / [dark] sections below it override single colours.
 # include = gruvbox
 
 theme = light              # dark | light (i toggles while reading)
@@ -23,6 +25,9 @@ leader = \                 # leader key: \ , ; or "space"
 # LaTeX inverse search (double click, Ctrl+click, Enter in the cursor):
 # %l line, %c column, %f file
 synctex_editor = nvim --headless -c "VimtexInverseSearch %l '%f'"
+
+# y / Y in the free cursor copy / save a region as an image at this resolution
+copy_dpi = 300
 
 # UI font (tabs, help, panel, command line, comments, messages): any
 # installed family; `fc-list : family` lists them (Nerd Fonts too, e.g.

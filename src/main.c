@@ -381,6 +381,8 @@ static void handle_request(char *msg)
 
 static void file_changed(int wd, const char *name)
 {
+    if (theme_file_changed(wd, name)) /* the theme being used was saved */
+        return;
     for (int i = 0; i < ndocs; i++) {
         Doc *d = docs[i];
         const char *base = strrchr(d->path, '/');
@@ -765,6 +767,7 @@ int main(int argc, char **argv)
         return 1;
     }
     ipc_start();
+    theme_watch(); /* saving your theme shows it at once */
     Window *w = NULL;
     const char *ask_later = NULL; /* protected, no terminal: asked in the window */
     for (int i = 0; i < nfiles; i++) {
