@@ -15,9 +15,23 @@ int nwindows;
 static uint64_t last_input; /* any event: the reader is active */
 static const char *capture_path; /* test mode: save the next frame here */
 
-View *cur_view(Window *w) { return w->ntabs ? w->tabs[w->cur] : NULL; }
-int top_of(Window *w) { return ui_tabbar_height(w); }
-const Theme *wtheme(Window *w) { return theme_of(w->ntabs && cur_view(w)->dark); }
+View *cur_view(Window *w)
+{
+    if (!w->ntabs)
+        return NULL;
+    return w->split && w->split_focus ? w->split : w->tabs[w->cur];
+}
+
+/* In a pane (split.c) the pages start at its top; the tab bar is above it. */
+int top_of(Window *w) { return w->in_pane ? 0 : ui_tabbar_height(w); }
+
+/* The colours: of the pane being drawn, or of the focused one. */
+const Theme *wtheme(Window *w)
+{
+    if (!w->ntabs)
+        return theme_of(false);
+    return theme_of((w->in_pane ? pane_view(w, w->pane_second) : cur_view(w))->dark);
+}
 
 void update_title(Window *w)
 {
@@ -53,8 +67,11 @@ static void update_size(Window *w)
 
 static void init_zoom(Window *w, View *v)
 {
-    if (!v->fit_width && v->zoom <= 0)
-        v->zoom = cfg.zoom * 96.0 / 72.0 * w->density;
+    if (!v->fit_width && v->zoom <= 0) {
+        double z = cfg.remember_view && v->doc->prefs.set ? v->doc->prefs.zoom : cfg.zoom;
+        v->zoom = z * 96.0 / 72.0 * w->density;
+    }
+    v->density = w->density;
 }
 
 static Window *window_new(View *v)
@@ -98,6 +115,8 @@ static void window_destroy(Window *w)
 {
     for (int i = 0; i < w->ntabs; i++)
         view_free(w->tabs[i]); /* textures first: they belong to the renderer */
+    if (w->split)
+        view_free(w->split);
     font_close(w->font);
     if (w->shadow)
         SDL_DestroyTexture(w->shadow);
@@ -136,6 +155,8 @@ static int views_of(Doc *d)
     for (int i = 0; i < nwindows; i++)
         for (int k = 0; k < windows[i]->ntabs; k++)
             n += windows[i]->tabs[k]->doc == d;
+    for (int i = 0; i < nwindows; i++)
+        n += windows[i]->split && windows[i]->split->doc == d;
     return n;
 }
 
@@ -285,23 +306,16 @@ void save(Window *w, View *v)
 }
 
 /* ---------- drawing ---------- */
-static void draw(Window *w, uint64_t now)
+/* The pages of one view and what is drawn on them, in the window or in a pane. */
+static void draw_pages(Window *w, View *v, uint64_t now)
 {
-    View *v = cur_view(w);
-    update_size(w);
     int top = top_of(w);
+    v->density = w->density;
     view_layout(v, w->W, w->H, top);
     view_clamp(v, w->W, w->H, top);
-    uint32_t bg = wtheme(w)->background;
-    SDL_SetRenderDrawColor(w->ren, bg >> 16, (bg >> 8) & 0xFF, bg & 0xFF, 255);
-    SDL_RenderClear(w->ren);
-    if (w->mode == MODE_PRESENT) { /* a slide on black, nothing else */
-        present_draw(w);
-        goto shot;
-    }
-    if (w->mode == MODE_GRID) { /* the grid replaces the pages */
-        grid_draw(w);
-        goto overlays;
+    if (w->in_pane) {
+        uint32_t bg = wtheme(w)->background;
+        ui_fill(w, 0, 0, (float)w->W, (float)w->H, bg, 255);
     }
     view_draw(w, v, top);
     ui_draw_notes(w, v, top);
@@ -313,10 +327,41 @@ static void draw(Window *w, uint64_t now)
         page_to_screen(v, v->flash_page, v->flash_rect.r, v->flash_rect.b, &x1, &y1, top);
         ui_fill(w, SDL_min(x0, x1), SDL_min(y0, y1), SDL_fabsf(x1 - x0), SDL_fabsf(y1 - y0), wtheme(w)->caret, 70);
     }
+    if (v != cur_view(w)) /* the cursors and edits belong to the focused pane */
+        return;
     cursor_draw(w, v, top);
     object_draw(w, v, top);
     if (w->mode == MODE_FORM)
         form_draw_focus(w, v, top);
+}
+
+static void draw(Window *w, uint64_t now)
+{
+    View *v = cur_view(w);
+    update_size(w);
+    uint32_t bg = wtheme(w)->background;
+    SDL_SetRenderDrawColor(w->ren, bg >> 16, (bg >> 8) & 0xFF, bg & 0xFF, 255);
+    SDL_RenderClear(w->ren);
+    if (w->mode == MODE_PRESENT) { /* a slide on black, nothing else */
+        view_layout(v, w->W, w->H, top_of(w));
+        present_draw(w);
+        goto shot;
+    }
+    if (w->mode == MODE_GRID) { /* the grid replaces the pages */
+        view_layout(v, w->W, w->H, top_of(w));
+        grid_draw(w);
+        goto overlays;
+    }
+    if (!w->split) {
+        draw_pages(w, v, now);
+    } else {
+        for (int p = 0; p < 2; p++)
+            if (pane_enter(w, p)) {
+                draw_pages(w, pane_view(w, p), now);
+                pane_leave(w);
+            }
+        split_draw_frame(w);
+    }
 overlays:
     ui_draw_overlays(w, now);
 shot:
@@ -340,6 +385,8 @@ static bool alive(Window *w)
             return true;
     return false;
 }
+
+bool window_alive(Window *w) { return alive(w); }
 
 /* ---------- LaTeX: requests from VimTeX and reloads ---------- */
 
@@ -378,12 +425,16 @@ static void handle_request(char *msg)
     free(real);
     w->cur = tab;
     w->mode = MODE_NORMAL;
+    w->split_focus = false; /* the tab's pane */
     update_title(w);
     View *v = cur_view(w);
     update_size(w);
+    bool pane = pane_enter(w, false);
     view_layout(v, w->W, w->H, top_of(w));
     view_clamp(v, w->W, w->H, top_of(w));
     synctex_forward(w, v, f[4], atoi(f[2]), atoi(f[3]));
+    if (pane)
+        pane_leave(w);
 }
 
 static void file_changed(int wd, const char *name)
@@ -424,6 +475,10 @@ static void reload_due(uint64_t now, int *wait)
         d->reload_at = 0;
         for (int k = 0; k < nwindows; k++) {
             Window *w = windows[k];
+            if (w->split && w->split->doc == d) {
+                view_doc_reloaded(w->split);
+                w->redraw = true;
+            }
             for (int t = 0; t < w->ntabs; t++) {
                 if (w->tabs[t]->doc != d)
                     continue;
@@ -456,6 +511,10 @@ static void handle_event(SDL_Event *e)
     if (e->type == ipc_event) {
         if (e->user.code == IPC_REQUEST)
             handle_request(e->user.data1);
+        else if (e->user.code == IPC_FINDER)
+            picker_refresh();
+        else if (e->user.code == IPC_BIBTEX)
+            cite_result(window_by_id((SDL_WindowID)(uintptr_t)e->user.data2), e->user.data1);
         else if (e->user.code == IPC_FILE)
             file_changed((int)(intptr_t)e->user.data2, e->user.data1);
         free(e->user.data1);
@@ -487,10 +546,18 @@ static void handle_event(SDL_Event *e)
         return;
     case SDL_EVENT_MOUSE_WHEEL:
         if ((w = window_by_id(e->wheel.windowID))) {
-            if (SDL_GetModState() & SDL_KMOD_CTRL)
+            float mx = e->wheel.mouse_x * w->density, my = e->wheel.mouse_y * w->density;
+            bool pane = pane_enter_at(w, &mx, &my); /* the pane under the mouse */
+            if (pane)
+                pane_leave(w); /* input_token enters it again */
+            if (SDL_GetModState() & SDL_KMOD_CTRL) {
                 input_token(w, e->wheel.y > 0 ? "<C-=>" : "<C-->");
-            else
+            } else {
+                pane = pane_enter_focused(w);
                 scroll(w, -e->wheel.x * 60 * w->density, -e->wheel.y * 60 * w->density);
+                if (pane)
+                    pane_leave(w);
+            }
         }
         return;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
@@ -506,10 +573,14 @@ static void handle_event(SDL_Event *e)
             (e->button.clicks >= 2 || (SDL_GetModState() & SDL_KMOD_CTRL))) {
             int page;
             double px, py;
-            if (screen_to_page(cur_view(w), e->button.x * w->density, e->button.y * w->density, top_of(w),
-                               &page, &px, &py))
+            float x = e->button.x * w->density, y = e->button.y * w->density;
+            bool pane = pane_enter_at(w, &x, &y);
+            if (screen_to_page(cur_view(w), x, y, top_of(w), &page, &px, &py))
                 synctex_inverse(w, cur_view(w), page, px, py);
-            w->redraw = true;
+            if (pane && alive(w))
+                pane_leave(w);
+            if (alive(w))
+                w->redraw = true;
             return;
         }
         if ((w = window_by_id(e->button.windowID)) && e->button.button == SDL_BUTTON_LEFT &&
@@ -517,11 +588,14 @@ static void handle_event(SDL_Event *e)
             static float down_x, down_y;
             float x = e->button.x * w->density, y = e->button.y * w->density;
             bool down = e->type == SDL_EVENT_MOUSE_BUTTON_DOWN;
+            bool pane = pane_enter_at(w, &x, &y); /* a click focuses the pane */
             form_click(w, x, y, down);
             if (down)
                 down_x = x, down_y = y;
             else if (w->mode == MODE_NORMAL && SDL_fabsf(x - down_x) + SDL_fabsf(y - down_y) < 6 * w->density)
                 links_click(w, x, y); /* a plain click on a link follows it */
+            if (pane && alive(w))
+                pane_leave(w);
         }
         if (w && alive(w))
             w->redraw = true;
@@ -566,7 +640,8 @@ static bool compact_docs(uint64_t now)
         Doc *d = docs[i];
         bool shown = false;
         for (int k = 0; k < nwindows; k++)
-            shown |= windows[k]->ntabs && cur_view(windows[k])->doc == d;
+            shown |= windows[k]->ntabs && (windows[k]->tabs[windows[k]->cur]->doc == d ||
+                                           (windows[k]->split && windows[k]->split->doc == d));
         if (shown)
             d->hidden_since = 0;
         else if (!d->hidden_since)
@@ -593,9 +668,25 @@ static bool maintenance_pending(void)
 
 static bool idle_work(void)
 {
-    for (int i = 0; i < nwindows; i++)
-        if (view_prefetch(windows[i], cur_view(windows[i]), top_of(windows[i])))
-            return true;
+    if (render_work()) /* a heavy page on screen, a slice at a time */
+        return true;
+    for (int i = 0; i < nwindows; i++) {
+        Window *w = windows[i];
+        if (!w->split) {
+            if (view_prefetch(w, cur_view(w), top_of(w)))
+                return true;
+            continue;
+        }
+        for (int p = 0; p < 2; p++) { /* each pane at its own size */
+            bool more = false;
+            if (pane_enter(w, p)) {
+                more = view_prefetch(w, pane_view(w, p), top_of(w));
+                pane_leave(w);
+            }
+            if (more)
+                return true;
+        }
+    }
     /* annotations are listed when the panel needs them, not in advance:
      * opening every page keeps its parsed objects in PDFium (tens of MB
      * per big document) until the document is closed */
@@ -636,6 +727,13 @@ static bool script_step(void)
     static char path[1024];
     if (!strncmp(tok, "<shot:", 6)) {
         snprintf(path, sizeof path, "%s/%.*s.bmp", script_dir, (int)strlen(tok) - 7, tok + 6);
+        for (int k = 0; k < 20; k++) { /* heavy pages finished first */
+            render_incomplete = false;
+            draw(w, SDL_GetTicks());
+            if (!render_incomplete)
+                break;
+            render_finish();
+        }
         capture_path = path;
         draw(w, SDL_GetTicks());
     } else if (!strncmp(tok, "<resize:", 8)) {
@@ -871,8 +969,14 @@ int main(int argc, char **argv)
         if (keys >= 0)
             wait = wait < 0 ? keys : SDL_min(wait, keys);
         for (int i = 0; i < nwindows; i++)
-            if (windows[i]->redraw || need_redraw_all)
+            if (windows[i]->redraw || need_redraw_all) {
+                render_incomplete = false;
                 draw(windows[i], now);
+                if (render_incomplete) { /* a heavy page: again soon, with more of it */
+                    windows[i]->redraw = true;
+                    wait = render_busy() ? 0 : (wait < 0 ? 16 : SDL_min(wait, 16));
+                }
+            }
         need_redraw_all = false;
         if (prefetching || script)
             wait = 0;

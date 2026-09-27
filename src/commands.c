@@ -40,7 +40,7 @@ static void c_write_quit(Window *w, View *v, const char *a)
     close_tab(w, w->cur);
 }
 
-static char *expand_home(const char *path)
+char *expand_home(const char *path)
 {
     const char *home = getenv("HOME");
     char *out = xmalloc(strlen(path) + (home ? strlen(home) : 0) + 1);
@@ -125,7 +125,8 @@ static void c_image(Window *w, View *v, const char *a)
     free(path);
 }
 
-static void c_recent(Window *w, View *v, const char *a) { (void)v, (void)a; picker_open(w); }
+static void c_recent(Window *w, View *v, const char *a) { (void)v, (void)a; picker_open(w, false); }
+static void c_find(Window *w, View *v, const char *a) { (void)v, (void)a; picker_open(w, true); }
 static void c_session(Window *w, View *v, const char *a) { (void)v, (void)a; session_restore(w); }
 
 static void c_about(Window *w, View *v, const char *a) { (void)v, (void)a; about_open(w); }
@@ -141,6 +142,50 @@ static void c_diff(Window *w, View *v, const char *a)
     diff_start(w, v, path);
     free(path);
 }
+
+static void c_merge(Window *w, View *v, const char *a)
+{
+    if (!*a) {
+        ui_message(w, "usage: :merge co-author-copy.pdf  (their highlights and comments come in; u undoes it)");
+        return;
+    }
+    char *path = expand_home(a), err[600];
+    MergeResult r;
+    if (!doc_merge(v->doc, path, &r, err, sizeof err)) {
+        ui_message_long(w, 5000, "%s", err);
+    } else {
+        char extra[128] = "";
+        if (r.already)
+            snprintf(extra, sizeof extra, ", %d already here", r.already);
+        if (r.skipped)
+            snprintf(extra + strlen(extra), sizeof extra - strlen(extra), ", %d left out (text boxes, missing pages)",
+                     r.skipped);
+        if (r.added) {
+            jump_to(w, v, (Pos){r.first_page, 0});
+            ui_message_long(w, 7000, "merged %d annotation%s%s   u undoes it%s", r.added, r.added == 1 ? "" : "s",
+                            extra, r.pages_differ ? "   (the page counts differ)" : "");
+        } else {
+            ui_message_long(w, 5000, "nothing new to merge%s", extra);
+        }
+        w->redraw = true;
+    }
+    free(path);
+}
+
+static void c_split(Window *w, View *v, const char *a, bool side)
+{
+    (void)v;
+    char *path = *a ? expand_home(a) : NULL;
+    split_open(w, side, path);
+    free(path);
+}
+
+static void c_vsplit(Window *w, View *v, const char *a) { c_split(w, v, a, true); }
+static void c_hsplit(Window *w, View *v, const char *a) { c_split(w, v, a, false); }
+static void c_close(Window *w, View *v, const char *a) { (void)v, (void)a; split_close(w, true); }
+static void c_only(Window *w, View *v, const char *a) { (void)v, (void)a; split_close(w, false); }
+
+static void c_bibtex(Window *w, View *v, const char *a) { (void)a; cite_bibtex(w, v); }
 
 static void c_nodiff(Window *w, View *v, const char *a) { (void)a; diff_stop(w, v); }
 static void c_present(Window *w, View *v, const char *a) { (void)a; present_start(w, v); }
@@ -166,9 +211,16 @@ static const Command commands[] = {
     {"about", ARG_NONE, c_about, "version, author, contact (also \\a)"},
     {"theme", ARG_THEME, c_theme, "colour theme: :theme gruvbox, :theme (the list), :theme new NAME (yours)"},
     {"diff", ARG_FILE, c_diff, "compare with an older version: new text green, changed amber, deleted red"},
+    {"vsplit", ARG_FILE, c_vsplit, "split side by side: this PDF, or another (also Ctrl-w v)"},
+    {"split", ARG_FILE, c_hsplit, "split one above the other (also Ctrl-w s)"},
+    {"close", ARG_NONE, c_close, "close this pane (also Ctrl-w q)"},
+    {"only", ARG_NONE, c_only, "keep only this pane (also Ctrl-w o)"},
+    {"bibtex", ARG_NONE, c_bibtex, "copy the paper's BibTeX entry (by its DOI or arXiv number, from the internet)"},
+    {"merge", ARG_FILE, c_merge, "bring in a co-author's highlights and comments (without duplicates)"},
     {"nodiff", ARG_NONE, c_nodiff, "hide the comparison"},
     {"present", ARG_NONE, c_present, "presentation: fullscreen, one page at a time (also F5)"},
     {"pages", ARG_NONE, c_pages, "all pages as thumbnails (also \\g)"},
+    {"find", ARG_NONE, c_find, "find any PDF in your folders (also \\f; pdf_dirs in the config)"},
     {"recent", ARG_NONE, c_recent, "open a recent file (also \\o)"},
     {"session", ARG_NONE, c_session, "reopen the tabs of the last session"},
     {"marks", ARG_NONE, c_panel, "panel: tabs, summary, marks, highlights"},

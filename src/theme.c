@@ -71,6 +71,8 @@ static void refresh_all(void)
         Window *w = windows[k];
         for (int t = 0; t < w->ntabs; t++)
             view_invalidate_cache(w->tabs[t]); /* dark pages are drawn in the theme's paper and ink */
+        if (w->split)
+            view_invalidate_cache(w->split);
         if (w->shadow)
             SDL_DestroyTexture(w->shadow);
         w->shadow = NULL;

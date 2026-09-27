@@ -76,10 +76,14 @@ void marks_load(Doc *d)
     while (fgets(line, sizeof line, f)) {
         line[strcspn(line, "\n")] = 0;
         char c;
-        int page, off;
+        int page, off, dual, dark, rot;
         float y;
         if (sscanf(line, "last %d %f", &page, &y) == 2 && page >= 0 && page < d->npages) {
             d->last = (Pos){page, y};
+        } else if (sscanf(line, "view %lf %d %d %d", &d->prefs.zoom, &dual, &dark, &rot) == 4) {
+            d->prefs.set = d->prefs.zoom >= 0 && d->prefs.zoom < 40;
+            d->prefs.zoom = SDL_max(0.0, d->prefs.zoom);
+            d->prefs.dual = dual, d->prefs.dark = dark, d->prefs.rotation = ((rot % 4) + 4) % 4;
         } else if (sscanf(line, "mark %c %d %f %n", &c, &page, &y, &off) == 3 && c >= 'a' && c <= 'z' &&
                    page >= 0 && page < d->npages) {
             Mark *m = &d->marks[c - 'a'];
@@ -93,7 +97,7 @@ void marks_load(Doc *d)
 
 void marks_save(Doc *d)
 {
-    bool any = d->last.page >= 0;
+    bool any = d->last.page >= 0 || d->prefs.set;
     for (int i = 0; i < NMARKS; i++)
         any |= d->marks[i].set;
     if (!any || !d->marks_path)
@@ -110,6 +114,8 @@ void marks_save(Doc *d)
     fprintf(f, "# nomadys-pdf marks for %s\n", d->path);
     if (d->last.page >= 0)
         fprintf(f, "last %d %.5f\n", d->last.page, d->last.y);
+    if (d->prefs.set) /* zoom (0 = fit width), two pages, dark, quarter turns */
+        fprintf(f, "view %.2f %d %d %d\n", d->prefs.zoom, d->prefs.dual, d->prefs.dark, d->prefs.rotation);
     for (int i = 0; i < NMARKS; i++)
         if (d->marks[i].set)
             fprintf(f, "mark %c %d %.5f %s\n", 'a' + i, d->marks[i].pos.page, d->marks[i].pos.y, d->marks[i].name);

@@ -21,6 +21,9 @@ Config cfg = {
     .page_shadow = true,
     .mode_indicator = true,
     .restore_position = true,
+    .remember_view = true,
+    .pdf_dirs = "~",
+    .cite_format = "“%t” (p. %p)",
     .highlights = {0xFFEE93, 0xFF9E9E, 0xA8E6A3, 0xFFB3DE, 0xA7C7F2}, /* pastel yellow, red, green, pink, blue */
     .zoom = 0,
     .font = "monospace",
@@ -170,6 +173,8 @@ static bool set_global_key(const char *k, const char *v)
         cfg.show_tabs = parse_bool(v);
     else if (!strcmp(k, "restore_position"))
         cfg.restore_position = parse_bool(v);
+    else if (!strcmp(k, "remember_view"))
+        cfg.remember_view = parse_bool(v);
     else if (!strcmp(k, "area_style"))
         cfg.area_frame = !strcmp(v, "frame");
     else if (!strcmp(k, "highlight_color"))
@@ -178,6 +183,10 @@ static bool set_global_key(const char *k, const char *v)
         return parse_color_list(v, cfg.highlights, 5);
     else if (!strcmp(k, "zoom"))
         cfg.zoom = !strcmp(v, "fit-width") ? 0 : atof(v) / 100.0;
+    else if (!strcmp(k, "pdf_dirs"))
+        snprintf(cfg.pdf_dirs, sizeof cfg.pdf_dirs, "%s", v);
+    else if (!strcmp(k, "cite_format"))
+        snprintf(cfg.cite_format, sizeof cfg.cite_format, "%s", v);
     else if (!strcmp(k, "font"))
         snprintf(cfg.font, sizeof cfg.font, "%s", v);
     else if (!strcmp(k, "font_size"))

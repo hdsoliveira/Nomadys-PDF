@@ -296,7 +296,7 @@ void caret_mark(Window *w, View *v, bool comment, uint32_t color)
 
 typedef struct { char *buf; size_t len; } CopyCtx;
 
-void caret_copy(Window *w, View *v)
+void caret_copy(Window *w, View *v, bool cite)
 {
     if (!v->selecting) {
         ui_message(w, "select with v before copying");
@@ -327,7 +327,10 @@ void caret_copy(Window *w, View *v)
         free(s);
         free(u);
     }
-    if (c.buf) {
+    if (c.buf && cite) {
+        cite_copy(w, v, c.buf, a.page, b.page);
+        free(c.buf);
+    } else if (c.buf) {
         SDL_SetClipboardText(c.buf);
         ui_message(w, "copied (%zu characters)", c.len);
         free(c.buf);

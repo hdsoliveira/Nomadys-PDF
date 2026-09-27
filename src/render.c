@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "fpdf_progressive.h"
 #include "nomadys.h"
 
 #define GAP 18
@@ -31,18 +32,22 @@ static void trim_textures(void)
     while (texture_bytes > TEXTURE_BUDGET) {
         CacheEntry *old = NULL;
         for (int k = 0; k < nwindows; k++)
-            for (int t = 0; t < windows[k]->ntabs; t++)
-                for (int i = 0; i < CACHE_SLOTS; i++) {
-                    CacheEntry *e = &windows[k]->tabs[t]->cache[i];
+            for (int t = 0; t <= windows[k]->ntabs; t++) { /* the tabs, then the split pane */
+                View *v = t < windows[k]->ntabs ? windows[k]->tabs[t] : windows[k]->split;
+                for (int i = 0; v && i < CACHE_SLOTS; i++) {
+                    CacheEntry *e = &v->cache[i];
                     if (e->tex && e->used <= frame_start && (!old || e->used < old->used))
                         old = e;
                 }
+            }
         if (!old)
             return; /* all on screen now */
         drop_entry(old);
         memory_freed = true;
     }
 }
+
+static void render_cancel_view(View *v);
 
 View *view_new(Doc *d)
 {
@@ -54,6 +59,12 @@ View *view_new(Doc *d)
     v->previous.page = -1;
     v->caret.page = -1;
     v->pending_pos = cfg.restore_position ? d->last : (Pos){-1, 0};
+    if (cfg.remember_view && d->prefs.set) {
+        v->fit_width = d->prefs.zoom <= 0;
+        v->dual = d->prefs.dual;
+        v->dark = d->prefs.dark;
+        v->rotation = d->prefs.rotation;
+    }
     int n = d->npages ? d->npages : 1;
     v->px = xcalloc(n, sizeof *v->px);
     v->py = xcalloc(n, sizeof *v->py);
@@ -80,6 +91,7 @@ View *view_clone(View *src)
 
 void view_invalidate_cache(View *v)
 {
+    render_cancel_view(v);
     for (int i = 0; i < CACHE_SLOTS; i++)
         drop_entry(&v->cache[i]);
 }
@@ -106,10 +118,27 @@ void view_doc_reloaded(View *v)
     diff_refresh(v); /* compare the new version again */
 }
 
+/* The view is kept with the file's marks, when it is not the default. */
+static void view_remember(View *v)
+{
+    double zoom = v->fit_width || v->density <= 0 ? 0 : v->zoom / (96.0 / 72.0 * v->density);
+    zoom = SDL_round(zoom * 100) / 100; /* whole percents */
+    bool same_zoom = cfg.zoom <= 0 ? v->fit_width : !v->fit_width && SDL_fabs(zoom - cfg.zoom) < 0.005;
+    Doc *d = v->doc;
+    d->prefs.set = !same_zoom || v->dual || v->dark != cfg.dark || v->rotation;
+    d->prefs.zoom = zoom;
+    d->prefs.dual = v->dual;
+    d->prefs.dark = v->dark;
+    d->prefs.rotation = v->rotation;
+}
+
 void view_free(View *v)
 {
-    if (v->lay_w)
+    render_cancel_view(v);
+    if (v->lay_w) {
         v->doc->last = view_pos(v);
+        view_remember(v);
+    }
     view_invalidate_cache(v);
     diff_free(v->diff);
     doc_unref(v->doc);
@@ -358,28 +387,75 @@ static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w,
 }
 
 /* ---------- rendering ---------- */
-/* Renders the part (cx, cy, w, h) of a page drawn at pw x ph pixels, with the
- * view's dark mode, into a texture. */
-SDL_Texture *view_render_area(Window *win, View *v, int page, int pw, int ph, int rot, int cx, int cy, int w, int h)
+/* ---------- rendering, a little at a time ----------
+ * A page full of vector drawings can take a second or more. It is rendered
+ * in slices (PDFium's progressive rendering): some in each frame, the rest
+ * while idle, and meanwhile the page shows what was drawn of it before (at
+ * another zoom) or blank paper, so scrolling and typing never wait. One page
+ * at a time; the job is dropped when its page is closed or changed. */
+#define RENDER_FLAGS (FPDF_ANNOT | FPDF_RENDER_LIMITEDIMAGECACHE | (cfg.subpixel_text ? FPDF_LCD_TEXT : 0))
+#define SLICE_NS (12 * 1000000ull) /* a slice while idle */
+#define FRAME_NS (30 * 1000000ull) /* rendering in one frame, at most */
+
+typedef struct {
+    bool active, visible;    /* visible: asked for by the screen, not by prefetching */
+    Window *win;
+    View *v;
+    Doc *doc;
+    int page, pw, ph, rot, cx, cy, w, h, stride;
+    bool dark;
+    unsigned version;
+    uint8_t *buf;
+    FPDF_BITMAP bmp;
+    FPDF_PAGE p;
+} Job;
+
+static Job job;
+static uint64_t pause_at;
+bool render_incomplete;      /* a page on screen still shows a placeholder */
+
+static FPDF_BOOL need_pause(IFSDK_PAUSE *pause)
+{
+    (void)pause;
+    return SDL_GetTicksNS() >= pause_at;
+}
+
+static IFSDK_PAUSE pauser = {1, need_pause, NULL};
+
+static void job_drop(void)
+{
+    if (!job.active)
+        return;
+    FPDF_RenderPage_Close(job.p);
+    FPDFBitmap_Destroy(job.bmp);
+    free(job.buf);
+    job = (Job){0};
+}
+
+/* Called before a page is closed or changed (doc.c), and for a view freed. */
+void render_cancel(Doc *d, int page)
+{
+    if (job.active && job.doc == d && (page < 0 || job.page == page))
+        job_drop();
+}
+
+static void render_cancel_view(View *v)
+{
+    if (job.active && job.v == v)
+        job_drop();
+}
+
+/* The page's pixels become a texture: form fields drawn on top, dark mode. */
+static SDL_Texture *finish_pixels(Window *win, View *v, int page, FPDF_PAGE p, FPDF_BITMAP bmp, uint8_t *buf,
+                                  int pw, int ph, int rot, int cx, int cy, int w, int h, int stride, bool dark)
 {
     Doc *d = v->doc;
-    FPDF_PAGE p = doc_page(d, page);
-    if (!p || w <= 0 || h <= 0 || pw <= 0 || ph <= 0)
-        return NULL;
-    int stride = w * 4;
-    uint8_t *buf = malloc((size_t)stride * h);
-    if (!buf)
-        return NULL;
-    FPDF_BITMAP bmp = FPDFBitmap_CreateEx(w, h, FPDFBitmap_BGRA, buf, stride);
-    FPDFBitmap_FillRect(bmp, 0, 0, w, h, 0xFFFFFFFF);
-    int flags = FPDF_ANNOT | FPDF_RENDER_LIMITEDIMAGECACHE | (cfg.subpixel_text ? FPDF_LCD_TEXT : 0);
-    FPDF_RenderPageBitmap(bmp, p, -cx, -cy, pw, ph, rot, flags);
     if (d->form)
-        FPDF_FFLDraw(d->form, bmp, p, -cx, -cy, pw, ph, rot, flags);
+        FPDF_FFLDraw(d->form, bmp, p, -cx, -cy, pw, ph, rot, RENDER_FLAGS);
     FPDFBitmap_Destroy(bmp);
-    if (v->dark) { /* light mode shows pages as they are */
+    if (dark) { /* light mode shows pages as they are */
         uint8_t *keep = image_mask(d, page, p, cx, cy, w, h, pw, ph, rot, buf, stride);
-        recolor(buf, w, h, stride, keep, v->dark);
+        recolor(buf, w, h, stride, keep, dark);
         free(keep);
     }
     SDL_Texture *t = SDL_CreateTexture(win->ren, SDL_PIXELFORMAT_BGRA32, SDL_TEXTUREACCESS_STATIC, w, h);
@@ -391,9 +467,35 @@ SDL_Texture *view_render_area(Window *win, View *v, int page, int pw, int ph, in
     return t;
 }
 
-static SDL_Texture *render_page(Window *win, View *v, int page, int cx, int cy, int w, int h)
+static uint8_t *white_bitmap(int w, int h, FPDF_BITMAP *bmp)
 {
-    return view_render_area(win, v, page, v->pwpx[page], v->phpx[page], v->rotation, cx, cy, w, h);
+    uint8_t *buf = malloc((size_t)w * 4 * h);
+    if (!buf)
+        return NULL;
+    *bmp = FPDFBitmap_CreateEx(w, h, FPDFBitmap_BGRA, buf, w * 4);
+    if (!*bmp) {
+        free(buf);
+        return NULL;
+    }
+    FPDFBitmap_FillRect(*bmp, 0, 0, w, h, 0xFFFFFFFF);
+    return buf;
+}
+
+/* Renders the part (cx, cy, w, h) of a page drawn at pw x ph pixels, with the
+ * view's dark mode, into a texture, all at once (thumbnails, slides). */
+SDL_Texture *view_render_area(Window *win, View *v, int page, int pw, int ph, int rot, int cx, int cy, int w, int h)
+{
+    Doc *d = v->doc;
+    render_cancel(d, page); /* not while a slice of it is half done */
+    FPDF_PAGE p = doc_page(d, page);
+    if (!p || w <= 0 || h <= 0 || pw <= 0 || ph <= 0)
+        return NULL;
+    FPDF_BITMAP bmp;
+    uint8_t *buf = white_bitmap(w, h, &bmp);
+    if (!buf)
+        return NULL;
+    FPDF_RenderPageBitmap(bmp, p, -cx, -cy, pw, ph, rot, RENDER_FLAGS);
+    return finish_pixels(win, v, page, p, bmp, buf, pw, ph, rot, cx, cy, w, h, w * 4, v->dark);
 }
 
 static CacheEntry *cache_find(View *v, int page, int cx, int cy, int w, int h)
@@ -411,11 +513,8 @@ static CacheEntry *cache_find(View *v, int page, int cx, int cy, int w, int h)
     return NULL;
 }
 
-static CacheEntry *cache_put(Window *win, View *v, int page, int cx, int cy, int w, int h)
+static CacheEntry *cache_store(View *v, int page, int cx, int cy, int w, int h, SDL_Texture *t)
 {
-    SDL_Texture *t = render_page(win, v, page, cx, cy, w, h);
-    if (!t)
-        return NULL;
     CacheEntry *slot = &v->cache[0];
     for (int i = 0; i < CACHE_SLOTS; i++) {
         CacheEntry *e = &v->cache[i];
@@ -434,6 +533,127 @@ static CacheEntry *cache_put(Window *win, View *v, int page, int cx, int cy, int
     texture_bytes += entry_bytes(slot);
     trim_textures();
     return slot->tex ? slot : NULL;
+}
+
+/* The job is done (or failed): its texture goes to the cache. */
+static CacheEntry *job_finish(void)
+{
+    Job j = job;
+    FPDF_RenderPage_Close(j.p);
+    job = (Job){0};
+    bool current = j.v->pwpx[j.page] == j.pw && j.v->phpx[j.page] == j.ph && j.v->dark == j.dark &&
+                   j.v->rotation == j.rot && j.doc->slots[j.page].version == j.version;
+    SDL_Texture *t = finish_pixels(j.win, j.v, j.page, j.p, j.bmp, j.buf, j.pw, j.ph, j.rot, j.cx, j.cy, j.w, j.h,
+                                   j.stride, j.dark);
+    if (!t)
+        return NULL;
+    if (!current) { /* zoomed or turned meanwhile */
+        SDL_DestroyTexture(t);
+        return NULL;
+    }
+    return cache_store(j.v, j.page, j.cx, j.cy, j.w, j.h, t);
+}
+
+/* More of the job, for up to budget_ns; the entry once it is finished. */
+static CacheEntry *job_continue(uint64_t budget_ns)
+{
+    if (!job.active)
+        return NULL;
+    pause_at = SDL_GetTicksNS() + budget_ns;
+    if (FPDF_RenderPage_Continue(job.p, &pauser) == FPDF_RENDER_TOBECONTINUED)
+        return NULL;
+    return job_finish();
+}
+
+static CacheEntry *job_start(Window *win, View *v, int page, int cx, int cy, int w, int h, uint64_t budget_ns,
+                             bool visible)
+{
+    job_drop();
+    int pw = v->pwpx[page], ph = v->phpx[page];
+    FPDF_PAGE p = doc_page(v->doc, page);
+    if (!p || w <= 0 || h <= 0 || pw <= 0 || ph <= 0)
+        return NULL;
+    FPDF_BITMAP bmp;
+    uint8_t *buf = white_bitmap(w, h, &bmp);
+    if (!buf)
+        return NULL;
+    job = (Job){true, visible, win, v, v->doc, page, pw, ph, v->rotation, cx, cy, w, h, w * 4, v->dark,
+                v->doc->slots[page].version, buf, bmp, p};
+    pause_at = SDL_GetTicksNS() + budget_ns;
+    if (FPDF_RenderPageBitmap_Start(bmp, p, -cx, -cy, pw, ph, v->rotation, RENDER_FLAGS, &pauser) ==
+        FPDF_RENDER_TOBECONTINUED)
+        return NULL;
+    return job_finish();
+}
+
+/* Is the job making this part of the page, as it is now? */
+static bool job_for(View *v, int page, int cx, int cy, int w, int h)
+{
+    return job.active && job.v == v && job.page == page && job.pw == v->pwpx[page] && job.ph == v->phpx[page] &&
+           job.dark == v->dark && job.rot == v->rotation && job.version == v->doc->slots[page].version &&
+           job.cx <= cx && job.cy <= cy && job.cx + job.w >= cx + w && job.cy + job.h >= cy + h;
+}
+
+/* While idle: more of the page being rendered. True while there is more. */
+bool render_work(void)
+{
+    if (!job.active)
+        return false;
+    bool visible = job.visible;
+    if (job_continue(SLICE_NS) || !job.active) {
+        if (visible)
+            need_redraw_all = true; /* the page can be shown now */
+        return false;
+    }
+    return true;
+}
+
+bool render_busy(void) { return job.active; }
+
+/* Test mode: every page on screen finished before a screenshot. */
+void render_finish(void)
+{
+    while (job.active)
+        job_continue(UINT64_MAX / 4);
+}
+
+/* Until the page is rendered: what was drawn of it at another zoom,
+ * stretched, or blank paper. */
+static void placeholder(Window *win, View *v, int page, float sx, float sy)
+{
+    int pw = v->pwpx[page], ph = v->phpx[page];
+    CacheEntry *best = NULL;
+    for (int i = 0; i < CACHE_SLOTS; i++) {
+        CacheEntry *e = &v->cache[i];
+        if (e->tex && e->page == page && e->dark == v->dark && e->pw > 0 && e->ph > 0 &&
+            (!best || (size_t)e->w * e->h > (size_t)best->w * best->h))
+            best = e;
+    }
+    uint32_t paper = v->dark ? theme_of(true)->page_bg : 0xFFFFFF;
+    ui_fill(win, sx, sy, (float)pw, (float)ph, paper, 255);
+    if (!best)
+        return;
+    float kx = (float)pw / best->pw, ky = (float)ph / best->ph;
+    SDL_FRect dst = {sx + best->x * kx, sy + best->y * ky, best->w * kx, best->h * ky};
+    SDL_SetTextureScaleMode(best->tex, SDL_SCALEMODE_LINEAR);
+    SDL_RenderTexture(win->ren, best->tex, NULL, &dst);
+    SDL_SetTextureScaleMode(best->tex, SDL_SCALEMODE_NEAREST);
+}
+
+/* A part of a page on screen: from the cache, or rendered now if that is
+ * quick enough; NULL while it is still being rendered. */
+static CacheEntry *render_visible(Window *win, View *v, int page, int cx, int cy, int w, int h, int ex, int ey,
+                                  int ew, int eh, uint64_t deadline)
+{
+    uint64_t now = SDL_GetTicksNS();
+    uint64_t left = deadline > now ? deadline - now : 0;
+    if (job_for(v, page, cx, cy, w, h))
+        return left ? job_continue(left) : NULL;
+    if (job.active && job.visible && job.v == v && job.page != page)
+        return NULL; /* another page on screen first; this one next */
+    if (!left)
+        return NULL;
+    return job_start(win, v, page, ex, ey, ew, eh, left, true); /* drops a prefetch */
 }
 
 static bool big_page(View *v, int page)
@@ -506,6 +726,7 @@ void view_draw(Window *win, View *v, int top)
 {
     int W = win->W, H = win->H;
     double ox = offset_x(v, W);
+    uint64_t deadline = SDL_GetTicksNS() + FRAME_NS;
     frame_start = cache_clock; /* textures used from here on are on screen */
     /* shadows first, so one page's shadow never covers its neighbour */
     for (int i = 0; cfg.page_shadow && i < v->doc->npages; i++) {
@@ -531,17 +752,20 @@ void view_draw(Window *win, View *v, int top)
             ch = (int)SDL_min(ph, H - sy) - cy;
         }
         CacheEntry *e = cache_find(v, i, cx, cy, cw, ch);
-        if (!e && big_page(v, i)) {
-            /* render a margin around the viewport so small scrolls reuse it */
-            int mx = W / 2, my = H / 2;
-            int ex = SDL_max(0, cx - mx), ey = SDL_max(0, cy - my);
-            int ew = SDL_min(pw, cx + cw + mx) - ex, eh = SDL_min(ph, cy + ch + my) - ey;
-            e = cache_put(win, v, i, ex, ey, ew, eh);
-        } else if (!e) {
-            e = cache_put(win, v, i, cx, cy, cw, ch);
+        if (!e) {
+            int ex = cx, ey = cy, ew = cw, eh = ch;
+            if (big_page(v, i)) { /* a margin around the viewport, so small scrolls reuse it */
+                int mx = W / 2, my = H / 2;
+                ex = SDL_max(0, cx - mx), ey = SDL_max(0, cy - my);
+                ew = SDL_min(pw, cx + cw + mx) - ex, eh = SDL_min(ph, cy + ch + my) - ey;
+            }
+            e = render_visible(win, v, i, cx, cy, cw, ch, ex, ey, ew, eh, deadline);
         }
-        if (!e)
+        if (!e) {
+            placeholder(win, v, i, floorf((float)sx + 0.5f), floorf((float)sy + 0.5f));
+            render_incomplete = true;
             continue;
+        }
         /* whole-pixel position: a fractional offset would blur the page */
         SDL_FRect dst = {floorf((float)(sx + e->x) + 0.5f), floorf((float)(sy + e->y) + 0.5f),
                          (float)e->w, (float)e->h};
@@ -572,7 +796,9 @@ bool view_prefetch(Window *win, View *v, int top)
         if (texture_bytes + (size_t)v->pwpx[p] * v->phpx[p] * 4 > TEXTURE_BUDGET * 3 / 4)
             return false; /* memory for what is on screen comes first */
         if (!cache_find(v, p, 0, 0, v->pwpx[p], v->phpx[p])) {
-            cache_put(win, v, p, 0, 0, v->pwpx[p], v->phpx[p]);
+            if (job.active) /* one page at a time: finish that first */
+                return render_work();
+            job_start(win, v, p, 0, 0, v->pwpx[p], v->phpx[p], SLICE_NS, false);
             return true;
         }
     }

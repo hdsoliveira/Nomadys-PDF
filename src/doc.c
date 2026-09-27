@@ -192,6 +192,7 @@ bool doc_reload(Doc *d)
     detach(d);
     attach(d, pdf);
     d->modified = false;
+    doc_undo_clear(d); /* another version of the file: its annotations may differ */
     need_redraw_all = true;
     return true;
 }
@@ -286,6 +287,8 @@ void doc_ref(Doc *d) { d->refs++; }
 static void close_slot(Doc *d, int i)
 {
     PageSlot *s = &d->slots[i];
+    if (s->page)
+        render_cancel(d, i); /* a half-rendered page must not be closed under it */
     if (s->text)
         FPDFText_ClosePage(s->text);
     if (s->page) {
@@ -311,6 +314,10 @@ void doc_unref(Doc *d)
         return;
     marks_save(d);
     doc_kill_focus(d); /* commits a field being edited */
+    bool was_modified = d->modified;
+    doc_purge_deleted(d); /* deletions were hidden for undo: now they go */
+    if (!cfg.autosave)
+        d->modified = was_modified; /* manual saving: purging alone is not an unsaved change */
     if (d->modified && cfg.autosave) {
         char err[256];
         if (!doc_save(d, err, sizeof err))
@@ -404,6 +411,7 @@ FPDF_TEXTPAGE doc_text(Doc *d, int i)
 
 void doc_mark_changed(Doc *d, int page)
 {
+    render_cancel(d, page);
     if (page >= 0) {
         PageSlot *s = &d->slots[page];
         s->version++;
@@ -466,6 +474,7 @@ static int write_block(FPDF_FILEWRITE *self, const void *data, unsigned long siz
 /* Save to a temporary file, then atomic rename over the original. */
 bool doc_save(Doc *d, char *err, size_t errlen)
 {
+    render_cancel(d, -1);
     /* the atomic rename below would replace even a read-only file */
     if (access(d->path, W_OK) != 0 && errno != ENOENT) {
         snprintf(err, errlen, "save failed: %s is read-only", strrchr(d->path, '/') + 1);

@@ -65,6 +65,7 @@ A small coloured badge in the bottom-left corner shows the mode: `NORMAL`,
 | `/` `n` `N` | search / next / previous (`Esc` clears) |
 | `\g` | all pages as thumbnails: `h j k l` choose, `J K` a screen, `+ -` size, `Enter` go there (`Ctrl-o` returns), `Esc` close |
 | `\o` | open a recent file: type parts of its name (fuzzy), `Ctrl-j` `Ctrl-k` move, `Enter` open |
+| `\f` | find any PDF in your folders (`pdf_dirs`, the home folder by default; hidden folders skipped), the same way; newest first. The list of the last search shows at once while a new one runs (the whole home folder takes about a second) |
 
 **Search** is incremental: while you type after `/` the view goes to the
 first match from where you were (`Esc` goes back there, `Enter` keeps it, as
@@ -81,6 +82,17 @@ Nothing is written to the PDF; `:nodiff` hides it. When LaTeX recompiles the
 PDF the comparison is made again, which is handy for answers to reviewers.
 Line-end hyphens and ligatures are undone and page numbers ignored, so page
 breaks do not show as changes.
+
+**Merging a co-author's notes**: `:merge their-copy.pdf` brings the
+highlights, comments, frames, drawings, sticky notes and images of another
+copy of the same PDF (made in any reader) into this one, with their author
+and colour. Those already here are left out, so merging twice changes
+nothing; text boxes are not brought in. One `u` takes the whole merge back.
+
+**Undo**: `u` undoes the last highlight, comment, image, move / resize or
+deletion, `Ctrl-r` redoes it (per document, up to 200 steps, until the file is
+closed). Deleted notes are only hidden until then, and removed from the file
+when it is closed.
 
 **Presenting**: `F5` (or `:present`) shows one page at a time, fullscreen on
 black, nothing else: `j` `l` `Space` `→` `Enter` or a click go forward, `k`
@@ -139,7 +151,9 @@ Everything by keyboard. Highlights are standard PDF annotations: other readers
 | then `v`, `C` `V` `B` `N` `M` / `c` | select a rectangle, highlight it in a colour / with a comment |
 | `c` on a highlight | edit its comment (shown in a box while the cursor is on it) |
 | `x` on a highlight | delete it |
+| `u` / `Ctrl-r` | undo / redo the last highlight, comment, image, move or deletion (per document, up to 200 steps; kept until the file is closed) |
 | `y` | copy the selected text |
+| `Y` | copy it as a quotation with its page: `“…” (p. 5)` (the printed page number; `cite_format` in the config) |
 | `Esc` | cancel the selection, then leave the cursor |
 
 Highlights with a comment get a small dot in their corner.
@@ -284,6 +298,20 @@ The editor command for inverse search is `synctex_editor` in the config
 
 A number before a command repeats it (`5j`, `3n`).
 
+### Split view
+
+Two panes, each with its own place, zoom, dark mode and search: a figure
+and the text about it, or two papers side by side. Keys, the mouse wheel
+and clicks go to the pane with the thin accent line on top.
+
+| Key | Action |
+|---|---|
+| `Ctrl-w v` / `Ctrl-w s` | split side by side / one above the other (the same PDF) |
+| `:vsplit other.pdf` / `:split other.pdf` | the same with another PDF |
+| `Ctrl-w w` or `Ctrl-w Ctrl-w` | the other pane (`Ctrl-w h j k l` by direction) |
+| `Ctrl-w x` | the panes change places |
+| `Ctrl-w q`, `:close` / `Ctrl-w o`, `:only` | close this pane / keep only this one |
+
 ### Commands (`:`)
 
 `Tab` completes command names and file paths; with several options they are
@@ -304,9 +332,12 @@ listed above the line and `Tab` / `Shift-Tab` cycle through them (`:` then
 | `:noh` | clear the search highlight |
 | `:image file.png` | put a picture on the page, then move / resize it |
 | `:pages` | all pages as thumbnails (`\g`) |
+| `:bibtex` | copy the paper's BibTeX entry: its DOI (or arXiv number) is found in the PDF and the entry fetched from doi.org / arxiv.org (needs curl) |
+| `:merge copy.pdf` | bring in a co-author's highlights and comments, without duplicates |
 | `:diff old.pdf` | compare with an older version (`]c` `[c`); `:nodiff` hides it |
 | `:present` | presentation (`F5`) |
 | `:recent` | open a recent file (`\o`) |
+| `:find` | find any PDF in your folders (`\f`) |
 | `:session` | reopen the tabs of the last session |
 | `:export [file.md]` | highlights, comments and marks to Markdown (`:export!` overwrites a file it did not write) |
 | `:reload` | reload the PDF from disk |
@@ -342,6 +373,11 @@ Built to stay light with big PDFs and many tabs:
   of sight is reopened after 3 s, the one you read after 15 s without input,
   when it has no unsaved changes and the file is unchanged; nothing on screen
   changes. Annotations are listed only when the panel needs them.
+- **Heavy pages** (thousands of vector strokes, big plots) are rendered a
+  slice at a time: about 30 ms per frame and the rest while idle. Meanwhile the
+  page shows what was drawn of it at the previous zoom, stretched, so
+  scrolling and zooming never wait; zooming ten steps on such a page renders
+  only the last one (5 s instead of 38 s in the test with 120 000 strokes).
 - Freed memory is given back to the system when idle (`malloc_trim`).
 - **Idle**: no timers, no polling; the program sleeps until something happens.
 - **Saving** rewrites the file compactly (0.1 s for a 255 MB paper) and waits
@@ -360,6 +396,9 @@ default. The main ones:
 theme = dark              # dark | light
 autosave = true
 restore_position = true
+pdf_dirs = ~               # where \f looks, comma separated: ~/Papers, ~/Books
+cite_format = “%t” (p. %p)  # Y in the cursor: %t the text, %p the page(s)
+remember_view = true      # each file keeps its zoom, dark mode, two pages, rotation
 show_tabs = false
 subpixel_text = false
 highlight_colors = #FFEE93, #FF9E9E, #A8E6A3, #FFB3DE, #A7C7F2   # C V B N M
@@ -429,10 +468,12 @@ One feature per file in `src/`; `nomadys.h` has the shared types and a module ma
 | `input.c` | key tokens and **all keymaps** (one table per mode) |
 | `config.c` | config file and the colour themes (one table of theme keys) |
 | `doc.c` | PDFium document, page cache, form environment, saving |
-| `render.c` | layout, page rendering, texture cache, dark mode |
+| `render.c` | layout, page rendering (in slices for heavy pages), texture cache, dark mode |
+| `split.c` | split view: the two panes, focus, entering a pane |
+| `cite.c` | `Y` quotations with the page, `:bibtex` (DOI / arXiv, curl in a thread) |
 | `forms.c` | form field navigation and typing |
 | `caret.c` | text cursor, free cursor, selections |
-| `annot.c` | highlights and comments |
+| `annot.c` | highlights and comments, undo / redo, `:merge` |
 | `marks.c` | marks, jump history, last position |
 | `search.c` | text search |
 | `commands.c` | the `:` commands and their Tab completion |
@@ -449,7 +490,7 @@ One feature per file in `src/`; `nomadys.h` has the shared types and a module ma
 | `object.c` | moving and resizing images and highlighted areas |
 | `diff.c` | `:diff`: words of both versions, patience diff, drawing, `]c` `[c` |
 | `present.c` | presentation mode |
-| `recent.c` | recent files, the session, the fuzzy file picker |
+| `recent.c` | recent files, the session, the fuzzy file picker, the PDF finder (`\f`) |
 | `grid.c` | the page grid (thumbnails drawn while idle) |
 | `help.c` | the help screen (`\c`): tabs, groups, keycaps, search |
 | `panel.c` | the marks / notes / contents panel |

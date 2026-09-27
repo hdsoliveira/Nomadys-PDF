@@ -55,7 +55,8 @@ static void put(Buf *b, const char *s, size_t n)
  * of text: a frame, or a highlight box taller than two lines. */
 static bool is_area(const Note *n)
 {
-    if (n->subtype == FPDF_ANNOT_SQUARE || n->subtype == FPDF_ANNOT_CIRCLE || n->subtype == FPDF_ANNOT_INK)
+    if (n->subtype == FPDF_ANNOT_SQUARE || n->subtype == FPDF_ANNOT_CIRCLE || n->subtype == FPDF_ANNOT_INK ||
+        n->subtype == FPDF_ANNOT_TEXT)
         return true;
     for (int q = 0; q < n->nquads; q++)
         if (n->quads[q].t - n->quads[q].b > 24)
@@ -194,6 +195,10 @@ int export_write(Doc *d, FILE *f, int *ncomments)
             char *text = note_text(d, page, n), *comment = note_comment(d, page, o[i].note);
             if (n->subtype == FPDF_ANNOT_STAMP)
                 fprintf(f, "- *(image)* placed on the page\n\n");
+            else if (n->subtype == FPDF_ANNOT_TEXT)
+                fprintf(f, "- *(note)*\n\n");
+            else if (n->subtype == FPDF_ANNOT_INK)
+                fprintf(f, "- *(%s, drawing)* drawn by hand\n\n", color);
             else if (text)
                 fprintf(f, "- *(%s)* “%s”\n\n", color, text); /* blank lines: easier to read */
             else

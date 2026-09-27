@@ -210,20 +210,28 @@ void ui_draw_overlays(Window *w, uint64_t now)
         panel_draw(w);
     if (w->mode == MODE_HELP || (w->mode == MODE_PROMPT && w->prompt_return == MODE_HELP))
         help_draw(w);
-    if (w->mode == MODE_HINTS)
-        hints_draw(w);
+    if (w->mode == MODE_HINTS || w->mode == MODE_PREVIEW || (w->mode == MODE_PROMPT && w->prompt_box)) {
+        /* on the pages: in a split, those of the focused pane */
+        bool pane = pane_enter_focused(w);
+        if (w->mode == MODE_HINTS)
+            hints_draw(w);
+        else if (w->mode == MODE_PREVIEW)
+            preview_draw(w);
+        else
+            comment_editor_draw(w);
+        if (pane)
+            pane_leave(w);
+    }
     if (w->mode == MODE_PICKER)
         picker_draw(w);
     if (w->mode == MODE_THEMES)
         theme_draw(w);
     if (w->mode == MODE_ABOUT)
         about_draw(w);
-    if (w->mode == MODE_PREVIEW)
-        preview_draw(w);
     if (cfg.mode_indicator)
         draw_mode(w);
     if (w->mode == MODE_PROMPT && w->prompt_box)
-        comment_editor_draw(w);
+        ; /* drawn above */
     else if (w->mode == MODE_PROMPT)
         draw_prompt(w);
     else if (now < w->msg_until && w->msg[0])

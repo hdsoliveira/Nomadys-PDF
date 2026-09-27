@@ -4,8 +4,11 @@
  * session: the tabs open now, rewritten as they change, so "npdf" alone or
  *          :session brings them back, even after a crash
  * picker:  \o or :recent, a list of recent files filtered as you type
- *          (fuzzy: the letters in order, not necessarily together) */
+ *          (fuzzy: the letters in order, not necessarily together)
+ * finder:  \f or :find, the same list over every PDF in pdf_dirs (the home
+ *          folder by default), found by a thread and kept for next time */
 #include <ctype.h>
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,6 +31,7 @@ static bool loaded;
 
 typedef struct {
     int index, score;
+    long long when;
 } Hit;
 
 static Hit *hits;            /* the picker's list: recent files that match */
@@ -125,8 +129,11 @@ void recent_add(const char *path)
     recent_write();
 }
 
+static void finder_shutdown(void);
+
 void recent_shutdown(void)
 {
+    finder_shutdown();
     for (int i = 0; i < nrecent; i++)
         free(recent[i].path);
     free(recent);
@@ -206,6 +213,196 @@ void session_restore(Window *w)
     w->redraw = true;
 }
 
+/* ---------- the finder: every PDF in pdf_dirs ---------- */
+#define FIND_DEPTH 12
+#define FIND_MAX 200000
+
+typedef struct {
+    char **path;
+    long long *when;         /* modified, seconds since 1970 */
+    int n, cap;
+} Found;
+
+static Found found;          /* shown by the picker; guarded by found_lock */
+static SDL_Mutex *found_lock;
+static SDL_Thread *finder;
+static SDL_AtomicInt finder_busy, finder_stop;
+
+static void found_add(Found *f, const char *path, long long when)
+{
+    if (f->n == f->cap) {
+        f->cap = f->cap ? f->cap * 2 : 256;
+        f->path = xrealloc(f->path, (size_t)f->cap * sizeof *f->path);
+        f->when = xrealloc(f->when, (size_t)f->cap * sizeof *f->when);
+    }
+    f->path[f->n] = xstrdup(path);
+    f->when[f->n++] = when;
+}
+
+static void found_free(Found *f)
+{
+    for (int i = 0; i < f->n; i++)
+        free(f->path[i]);
+    free(f->path);
+    free(f->when);
+    *f = (Found){0};
+}
+
+static bool is_pdf(const char *name)
+{
+    size_t n = strlen(name);
+    return n > 4 && !strcasecmp(name + n - 4, ".pdf");
+}
+
+/* Folders never worth a look: hidden ones, caches, code dependencies. */
+static bool skip_dir(const char *name)
+{
+    static const char *const skip[] = {"node_modules", "__pycache__", "site-packages", "venv", "snap", "build",
+                                       "target"};
+    if (name[0] == '.')
+        return true;
+    for (size_t i = 0; i < SDL_arraysize(skip); i++)
+        if (!strcmp(name, skip[i]))
+            return true;
+    return false;
+}
+
+static void scan(const char *dir, int depth, Found *out, bool publish)
+{
+    if (depth > FIND_DEPTH || out->n >= FIND_MAX || SDL_GetAtomicInt(&finder_stop))
+        return;
+    DIR *d = opendir(dir);
+    if (!d)
+        return;
+    struct dirent *e;
+    char path[4200];
+    while ((e = readdir(d)) && !SDL_GetAtomicInt(&finder_stop)) {
+        if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, ".."))
+            continue;
+        snprintf(path, sizeof path, "%s/%s", dir, e->d_name);
+        if (e->d_type == DT_DIR) { /* links to folders are not followed: no loops */
+            if (!skip_dir(e->d_name))
+                scan(path, depth + 1, out, publish);
+            continue;
+        }
+        struct stat st;
+        if ((e->d_type == DT_REG || e->d_type == DT_LNK || e->d_type == DT_UNKNOWN) && is_pdf(e->d_name) &&
+            stat(path, &st) == 0 && S_ISREG(st.st_mode)) {
+            if (publish)
+                SDL_LockMutex(found_lock);
+            found_add(out, path, (long long)st.st_mtime);
+            if (publish)
+                SDL_UnlockMutex(found_lock);
+        } else if (e->d_type == DT_UNKNOWN && stat(path, &st) == 0 && S_ISDIR(st.st_mode) && !skip_dir(e->d_name)) {
+            scan(path, depth + 1, out, publish);
+        }
+    }
+    closedir(d);
+}
+
+static void finder_post(void)
+{
+    SDL_Event e = {0};
+    e.type = ipc_event;
+    e.user.code = IPC_FINDER;
+    SDL_PushEvent(&e);
+}
+
+static void found_write(const Found *f)
+{
+    char path[4200], tmp[4300];
+    data_path("files", path, sizeof path);
+    FILE *o = open_new(path, tmp, sizeof tmp);
+    if (!o)
+        return;
+    for (int i = 0; i < f->n; i++)
+        fprintf(o, "%lld\t%s\n", f->when[i], f->path[i]);
+    finish(o, tmp, path);
+}
+
+static int finder_run(void *arg)
+{
+    (void)arg;
+    SDL_LockMutex(found_lock);
+    bool publish = found.n == 0; /* nothing to show yet: show them as they come */
+    SDL_UnlockMutex(found_lock);
+    Found fresh = {0};
+    char dirs[sizeof cfg.pdf_dirs];
+    snprintf(dirs, sizeof dirs, "%s", cfg.pdf_dirs);
+    for (char *save = NULL, *d = strtok_r(dirs, ",:", &save); d; d = strtok_r(NULL, ",:", &save)) {
+        while (*d == ' ')
+            d++;
+        for (char *end = d + strlen(d); end > d && end[-1] == ' ';)
+            *--end = 0;
+        if (!*d)
+            continue;
+        char *dir = expand_home(d);
+        scan(dir, 0, publish ? &found : &fresh, publish);
+        free(dir);
+        if (publish)
+            finder_post();
+    }
+    if (!SDL_GetAtomicInt(&finder_stop)) {
+        SDL_LockMutex(found_lock);
+        if (!publish) {
+            found_free(&found);
+            found = fresh;
+            fresh = (Found){0};
+        }
+        found_write(&found);
+        SDL_UnlockMutex(found_lock);
+    }
+    found_free(&fresh);
+    SDL_SetAtomicInt(&finder_busy, 0);
+    finder_post();
+    return 0;
+}
+
+/* The list of the last search, at once; then a new search in the background. */
+static void finder_start(void)
+{
+    if (!found_lock)
+        found_lock = SDL_CreateMutex();
+    SDL_LockMutex(found_lock);
+    if (!found.n) {
+        char path[4200], line[4300];
+        data_path("files", path, sizeof path);
+        FILE *f = fopen(path, "r");
+        while (f && found.n < FIND_MAX && fgets(line, sizeof line, f)) {
+            line[strcspn(line, "\n")] = 0;
+            char *tab = strchr(line, '\t');
+            if (tab && tab[1] == '/')
+                found_add(&found, tab + 1, atoll(line));
+        }
+        if (f)
+            fclose(f);
+    }
+    SDL_UnlockMutex(found_lock);
+    if (SDL_GetAtomicInt(&finder_busy))
+        return;
+    if (finder) {
+        SDL_WaitThread(finder, NULL); /* the last one has finished */
+        finder = NULL;
+    }
+    SDL_SetAtomicInt(&finder_busy, 1);
+    SDL_SetAtomicInt(&finder_stop, 0);
+    finder = SDL_CreateThread(finder_run, "finder", NULL);
+    if (!finder)
+        SDL_SetAtomicInt(&finder_busy, 0);
+}
+
+static void finder_shutdown(void)
+{
+    SDL_SetAtomicInt(&finder_stop, 1);
+    if (finder)
+        SDL_WaitThread(finder, NULL);
+    finder = NULL;
+    found_free(&found);
+    if (found_lock)
+        SDL_DestroyMutex(found_lock);
+    found_lock = NULL;
+}
+
 /* ---------- the picker ---------- */
 /* Score of one word in text (letters in order, not necessarily together),
  * -1 if absent. Every place the first letter occurs is tried; letters
@@ -270,53 +467,108 @@ static int hit_cmp(const void *a, const void *b)
     const Hit *x = a, *y = b;
     if (x->score != y->score)
         return y->score - x->score;
-    return x->index - y->index; /* then the most recent */
+    if (x->when != y->when) /* then the most recent */
+        return x->when < y->when ? 1 : -1;
+    return x->index - y->index;
 }
 
+/* The picker's list: the recent files, or (the finder) every PDF found. */
+static void list_lock(Window *w)
+{
+    if (w->picker_files)
+        SDL_LockMutex(found_lock);
+}
+
+static void list_unlock(Window *w)
+{
+    if (w->picker_files)
+        SDL_UnlockMutex(found_lock);
+}
+
+static int list_count(Window *w) { return w->picker_files ? found.n : nrecent; }
+static const char *list_path(Window *w, int i) { return w->picker_files ? found.path[i] : recent[i].path; }
+static long long list_when(Window *w, int i) { return w->picker_files ? found.when[i] : recent[i].when; }
+
+/* Every letter of the query, in order, somewhere in s (spaces aside): a
+ * quick test before scoring, for long lists. */
+static bool letters_in(const char *query, const char *s)
+{
+    for (const char *q = query; *q; q++) {
+        if (*q == ' ')
+            continue;
+        while (*s && tolower((unsigned char)*s) != tolower((unsigned char)*q))
+            s++;
+        if (!*s)
+            return false;
+        s++;
+    }
+    return true;
+}
 
 static void filter(Window *w)
 {
     load();
+    list_lock(w);
+    int n = list_count(w);
     free(hits);
-    hits = xmalloc((size_t)(nrecent ? nrecent : 1) * sizeof *hits);
+    hits = xmalloc((size_t)(n ? n : 1) * sizeof *hits);
     nhits = 0;
-    for (int i = 0; i < nrecent; i++) {
-        if (access(recent[i].path, R_OK))
+    for (int i = 0; i < n; i++) {
+        const char *path = list_path(w, i);
+        if (!w->picker_files && access(path, R_OK))
             continue; /* moved or deleted */
-        int s = w->picker_query[0] ? fuzzy(w->picker_query, recent[i].path) : 0;
-        if (s >= 0)
-            hits[nhits++] = (Hit){i, s};
+        if (w->picker_query[0] && w->picker_files && !letters_in(w->picker_query, path))
+            continue;
+        int s = w->picker_query[0] ? fuzzy(w->picker_query, path) : 0;
+        if (s >= 0) /* recent files stay in their order; found ones newest first */
+            hits[nhits++] = (Hit){i, s, w->picker_files ? list_when(w, i) : 0};
     }
+    list_unlock(w);
     qsort(hits, (size_t)nhits, sizeof *hits, hit_cmp);
     w->picker_sel = SDL_clamp(w->picker_sel, 0, SDL_max(0, nhits - 1));
 }
 
-void picker_open(Window *w)
+void picker_open(Window *w, bool files)
 {
     w->picker_return = w->mode == MODE_PICKER ? w->picker_return : w->mode;
     w->picker_query[0] = 0;
     w->picker_sel = w->picker_first = 0;
+    w->picker_files = files;
     w->mode = MODE_PICKER;
+    if (files)
+        finder_start();
     filter(w);
     w->redraw = true;
+}
+
+/* The finder found more (or finished): the list again, same query. */
+void picker_refresh(void)
+{
+    for (int k = 0; k < nwindows; k++)
+        if (windows[k]->mode == MODE_PICKER && windows[k]->picker_files) {
+            filter(windows[k]);
+            windows[k]->redraw = true;
+        }
 }
 
 static void open_hit(Window *w)
 {
     if (!nhits)
         return;
-    const char *path = recent[hits[w->picker_sel].index].path;
+    list_lock(w);
+    char *path = xstrdup(list_path(w, hits[w->picker_sel].index));
+    list_unlock(w);
     w->mode = w->picker_return == MODE_PICKER ? MODE_NORMAL : w->picker_return;
     for (int t = 0; t < w->ntabs; t++)
         if (!strcmp(w->tabs[t]->doc->path, path)) { /* already open: go there */
             w->cur = t;
             update_title(w);
             w->redraw = true;
+            free(path);
             return;
         }
-    char *copy = xstrdup(path); /* open_tab updates the list */
-    open_tab(w, copy);
-    free(copy);
+    open_tab(w, path); /* a copy: open_tab updates the list */
+    free(path);
 }
 
 void picker_key(Window *w, const char *tok)
@@ -383,12 +635,13 @@ void picker_draw(Window *w)
     ui_frame(w, x, y, bw, bh, SDL_max(1.0f, w->density), t->panel_header);
     /* the query line */
     char head[300];
-    snprintf(head, sizeof head, "Open recent: %s", w->picker_query);
+    snprintf(head, sizeof head, "%s: %s", w->picker_files ? "Find a PDF" : "Open recent", w->picker_query);
     font_draw(w->font, x + pad, y + pad / 2.0f, head, t->panel_fg);
     ui_fill(w, x + pad + font_width(w->font, head) + 1, y + pad / 2.0f, SDL_max(2.0f, 2 * w->density), (float)lh,
             t->bar_cursor, 255);
-    char count[48];
-    snprintf(count, sizeof count, "%d file%s", nhits, nhits == 1 ? "" : "s");
+    char count[64];
+    bool busy = w->picker_files && SDL_GetAtomicInt(&finder_busy);
+    snprintf(count, sizeof count, "%s%d file%s", busy ? "searching\u2026  " : "", nhits, nhits == 1 ? "" : "s");
     font_draw(w->font, x + bw - pad - font_width(w->font, count), y + pad / 2.0f, count, t->panel_header);
     float list_top = y + lh + pad * 1.5f, list_bottom = y + bh - lh - pad;
     ui_fill(w, x, list_top - pad / 2.0f, bw, SDL_max(1.0f, w->density), t->panel_header, 90);
@@ -398,8 +651,12 @@ void picker_draw(Window *w)
     font_fit(w->font, foot, (int)bw - 2 * pad);
     font_draw(w->font, x + pad, list_bottom + pad / 2.0f, foot, t->panel_header);
     if (!nhits) {
-        font_draw(w->font, x + pad, list_top + pad / 2.0f, nrecent ? "no file matches" : "no recent files yet",
-                  t->panel_header);
+        list_lock(w);
+        const char *none = list_count(w) ? "no file matches"
+                           : w->picker_files ? (busy ? "searching\u2026" : "no PDF found (pdf_dirs in the config)")
+                                             : "no recent files yet";
+        list_unlock(w);
+        font_draw(w->font, x + pad, list_top + pad / 2.0f, none, t->panel_header);
         return;
     }
     int rows = SDL_max(1, (int)((list_bottom - list_top) / row));
@@ -409,8 +666,11 @@ void picker_draw(Window *w)
         w->picker_first = w->picker_sel - rows + 1;
     const char *home = getenv("HOME");
     size_t hl = home ? strlen(home) : 0;
+    list_lock(w);
     for (int i = w->picker_first; i < nhits && i < w->picker_first + rows; i++) {
-        const Recent *r = &recent[hits[i].index];
+        if (hits[i].index >= list_count(w))
+            continue;
+        const Recent r_ = {(char *)list_path(w, hits[i].index), list_when(w, hits[i].index)}, *r = &r_;
         float ry = list_top + (i - w->picker_first) * row;
         bool sel = i == w->picker_sel;
         if (sel)
@@ -432,4 +692,5 @@ void picker_draw(Window *w)
         font_draw(w->font, x + bw - pad - ww, ry + 3 * w->density, when, dim);
         font_draw(w->font, x + pad, ry + 3 * w->density + lh, dir, dim);
     }
+    list_unlock(w);
 }

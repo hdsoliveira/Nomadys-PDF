@@ -33,7 +33,7 @@
  * decoded images (a 24 Mpixel photo is ~70 MB), so few, least recently used
  * first. Rendered pages stay as textures (render.c). */
 #define LOADED_PAGE_CAP 8
-#define NOMADYS_VERSION "0.3.0"
+#define NOMADYS_VERSION "0.4.0"
 #define NOMADYS_AUTHOR "Hugo Oliveira"
 #define NOMADYS_CONTACT "hs.oliveira@mailbox.org"
 #define NOMADYS_URL "github.com/hdsoliveira/Nomadys-PDF"
@@ -73,10 +73,13 @@ typedef struct {
     bool mode_indicator;     /* small coloured badge with the current mode */
     int dark_images;         /* DARK_IMAGES_*: how dark mode treats images */
     bool restore_position;   /* reopen a file where it was left */
+    bool remember_view;      /* and with its zoom, dark mode, two pages, rotation */
     uint32_t highlights[5];  /* colours of new highlights for C V B N M, 0xRRGGBB */
     bool area_frame;         /* areas: frame around instead of a highlight */
     double zoom;             /* 0 = fit width, otherwise 1.0 = 100 % */
     char font[128];          /* UI font family (fontconfig pattern) */
+    char pdf_dirs[1024];     /* where \f looks, comma separated */
+    char cite_format[128];   /* Y: %t the text, %p the page */
     double font_size;        /* UI font size in points */
     char leader[8];          /* leader key token, e.g. "\\" */
     char synctex_editor[1024]; /* inverse search command: %l line, %c column, %f file */
@@ -156,9 +159,32 @@ typedef struct {
     char name[96];
 } Mark;
 
+/* How a placed image is shown: the picture is drawn into its appearance
+ * box, cropped (the part u0..u1, v0..v1 of it, 0-1, v up) and turned;
+ * whatever falls outside the box is clipped by every reader. Nothing is
+ * re-encoded, so cropping can always be undone. */
+typedef struct {
+    float box[4];            /* appearance box: l, b, r, t */
+    float u0, v0, u1, v1;
+    int turns;               /* quarter turns clockwise */
+} ImageView;
+
+typedef enum { U_CREATE, U_DELETE, U_COMMENT, U_EDIT } UndoKind;
+typedef struct {
+    UndoKind kind;
+    int page, group;         /* a group is undone at once */
+    char nm[64];             /* the annotation (/NM) */
+    PRect before, after;     /* U_EDIT */
+    bool has_view;
+    ImageView vbefore, vafter;
+    char *text_before, *text_after; /* U_COMMENT */
+} Undo;
+
 struct Doc {
     char *path;
     char *password;          /* only in memory, NULL when not protected */
+    Undo *undo;              /* changes to annotations, for u / Ctrl-r (annot.c) */
+    int nundo, undo_at, undo_group, undo_group_open;
     FPDF_DOCUMENT pdf;
     FPDF_FORMHANDLE form;
     FormInfo ffi;
@@ -178,6 +204,11 @@ struct Doc {
     char *marks_path;
     Mark marks[NMARKS];
     Pos last;                /* last reading position, page -1 = none */
+    struct {                 /* how it was last seen, when not the default */
+        bool set, dual, dark;
+        double zoom;         /* 0 = fit width, 1.0 = 100 % */
+        int rotation;
+    } prefs;
     /* reloading after an external change (ipc.c watches the directory) */
     int watch_wd;
     uint64_t reload_at;      /* 0 = nothing pending */
@@ -226,18 +257,17 @@ bool note_delete(Doc *d, int page, int note);
 int note_create_image(Doc *d, int page, PRect r, FPDF_PAGEOBJECT image); /* annotation index, or -1 */
 int note_move(Doc *d, int page, int annot, PRect r);     /* new annotation index, or -1 */
 
-/* How a placed image is shown: the picture is drawn into its appearance
- * box, cropped (the part u0..u1, v0..v1 of it, 0-1, v up) and turned;
- * whatever falls outside the box is clipped by every reader. Nothing is
- * re-encoded, so cropping can always be undone. */
-typedef struct {
-    float box[4];            /* appearance box: l, b, r, t */
-    float u0, v0, u1, v1;
-    int turns;               /* quarter turns clockwise */
-} ImageView;
 bool note_image_view(Doc *d, int page, int annot, ImageView *iv, int *pxw, int *pxh);
 bool note_image_apply(Doc *d, int page, int annot, const ImageView *iv, PRect r);
 int note_of_annot(Doc *d, int page, int annot);           /* note index, or -1 */
+const char *doc_undo(Doc *d, bool redo, int *page);       /* what was undone, NULL if nothing */
+void doc_undo_clear(Doc *d);
+void doc_purge_deleted(Doc *d);                           /* closing: hidden deletions go */
+int undo_group_begin(Doc *d);
+void undo_group_end(Doc *d);
+typedef struct { int added, already, skipped, first_page; bool pages_differ; } MergeResult;
+bool doc_merge(Doc *d, const char *path, MergeResult *res, char *err, size_t cap);
+void undo_edit(Doc *d, int page, int annot, PRect before, PRect after, const ImageView *vbefore, const ImageView *vafter);
 
 /* ---------- views / tabs (render.c) ---------- */
 typedef struct {
@@ -258,6 +288,7 @@ typedef struct { int page, ch; } TextPos;
 typedef struct {
     Doc *doc;
     double zoom;             /* pixels per point (device pixels) */
+    float density;           /* of the window it was last drawn in */
     bool fit_width;
     bool dual;
     bool dark;
@@ -379,6 +410,12 @@ struct Window {
     char picker_query[256];
     int picker_sel, picker_first;
     Mode picker_return;
+    bool picker_files;       /* the finder (\f), not the recent files */
+    /* split view (split.c): a second pane, its own view */
+    View *split;
+    bool split_side, split_focus;  /* side by side / above each other; the second pane has the keys */
+    bool in_pane, pane_second;     /* working in a pane now: W, H are its size */
+    int full_W, full_H, pane_x, pane_y;
     /* page grid (grid.c) */
     Thumb *thumbs;
     int grid_sel, grid_top, grid_size;
@@ -498,7 +535,10 @@ bool caret_enter(Window *w, View *v);
 void caret_move(Window *w, View *v, char motion, int count);
 void caret_toggle_select(Window *w, View *v);
 void caret_mark(Window *w, View *v, bool comment, uint32_t color); /* highlight selection */
-void caret_copy(Window *w, View *v);
+void caret_copy(Window *w, View *v, bool cite);            /* cite: as a quotation with its page */
+void cite_copy(Window *w, View *v, char *text, int first_page, int last_page);
+void cite_bibtex(Window *w, View *v);                      /* :bibtex */
+void cite_result(Window *w, const char *text);             /* the download finished */
 void area_enter(Window *w, View *v);
 void area_move(Window *w, View *v, float dx, float dy);
 void area_toggle_select(Window *w, View *v);
@@ -519,7 +559,7 @@ void jump_back(Window *w, View *v);                      /* "mm" */
 void jump_history(Window *w, View *v, int dir);          /* Ctrl-o / Ctrl-i */
 
 /* ---------- LaTeX: SyncTeX and the link with VimTeX (synctex.c, ipc.c) ---------- */
-enum { IPC_REQUEST = 1, IPC_FILE = 2 };
+enum { IPC_REQUEST = 1, IPC_FILE = 2, IPC_BIBTEX = 3, IPC_FINDER = 4 };
 extern Uint32 ipc_event;
 bool synctex_available(Doc *d);
 bool synctex_inverse(Window *w, View *v, int page, double x, double y);
@@ -641,7 +681,26 @@ void recent_shutdown(void);
 void session_save(void);
 int session_files(char ***out, int *current);             /* the last session's files */
 void session_restore(Window *w);
-void picker_open(Window *w);
+void picker_open(Window *w, bool files);                   /* files: \f, every PDF in pdf_dirs */
+void picker_refresh(void);
+View *pane_view(Window *w, bool second);
+bool pane_enter(Window *w, bool second);                   /* false: no split, nothing to leave */
+bool pane_enter_focused(Window *w);
+bool pane_enter_at(Window *w, float *x, float *y);         /* the pane under the point gets the focus */
+void pane_leave(Window *w);
+void split_draw_frame(Window *w);
+void split_open(Window *w, bool side_by_side, const char *path);
+void split_close(Window *w, bool focused);
+void split_focus_other(Window *w);
+void split_focus_dir(Window *w, char dir);
+void split_swap(Window *w);
+bool window_alive(Window *w);
+void render_cancel(Doc *d, int page);                      /* page -1: any; before it is closed or changed */
+bool render_work(void);                                    /* more of a heavy page, while idle */
+bool render_busy(void);
+void render_finish(void);                                  /* test mode: finish it now */
+extern bool render_incomplete;                             /* a page on screen still being rendered */                                 /* the finder found more */
+char *expand_home(const char *path);                      /* "~/x" -> "/home/you/x", malloc'd */
 void picker_key(Window *w, const char *tok);
 void picker_text(Window *w, const char *text);
 void picker_draw(Window *w);

@@ -338,7 +338,8 @@ static uint32_t mark_color(const char *key)
 
 static void a_caret_mark(Window *w, View *v, int c, const char *a) { (void)c; caret_mark(w, v, false, mark_color(a)); }
 static void a_caret_comment(Window *w, View *v, int c, const char *a) { (void)c, (void)a; caret_mark(w, v, true, cfg.highlights[0]); }
-static void a_caret_copy(Window *w, View *v, int c, const char *a) { (void)c, (void)a; caret_copy(w, v); }
+static void a_caret_copy(Window *w, View *v, int c, const char *a) { (void)c, (void)a; caret_copy(w, v, false); }
+static void a_caret_cite(Window *w, View *v, int c, const char *a) { (void)c, (void)a; caret_copy(w, v, true); }
 
 static void a_note_delete(Window *w, View *v, int c, const char *a)
 {
@@ -444,7 +445,26 @@ static void a_preview_close(Window *w, View *v, int c, const char *a) { (void)v,
 /* ---------- images and moving / resizing ---------- */
 #define MOVE_STEP 2.0f  /* points per h j k l */
 #define MOVE_FAST 12.0f /* Ctrl-h j k l */
-static void a_recent(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; picker_open(w); }
+static void a_recent(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; picker_open(w, false); }
+static void a_split(Window *w, View *v, int c, const char *a)
+{
+    (void)v, (void)c;
+    char k = a[0] == '<' ? a[3] : a[0]; /* "<C-w>" as the second key: Ctrl-w Ctrl-w */
+    if (k == 'v' || k == 's')
+        split_open(w, k == 'v', NULL);
+    else if (k == 'q' || k == 'c')
+        split_close(w, true);
+    else if (k == 'o')
+        split_close(w, false);
+    else if (k == 'x')
+        split_swap(w);
+    else if (strchr("hjkl", k))
+        split_focus_dir(w, k);
+    else
+        split_focus_other(w);
+}
+
+static void a_find(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; picker_open(w, true); }
 static void a_grid(Window *w, View *v, int c, const char *a) { (void)c, (void)a; grid_open(w, v); }
 static void a_grid_h(Window *w, View *v, int c, const char *a) { (void)v, (void)a; grid_move(w, -n1(c), 0); }
 static void a_grid_l(Window *w, View *v, int c, const char *a) { (void)v, (void)a; grid_move(w, n1(c), 0); }
@@ -468,6 +488,29 @@ static void a_present_stop(Window *w, View *v, int c, const char *a) { (void)v, 
 static void a_diff_next(Window *w, View *v, int c, const char *a) { (void)a; for (int i = 0; i < SDL_min(n1(c), 500); i++) diff_step(w, v, 1); }
 static void a_diff_prev(Window *w, View *v, int c, const char *a) { (void)a; for (int i = 0; i < SDL_min(n1(c), 500); i++) diff_step(w, v, -1); }
 static void a_copy_region(Window *w, View *v, int c, const char *a) { (void)c; image_copy_region(w, v, a[0] == 'Y'); }
+/* u / Ctrl-r: undo or redo the last change to highlights, comments, images. */
+static void a_undo(Window *w, View *v, int c, const char *a)
+{
+    bool redo = !strcmp(a, "<C-r>");
+    const char *what = NULL;
+    int page = -1;
+    for (int i = 0; i < SDL_min(n1(c), 200); i++) {
+        const char *got = doc_undo(v->doc, redo, &page);
+        if (!got)
+            break;
+        what = got;
+    }
+    if (!what) {
+        ui_message(w, redo ? "nothing to redo" : "nothing to undo");
+        return;
+    }
+    if (page >= 0 && (page < view_top_page(v) || page > view_top_page(v) + 2))
+        jump_to(w, v, (Pos){page, 0}); /* show where it happened */
+    ui_message(w, "%s: %s (p. %d)   %s", redo ? "redone" : "undone", what, page + 1,
+               redo ? "u undoes it" : "Ctrl-r redoes it");
+    w->redraw = true;
+}
+
 static void a_about(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; about_open(w); }
 static void a_themes(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; theme_open(w); }
 static void a_image_file(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; prompt_open(w, ":", "image ", command_run, 0); }
@@ -537,7 +580,10 @@ static void a_crop_side(Window *w, View *v, int c, const char *a)
 #define OVERLAY_KEYS                                                                             \
     {"<leader>l", a_panel, "panel: tabs, summary, marks, highlights"},                              \
     {"<leader>c", a_help, "this help (again closes it)"}
-#define MARK_KEYS JUMP_KEYS, OVERLAY_KEYS
+#define UNDO_KEYS                                                                                \
+    {"u", a_undo, "undo the last change to highlights, comments, images"},                          \
+    {"<C-r>", a_undo, "redo"}
+#define MARK_KEYS JUMP_KEYS, OVERLAY_KEYS, UNDO_KEYS
 
 static const Binding normal_map[] = {
     GROUP("Moving"),
@@ -560,6 +606,7 @@ static const Binding normal_map[] = {
     {"F", a_peek, "preview a reference (figure, equation, citation) in place"},
     GROUP("Highlights and comments"),
     {"v", a_caret, "text cursor: highlight, comment, copy"},
+    UNDO_KEYS,
     {"<C-v>", a_area, "free cursor: mark figures and areas"},
     GROUP("Marks and jumps"),
     JUMP_KEYS,
@@ -569,6 +616,7 @@ static const Binding normal_map[] = {
     GROUP("Files, tabs and windows"),
     {":", a_command, "command line: :w save, :q close tab, :e file, :42 page"},
     {"<leader>o", a_recent, "open a recent file (type to filter)"},
+    {"<leader>f", a_find, "find any PDF in your folders (type to filter)"},
     {"<leader>g", a_grid, "all pages as thumbnails"},
     {"<leader>T", a_themes, "choose the colour theme (tried as you move)"},
     {"<leader>a", a_about, "about Nomadys-PDF: version, author, contact"},
@@ -577,6 +625,15 @@ static const Binding normal_map[] = {
     {"t", a_tabs, "show / hide tabs"},
     {"<C-,>", a_tab_prev, "previous tab"}, {"<C-.>", a_tab_next, "next tab"},
     {"<C-n>", a_new_window, "new window on the same PDF"},
+    GROUP("Split view"),
+    {"<C-w>v", a_split, "split: side by side (the same PDF; :vsplit other.pdf)"},
+    {"<C-w>s", a_split, "split: one above the other (:split other.pdf)"},
+    {"<C-w>w", a_split, "the other pane (also Ctrl-w Ctrl-w)"}, {"<C-w><C-w>", a_split, NULL},
+    {"<C-w>h", a_split, "the pane to the left; j below, k above, l right"}, {"<C-w>j", a_split, NULL},
+    {"<C-w>k", a_split, NULL}, {"<C-w>l", a_split, NULL},
+    {"<C-w>x", a_split, "the panes change places"},
+    {"<C-w>q", a_split, "close this pane (also Ctrl-w c, :close)"}, {"<C-w>c", a_split, NULL},
+    {"<C-w>o", a_split, "keep only this pane (:only)"},
     OVERLAY_KEYS, {"q", a_quit, "close the window"},
 };
 
@@ -592,7 +649,8 @@ static const Binding caret_map[] = {
     {"B", a_caret_mark, "highlight: pastel green"}, {"N", a_caret_mark, "highlight: pastel pink"},
     {"M", a_caret_mark, "highlight: pastel blue"},
     {"c", a_caret_comment, "highlight with a comment, or edit the comment"},
-    {"y", a_caret_copy, "copy the selection"}, {"x", a_note_delete, "delete the highlight under the cursor"},
+    {"y", a_caret_copy, "copy the selection"},
+    {"Y", a_caret_cite, "copy it as a quotation: “…” (p. 5)"}, {"x", a_note_delete, "delete the highlight under the cursor"},
     GROUP("Other"),
     {"<C-v>", a_area, "switch to the free cursor"}, {"<Esc>", a_leave, "cancel the selection / leave"},
     {"<Enter>", a_source, "LaTeX: open this spot in the editor (SyncTeX)"},
@@ -835,7 +893,24 @@ void input_expire(uint64_t now)
         release_held();
 }
 
+static void token_run(Window *w, const char *tok);
+
+/* Modes that work on the pages: in a split, on the focused pane's. */
+static bool on_pages(Mode m)
+{
+    return m != MODE_GRID && m != MODE_PRESENT && m != MODE_HELP && m != MODE_PANEL && m != MODE_PICKER &&
+           m != MODE_THEMES && m != MODE_ABOUT;
+}
+
 void input_token(Window *w, const char *tok)
+{
+    bool pane = on_pages(w->mode) && pane_enter_focused(w);
+    token_run(w, tok);
+    if (pane && window_alive(w))
+        pane_leave(w);
+}
+
+static void token_run(Window *w, const char *tok)
 {
     if (w->mode == MODE_ABOUT) { /* any key closes it */
         about_key(w, tok);
@@ -932,6 +1007,8 @@ static void key_label(const char *pattern, char *out, size_t cap)
     out[0] = 0;
     for (int i = 0; i < n; i++) {
         char part[40];
+        if (i > 0 && t[i - 1][0] == '<' && t[i - 1][1]) /* "Ctrl-w v", not "Ctrl-wv" */
+            SDL_strlcat(out, " ", cap);
         if (!strcmp(t[i], "*"))
             snprintf(part, sizeof part, "<letter>");
         else if (!strcmp(t[i], " ") && i == 0 && !strncmp(pattern, "<leader>", 8))
@@ -1144,7 +1221,10 @@ bool input_key_event(Window *w, const SDL_KeyboardEvent *e)
 void input_text_event(Window *w, const char *text)
 {
     if (w->mode == MODE_FORM) {
+        bool pane = pane_enter_focused(w);
         form_text(w, text);
+        if (pane)
+            pane_leave(w);
         w->redraw = true;
         return;
     }

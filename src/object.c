@@ -167,6 +167,10 @@ void object_done(Window *w, bool keep)
     View *v = cur_view(w);
     PRect r = w->obj_rect, o = w->obj_orig;
     bool view_changed = w->obj_view_ok && memcmp(&w->obj_view, &w->obj_view_orig, sizeof w->obj_view);
+    bool rect_changed = r.l != o.l || r.t != o.t || r.r != o.r || r.b != o.b;
+    if (keep && (view_changed || rect_changed)) /* one undo step for the whole edit */
+        undo_edit(v->doc, w->obj_page, w->obj_annot, o, r, view_changed ? &w->obj_view_orig : NULL,
+                  view_changed ? &w->obj_view : NULL);
     if (!keep && view_changed)
         apply_view(w, &w->obj_view_orig, o);
     else if (!keep && (r.l != o.l || r.t != o.t || r.r != o.r || r.b != o.b))
@@ -274,6 +278,10 @@ void object_crop_done(Window *w, bool keep)
 void object_delete(Window *w)
 {
     View *v = cur_view(w);
+    PRect r = w->obj_rect, o = w->obj_orig;
+    if (r.l != o.l || r.t != o.t || r.r != o.r || r.b != o.b) /* undo puts it back where it was, too */
+        undo_edit(v->doc, w->obj_page, w->obj_annot, o, r, w->obj_view_ok ? &w->obj_view_orig : NULL,
+                  w->obj_view_ok ? &w->obj_view : NULL);
     int note = note_of_annot(v->doc, w->obj_page, w->obj_annot);
     if (note >= 0)
         note_delete(v->doc, w->obj_page, note);
