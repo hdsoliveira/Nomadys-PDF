@@ -1,6 +1,6 @@
-"""Run nomadys-pdf-asan (sanitizer build) and classify the result.
+"""Run npdf-asan (sanitizer build) and classify the result.
 
-usage: check.py WORKDIR NAME TIMEOUT -- nomadys-pdf arguments...
+usage: check.py WORKDIR NAME TIMEOUT -- npdf arguments...
 Prints one line: OK, or FAIL with the AddressSanitizer / UBSan / leak /
 timeout findings. Leaks count only when a stack frame is in src/ (system
 libraries such as the GPU driver leak a little at exit). Full log in
@@ -15,7 +15,7 @@ for d in ('logs', 'data', 'cfg', f'run/{name}'):
 env = dict(os.environ, XDG_DATA_HOME=f'{work}/data', XDG_CONFIG_HOME=f'{work}/cfg',
            XDG_RUNTIME_DIR=f'{work}/run/{name}', XDG_CACHE_HOME=f'{work}/cache', SDL_VIDEODRIVER='offscreen', SDL_RENDER_DRIVER='software',
            ASAN_OPTIONS='detect_leaks=1:halt_on_error=1', UBSAN_OPTIONS='print_stacktrace=1:halt_on_error=1')
-binary = os.environ.get('BIN', f'{repo}/nomadys-pdf-asan')
+binary = os.environ.get('BIN', f'{repo}/npdf-asan')
 try:
     p = subprocess.run([binary] + args, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=timeout)
     out, code = p.stdout.decode(errors='replace'), p.returncode

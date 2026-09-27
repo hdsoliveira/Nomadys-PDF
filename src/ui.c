@@ -272,7 +272,7 @@ void ui_draw_notes(Window *w, View *v, int top)
 static void *checked(void *p)
 {
     if (!p) {
-        fputs("nomadys-pdf: out of memory\n", stderr);
+        fputs("npdf: out of memory\n", stderr);
         abort();
     }
     return p;

@@ -273,12 +273,12 @@ static void parse_file(const char *path, int depth)
             else if (!strcmp(s, "[dark]"))
                 section = &cfg.dark_theme;
             else
-                fprintf(stderr, "nomadys-pdf: %s:%d: unknown section %s\n", path, n, s);
+                fprintf(stderr, "npdf: %s:%d: unknown section %s\n", path, n, s);
             continue;
         }
         char *eq = strchr(s, '=');
         if (!eq) {
-            fprintf(stderr, "nomadys-pdf: %s:%d: expected key = value\n", path, n);
+            fprintf(stderr, "npdf: %s:%d: expected key = value\n", path, n);
             continue;
         }
         *eq = 0;
@@ -288,12 +288,12 @@ static void parse_file(const char *path, int depth)
             if (depth < 4 && find_include(v, path, inc, sizeof inc))
                 parse_file(inc, depth + 1);
             else
-                fprintf(stderr, "nomadys-pdf: %s:%d: cannot include '%s'\n", path, n, v);
+                fprintf(stderr, "npdf: %s:%d: cannot include '%s'\n", path, n, v);
             continue;
         }
         bool ok = section ? set_theme_key(section, k, v) : set_global_key(k, v);
         if (!ok)
-            fprintf(stderr, "nomadys-pdf: %s:%d: invalid setting '%s = %s'\n", path, n, k, v);
+            fprintf(stderr, "npdf: %s:%d: invalid setting '%s = %s'\n", path, n, k, v);
     }
     fclose(f);
 }

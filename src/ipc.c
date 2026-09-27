@@ -1,6 +1,6 @@
 /* Talking to the outside world without blocking the UI:
  *  - a Unix socket ($XDG_RUNTIME_DIR/nomadys-pdf.sock) where a second
- *    `nomadys-pdf --synctex-forward ...` (run by VimTeX) hands its request to
+ *    `npdf --synctex-forward ...` (run by VimTeX) hands its request to
  *    the running instance;
  *  - inotify on the directories of open PDFs, to reload them after LaTeX
  *    writes a new version.

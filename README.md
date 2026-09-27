@@ -20,15 +20,15 @@ automatically on the first `make` by `tools/fetch_pdfium.sh` (pinned release,
 SHA-256 verified) and is not stored in the repository.
 
 ```sh
-make                 # builds ./nomadys-pdf
-make install         # ~/.local/bin/nomadys-pdf and ~/.local/lib/nomadys-pdf/libpdfium.so
+make                 # builds ./npdf
+make install         # ~/.local/bin/npdf (and nomadys-pdf, a link to it), ~/.local/lib/nomadys-pdf/libpdfium.so
 make uninstall
 ```
 
 ## Usage
 
 ```sh
-nomadys-pdf file.pdf [other.pdf ...]    # each file opens in a tab
+npdf file.pdf [other.pdf ...]    # each file opens in a tab
 ```
 
 Press `\c` for the help screen: every key, in tabs like the panel (Reading,
@@ -197,7 +197,7 @@ colour and the comment:
 
 Running it again replaces the file; a Markdown file that `:export` did not
 write is never overwritten unless you use `:export!`.
-`nomadys-pdf --export paper.pdf` prints the same to the terminal.
+`npdf --export paper.pdf` prints the same to the terminal.
 
 ### LaTeX with VimTeX
 
@@ -206,7 +206,7 @@ write is never overwritten unless you use `:export!`.
   file was rewritten.
 - **Source → PDF** (forward search, `\lv` in VimTeX): the line under the
   editor cursor is shown and briefly highlighted. A second
-  `nomadys-pdf --synctex-forward ...` hands the request to the running window
+  `npdf --synctex-forward ...` hands the request to the running window
   through a socket and exits (`$XDG_RUNTIME_DIR/nomadys-pdf.sock`).
 - **PDF → source** (inverse search): **double click** or **Ctrl+click** a spot,
   or press `Enter` in the text/free cursor; the editor opens that line.
@@ -216,7 +216,7 @@ Neovim + VimTeX:
 
 ```vim
 let g:vimtex_view_method = 'general'
-let g:vimtex_view_general_viewer = 'nomadys-pdf'
+let g:vimtex_view_general_viewer = 'npdf'
 let g:vimtex_view_general_options = '--synctex-forward @line:@col:@tex @pdf'
 ```
 
@@ -400,7 +400,7 @@ third field is the description on the help screen (`\c`), `NULL` hides it; `GROU
 Headless test mode with scripted keys and screenshots:
 
 ```sh
-SDL_VIDEODRIVER=offscreen ./nomadys-pdf --test-out /tmp/shots \
+SDL_VIDEODRIVER=offscreen ./npdf --test-out /tmp/shots \
     --test-script '<C-j>text<Esc><shot:form>vjw<shot:caret>' copy.pdf
 ```
 

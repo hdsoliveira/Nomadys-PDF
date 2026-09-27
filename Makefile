@@ -11,7 +11,7 @@ override LDLIBS += -L$(PDFIUM)/lib -lpdfium $(shell pkg-config --libs sdl3 freet
 SRC := $(wildcard src/*.c)
 OBJ := $(SRC:src/%.c=build/%.o)
 
-nomadys-pdf: $(OBJ)
+npdf: $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $(OBJ) $(LDLIBS)
 
 build/%.o: src/%.c src/nomadys.h | build
@@ -25,17 +25,19 @@ $(OBJ): | $(PDFIUM)/lib/libpdfium.so
 $(PDFIUM)/lib/libpdfium.so:
 	tools/fetch_pdfium.sh
 
-install: nomadys-pdf
-	install -Dm755 nomadys-pdf $(PREFIX)/bin/nomadys-pdf
+# the command is npdf; nomadys-pdf stays as a link to it (older setups)
+install: npdf
+	install -Dm755 npdf $(PREFIX)/bin/npdf
+	ln -sf npdf $(PREFIX)/bin/nomadys-pdf
 	install -Dm644 $(PDFIUM)/lib/libpdfium.so $(PREFIX)/lib/nomadys-pdf/libpdfium.so
 	install -d $(PREFIX)/share/nomadys-pdf/themes
 	install -m644 themes/*.conf $(PREFIX)/share/nomadys-pdf/themes/
 
 uninstall:
-	rm -f $(PREFIX)/bin/nomadys-pdf
+	rm -f $(PREFIX)/bin/npdf $(PREFIX)/bin/nomadys-pdf
 	rm -rf $(PREFIX)/lib/nomadys-pdf $(PREFIX)/share/nomadys-pdf/themes  # keeps marks/ (user data)
 
 clean:
-	rm -rf build nomadys-pdf
+	rm -rf build npdf
 
 .PHONY: install uninstall clean

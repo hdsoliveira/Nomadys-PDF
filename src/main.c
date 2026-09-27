@@ -58,7 +58,7 @@ static Window *window_new(View *v)
     Window *w = xcalloc(1, sizeof *w);
     w->win = SDL_CreateWindow("Nomadys-PDF", 900, 1100, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     if (!w->win) {
-        fprintf(stderr, "nomadys-pdf: %s\n", SDL_GetError());
+        fprintf(stderr, "npdf: %s\n", SDL_GetError());
         free(w);
         view_free(v);
         return NULL;
@@ -564,7 +564,7 @@ static bool script_step(void)
 
 static void usage(void)
 {
-    printf("usage: nomadys-pdf file.pdf [other.pdf ...]\n"
+    printf("usage: npdf file.pdf [other.pdf ...]\n"
            "\n"
            "  j/k h/l      scroll          gg / G / 42G   first / last / page 42\n"
            "  Ctrl-d/u     half screen     Ctrl-f/b       full screen\n"
@@ -630,7 +630,7 @@ int main(int argc, char **argv)
         return argc < 2;
     }
     if (!strcmp(argv[1], "--version")) {
-        puts("nomadys-pdf " VERSION);
+        puts("Nomadys-PDF (npdf) " VERSION);
         return 0;
     }
     FPDF_LIBRARY_CONFIG lib = {.version = 2};
@@ -639,14 +639,14 @@ int main(int argc, char **argv)
         char err[512];
         Doc *d = argc == 3 ? doc_open(argv[2], err, sizeof err) : NULL;
         if (!d)
-            fprintf(stderr, "nomadys-pdf: %s\n", argc == 3 ? err : "usage: nomadys-pdf --export file.pdf");
+            fprintf(stderr, "npdf: %s\n", argc == 3 ? err : "usage: npdf --export file.pdf");
         else
             export_write(d, stdout, NULL);
         FPDF_DestroyLibrary();
         return d ? 0 : 1;
     }
     if (!SDL_Init(SDL_INIT_VIDEO)) {
-        fprintf(stderr, "nomadys-pdf: %s\n", SDL_GetError());
+        fprintf(stderr, "npdf: %s\n", SDL_GetError());
         return 1;
     }
     ipc_start();
@@ -655,7 +655,7 @@ int main(int argc, char **argv)
         char err[512];
         Doc *d = doc_open(argv[i], err, sizeof err);
         if (!d) {
-            fprintf(stderr, "nomadys-pdf: %s\n", err);
+            fprintf(stderr, "npdf: %s\n", err);
             continue;
         }
         View *v = view_new(d);

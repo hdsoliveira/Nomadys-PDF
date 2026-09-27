@@ -303,7 +303,7 @@ void doc_unref(Doc *d)
     if (d->modified && cfg.autosave) {
         char err[256];
         if (!doc_save(d, err, sizeof err))
-            fprintf(stderr, "nomadys-pdf: %s\n", err);
+            fprintf(stderr, "npdf: %s\n", err);
     }
     detach(d);
     for (int i = 0; i < ndocs; i++) {

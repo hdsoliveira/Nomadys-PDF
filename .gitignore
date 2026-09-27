@@ -1,5 +1,5 @@
 build/
-/nomadys-pdf
+/npdf
 *.bmp
 third_party/pdfium/
-/nomadys-pdf-asan
+/npdf-asan
