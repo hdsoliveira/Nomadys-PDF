@@ -1045,6 +1045,48 @@ int help_lines(HelpLine **out)
     help_section(&lines, &n, &cap, "Crop", crop_map, SDL_arraysize(crop_map), false);
     help_section(&lines, &n, &cap, "Pages", grid_map, SDL_arraysize(grid_map), false);
     help_section(&lines, &n, &cap, "Present", present_map, SDL_arraysize(present_map), false);
+    /* "How to get here" at the top of every tab but Reading */
+    static const struct { const char *tab, *keys, *text; } enter[] = {
+        {"Text cursor", "v", "from reading: the text cursor"},
+        {"Free cursor", "<C-v>", "from reading or the text cursor: the free cursor"},
+        {"Comments", "c", "on a selection or a highlight (text or free cursor)"},
+        {"Panel", "<leader>l :marks", "from reading or a cursor"},
+        {"Preview", "F", "then the letters of a link"},
+        {"Commands", ":", "from reading or a cursor"},
+        {"Forms", "<C-j> <Tab>", "from reading: the next field (or click a field)"},
+        {"Move/resize", "e", "on an image or highlighted area, in the free cursor (a new image starts here)"},
+        {"Crop", "c", "on an image, while moving / resizing it"},
+        {"Pages", "<leader>g :pages", "from reading"},
+        {"Present", "<F5> :present", "from reading"},
+    };
+    HelpLine *with = xmalloc((size_t)(n + 2 * SDL_arraysize(enter) + 1) * sizeof *with);
+    int m = 0;
+    for (int i = 0; i < n; i++) {
+        with[m++] = lines[i];
+        for (size_t e = 0; lines[i].header && e < SDL_arraysize(enter); e++) {
+            if (strcmp(lines[i].keys, enter[e].tab))
+                continue;
+            memset(&with[m], 0, sizeof with[m]);
+            snprintf(with[m].keys, sizeof with[m].keys, "How to get here");
+            with[m++].group = true;
+            memset(&with[m], 0, sizeof with[m]);
+            char buf[64], part[48];
+            snprintf(buf, sizeof buf, "%s", enter[e].keys);
+            for (char *save = NULL, *k = strtok_r(buf, " ", &save); k; k = strtok_r(NULL, " ", &save)) {
+                if (k[0] == ':')
+                    snprintf(part, sizeof part, "%s", k); /* a command, as typed */
+                else
+                    key_label(k, part, sizeof part);
+                if (with[m].keys[0])
+                    SDL_strlcat(with[m].keys, " ", sizeof with[m].keys);
+                SDL_strlcat(with[m].keys, part, sizeof with[m].keys);
+            }
+            with[m++].text = enter[e].text;
+        }
+    }
+    free(lines);
+    lines = with;
+    n = m;
     /* drop titles with nothing under them (groups of keys shared with Reading) */
     int k = 0;
     for (int i = 0; i < n; i++) {
