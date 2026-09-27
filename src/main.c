@@ -8,7 +8,7 @@
 
 #include "nomadys.h"
 
-#define VERSION "0.2.0"
+#define VERSION NOMADYS_VERSION
 
 Window *windows[MAX_WINDOWS];
 int nwindows;
@@ -65,6 +65,11 @@ static Window *window_new(View *v)
     }
     Window *w = xcalloc(1, sizeof *w);
     w->win = SDL_CreateWindow("Nomadys-PDF", 900, 1100, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+    SDL_Surface *icon = w->win ? about_icon() : NULL; /* X11 shows it; Wayland uses the app id (npdf.desktop) */
+    if (icon) {
+        SDL_SetWindowIcon(w->win, icon);
+        SDL_DestroySurface(icon);
+    }
     if (!w->win) {
         fprintf(stderr, "npdf: %s\n", SDL_GetError());
         free(w);
@@ -99,6 +104,8 @@ static void window_destroy(Window *w)
     free(w->items);
     free(w->links);
     grid_free(w);
+    if (w->about_tex)
+        SDL_DestroyTexture(w->about_tex);
     present_free(w);
     if (w->preview.tex)
         SDL_DestroyTexture(w->preview.tex);
@@ -762,6 +769,7 @@ int main(int argc, char **argv)
         FPDF_DestroyLibrary();
         return d ? 0 : 1;
     }
+    SDL_SetAppMetadata("Nomadys-PDF", VERSION, "npdf"); /* app id: npdf.desktop gives the icon */
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         fprintf(stderr, "npdf: %s\n", SDL_GetError());
         return 1;

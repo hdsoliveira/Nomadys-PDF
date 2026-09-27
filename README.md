@@ -1,5 +1,12 @@
 # Nomadys-PDF
 
+<img src="docs/icon.svg" width="128" align="right" alt="the Nomadys-PDF icon">
+
+*Nomadys*: a nomad, with no fixed place, always looking for something better.
+The icon is a tent at home anywhere, a trail towards the mountain and the
+rising sun, and a page lit in the doorway: reading goes wherever you go.
+`\a` in the program shows the version and how to reach the author.
+
 A minimal, fast PDF reader for Linux (Wayland/X11), driven by vim-style keys.
 When opened it shows the PDF and nothing else.
 
@@ -435,6 +442,8 @@ One feature per file in `src/`; `nomadys.h` has the shared types and a module ma
 | `export.c` | `:export`: highlights and comments to Markdown |
 | `comment.c` | comment box: layout of text and equations, editing |
 | `math.c` | equations: `pdflatex` in the background, cache, textures |
+| `about.c` | the icon (built in from `src/icon_png.h`, made by `tools/make_icons.sh` from `docs/icon.svg`) and the about screen |
+| `theme.c` | the theme list, `:theme new`, reloading a saved theme |
 | `links.c` | link hints (`f`), reference preview (`F`), clicking links |
 | `image.c` | images on the page: loading (stb_image), size, stamp annotations |
 | `object.c` | moving and resizing images and highlighted areas |

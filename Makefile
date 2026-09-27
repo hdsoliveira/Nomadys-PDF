@@ -31,10 +31,19 @@ install: npdf
 	install -Dm644 $(PDFIUM)/lib/libpdfium.so $(PREFIX)/lib/nomadys-pdf/libpdfium.so
 	install -d $(PREFIX)/share/nomadys-pdf/themes
 	install -m644 themes/*.conf $(PREFIX)/share/nomadys-pdf/themes/
+	for n in 16 24 32 48 64 128 256 512; do \
+		install -Dm644 icons/nomadys-pdf-$$n.png $(PREFIX)/share/icons/hicolor/$${n}x$${n}/apps/nomadys-pdf.png; \
+	done
+	install -Dm644 docs/icon.svg $(PREFIX)/share/icons/hicolor/scalable/apps/nomadys-pdf.svg
+	install -Dm644 npdf.desktop $(PREFIX)/share/applications/npdf.desktop
+	@gtk-update-icon-cache -q $(PREFIX)/share/icons/hicolor 2>/dev/null || true
+	@update-desktop-database -q $(PREFIX)/share/applications 2>/dev/null || true
 
 uninstall:
 	rm -f $(PREFIX)/bin/npdf $(PREFIX)/bin/nomadys-pdf
 	rm -rf $(PREFIX)/lib/nomadys-pdf $(PREFIX)/share/nomadys-pdf/themes  # keeps marks/ (user data)
+	rm -f $(PREFIX)/share/icons/hicolor/*/apps/nomadys-pdf.png $(PREFIX)/share/icons/hicolor/scalable/apps/nomadys-pdf.svg
+	rm -f $(PREFIX)/share/applications/npdf.desktop
 
 clean:
 	rm -rf build npdf

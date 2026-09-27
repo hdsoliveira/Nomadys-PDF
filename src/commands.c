@@ -128,6 +128,7 @@ static void c_image(Window *w, View *v, const char *a)
 static void c_recent(Window *w, View *v, const char *a) { (void)v, (void)a; picker_open(w); }
 static void c_session(Window *w, View *v, const char *a) { (void)v, (void)a; session_restore(w); }
 
+static void c_about(Window *w, View *v, const char *a) { (void)v, (void)a; about_open(w); }
 static void c_theme(Window *w, View *v, const char *a) { (void)v; theme_command(w, a); }
 
 static void c_diff(Window *w, View *v, const char *a)
@@ -162,6 +163,7 @@ static const Command commands[] = {
     {"export", ARG_MD, c_export, "highlights and comments to Markdown (paper-notes.md)"},
     {"export!", ARG_MD, c_export_force, "the same, overwriting any file"},
     {"image", ARG_IMAGE, c_image, "put a PNG / JPEG on the page (then move and resize it)"},
+    {"about", ARG_NONE, c_about, "version, author, contact (also \\a)"},
     {"theme", ARG_THEME, c_theme, "colour theme: :theme gruvbox, :theme (the list), :theme new NAME (yours)"},
     {"diff", ARG_FILE, c_diff, "compare with an older version: new text green, changed amber, deleted red"},
     {"nodiff", ARG_NONE, c_nodiff, "hide the comparison"},

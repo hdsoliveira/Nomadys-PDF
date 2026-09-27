@@ -186,6 +186,7 @@ static void draw_mode(Window *w)
     case MODE_GRID: label = "PAGES", color = t->tab_accent; break;
     case MODE_PRESENT: label = "", color = 0; break;
     case MODE_THEMES: label = "THEME", color = t->tab_accent; break;
+    case MODE_ABOUT: label = "ABOUT", color = t->tab_accent; break;
     case MODE_PROMPT:
         label = prompt_kind(w);
         color = !strcmp(label, "COMMAND") || !strcmp(label, "SEARCH") ? t->mode_command : t->mode_insert;
@@ -215,6 +216,8 @@ void ui_draw_overlays(Window *w, uint64_t now)
         picker_draw(w);
     if (w->mode == MODE_THEMES)
         theme_draw(w);
+    if (w->mode == MODE_ABOUT)
+        about_draw(w);
     if (w->mode == MODE_PREVIEW)
         preview_draw(w);
     if (cfg.mode_indicator)

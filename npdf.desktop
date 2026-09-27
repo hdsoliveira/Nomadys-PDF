@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Nomadys-PDF
+GenericName=PDF Reader
+Comment=A fast PDF reader driven by the keyboard
+Exec=npdf %F
+Icon=nomadys-pdf
+Terminal=false
+Categories=Office;Viewer;
+MimeType=application/pdf;
+Keywords=pdf;reader;viewer;latex;vim;
+StartupWMClass=npdf

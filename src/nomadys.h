@@ -33,6 +33,10 @@
  * decoded images (a 24 Mpixel photo is ~70 MB), so few, least recently used
  * first. Rendered pages stay as textures (render.c). */
 #define LOADED_PAGE_CAP 8
+#define NOMADYS_VERSION "0.3.0"
+#define NOMADYS_AUTHOR "Hugo Oliveira"
+#define NOMADYS_CONTACT "hs.oliveira@mailbox.org"
+#define NOMADYS_URL "github.com/hdsoliveira/Nomadys-PDF"
 #define CMD_MAX 4096
 #define NMARKS 26
 #define JUMPS_MAX 100
@@ -247,7 +251,7 @@ typedef struct {
 } CacheEntry;
 
 typedef enum { MODE_NORMAL, MODE_FORM, MODE_CARET, MODE_AREA, MODE_PANEL, MODE_PROMPT, MODE_HELP,
-               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT, MODE_CROP, MODE_PICKER, MODE_GRID, MODE_PRESENT, MODE_THEMES } Mode;
+               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT, MODE_CROP, MODE_PICKER, MODE_GRID, MODE_PRESENT, MODE_THEMES, MODE_ABOUT } Mode;
 
 typedef struct { int page, ch; } TextPos;
 
@@ -380,6 +384,9 @@ struct Window {
     int grid_sel, grid_top, grid_size;
     Mode grid_return;
     /* presentation (present.c) */
+    /* about screen (about.c) */
+    SDL_Texture *about_tex;
+    Mode about_return;
     /* theme list (theme.c) */
     char **theme_names;
     bool *theme_yours;
@@ -680,6 +687,14 @@ void theme_command(Window *w, const char *arg);         /* :theme [NAME | new NA
 void theme_new(Window *w, const char *arg);
 void theme_watch(void);
 bool theme_file_changed(int wd, const char *name);
+
+/* about.c: the icon and the about screen */
+SDL_Surface *about_icon(void);
+void about_open(Window *w);
+void about_close(Window *w);
+void about_key(Window *w, const char *tok);
+void about_draw(Window *w);
+SDL_Surface *image_surface(const unsigned char *data, size_t len);
 
 /* export.c */
 int export_write(Doc *d, FILE *f, int *ncomments);       /* Markdown; returns highlights */

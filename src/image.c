@@ -577,3 +577,18 @@ void image_copy_region(Window *w, View *v, bool to_file)
     v->area_selecting = false;
     w->redraw = true;
 }
+
+/* An encoded image (PNG, JPEG) as an RGBA SDL surface; NULL if unreadable. */
+SDL_Surface *image_surface(const unsigned char *data, size_t len)
+{
+    int w, h, comp;
+    uint8_t *px = stbi_load_from_memory(data, (int)len, &w, &h, &comp, 4);
+    if (!px)
+        return NULL;
+    SDL_Surface *s = SDL_CreateSurface(w, h, SDL_PIXELFORMAT_RGBA32);
+    if (s)
+        for (int y = 0; y < h; y++)
+            memcpy((uint8_t *)s->pixels + (size_t)y * s->pitch, px + (size_t)y * w * 4, (size_t)w * 4);
+    stbi_image_free(px);
+    return s;
+}
