@@ -107,13 +107,14 @@ static void build_notes(Window *w, Doc *d, int *cap)
             it->note = i;
             it->color = s->notes[i].color;
             it->pos = (Pos){page, SDL_max(0.0f, 1 - s->notes[i].r.t / d->ph[page] - 0.05f)};
-            char *c = note_comment(d, page, i), *t = covered_text(d, page, &s->notes[i]);
+            bool image = s->notes[i].subtype == FPDF_ANNOT_STAMP;
+            char *c = note_comment(d, page, i), *t = image ? xstrdup("(image)") : covered_text(d, page, &s->notes[i]);
             if (c) { /* the comment first, what it refers to below */
                 snprintf(it->text, sizeof it->text, "%s", c);
                 if (t)
-                    snprintf(it->sub, sizeof it->sub, "“%s”", t);
+                    snprintf(it->sub, sizeof it->sub, image ? "%s" : "“%s”", t);
             } else {
-                snprintf(it->text, sizeof it->text, t ? "“%s”" : "%s", t ? t : "(highlighted area)");
+                snprintf(it->text, sizeof it->text, t && !image ? "“%s”" : "%s", t ? t : "(highlighted area)");
             }
             one_line(it->text);
             one_line(it->sub);

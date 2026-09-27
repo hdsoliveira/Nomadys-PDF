@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "fpdf_signature.h"
 #include "nomadys.h"
 
 Doc *docs[MAX_DOCS];
@@ -287,6 +288,17 @@ void doc_unref(Doc *d)
     free(d);
 }
 
+/* Loads a page again from the document: PDFium keeps the parsed
+ * appearance of annotations, which goes stale when one is resized. */
+void doc_reload_page(Doc *d, int i)
+{
+    if (!doc_page_ok(d, i) || !d->slots[i].page)
+        return;
+    if (d->focus_page == i)
+        doc_kill_focus(d);
+    close_slot(d, i);
+}
+
 /* Least-recently-used pages are closed once too many are loaded. */
 static void evict(Doc *d)
 {
@@ -338,8 +350,14 @@ FPDF_TEXTPAGE doc_text(Doc *d, int i)
 
 void doc_mark_changed(Doc *d, int page)
 {
-    if (page >= 0)
-        d->slots[page].version++;
+    if (page >= 0) {
+        PageSlot *s = &d->slots[page];
+        s->version++;
+        free(s->images); /* an image may have been added or moved */
+        s->images = NULL;
+        s->nimages = 0;
+        s->images_ready = false;
+    }
     d->modified = true;
     d->save_failed = false;
     d->changed_at = SDL_GetTicks();
@@ -391,7 +409,7 @@ static int write_block(FPDF_FILEWRITE *self, const void *data, unsigned long siz
     return !w->failed;
 }
 
-/* Incremental save to a temporary file, then atomic rename over the original. */
+/* Save to a temporary file, then atomic rename over the original. */
 bool doc_save(Doc *d, char *err, size_t errlen)
 {
     /* the atomic rename below would replace even a read-only file */
@@ -412,7 +430,12 @@ bool doc_save(Doc *d, char *err, size_t errlen)
     if (stat(d->path, &st) == 0)
         fchmod(fd, st.st_mode & 07777);
     FdWriter w = {{1, write_block}, fd, false};
-    bool ok = FPDF_SaveAsCopy(d->pdf, &w.base, FPDF_INCREMENTAL) && !w.failed;
+    /* A full rewrite keeps the file compact: an incremental save appends
+     * every object PDFium has loaded (the page's photos included), so each
+     * save made big papers tens of MB larger. Signed PDFs stay incremental,
+     * since rewriting them would break the signature. */
+    int mode = FPDF_GetSignatureCount(d->pdf) > 0 ? FPDF_INCREMENTAL : FPDF_NO_INCREMENTAL;
+    bool ok = FPDF_SaveAsCopy(d->pdf, &w.base, mode) && !w.failed;
     ok = ok && fsync(fd) == 0;
     ok = (close(fd) == 0) && ok;
     if (ok && rename(tmp, d->path) != 0)
@@ -504,6 +527,23 @@ void doc_page_images(Doc *d, int i)
             s->images[kept++] = r;
     }
     s->nimages = kept;
+    /* opaque pictures placed as stamps (image.c) are photos too; a
+     * signature with a transparent background is recoloured like ink */
+    for (int k = 0; k < FPDFPage_GetAnnotCount(p); k++) {
+        FPDF_ANNOTATION a = FPDFPage_GetAnnot(p, k);
+        if (!a)
+            continue;
+        bool photo = false;
+        for (int j = 0; FPDFAnnot_GetSubtype(a) == FPDF_ANNOT_STAMP && j < FPDFAnnot_GetObjectCount(a); j++) {
+            FPDF_PAGEOBJECT o = FPDFAnnot_GetObject(a, j);
+            photo |= o && FPDFPageObj_GetType(o) == FPDF_PAGEOBJ_IMAGE && !FPDFPageObj_HasTransparency(o);
+        }
+        FS_RECTF r;
+        if (photo && FPDFAnnot_GetRect(a, &r))
+            add_rect(s, &cap, (PRect){SDL_min(r.left, r.right), SDL_max(r.top, r.bottom), SDL_max(r.left, r.right),
+                                      SDL_min(r.top, r.bottom)});
+        FPDFPage_CloseAnnot(a);
+    }
     s->images_ready = true;
 }
 

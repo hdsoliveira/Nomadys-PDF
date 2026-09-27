@@ -424,6 +424,41 @@ static void a_preview_page_up(Window *w, View *v, int c, const char *a) { (void)
 static void a_preview_go(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; preview_go(w); }
 static void a_preview_close(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; preview_close(w); }
 
+/* ---------- images and moving / resizing ---------- */
+#define MOVE_STEP 2.0f  /* points per h j k l */
+#define MOVE_FAST 12.0f /* Ctrl-h j k l */
+static void a_image_file(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; prompt_open(w, ":", "image ", command_run, 0); }
+static void a_image_paste(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; image_paste(w); }
+static void a_object_edit(Window *w, View *v, int c, const char *a) { (void)c, (void)a; object_begin_at_cursor(w, v); }
+
+static void a_object_move(Window *w, View *v, int c, const char *a)
+{
+    (void)v;
+    float s = !strncmp(a, "<C-", 3) ? MOVE_FAST : MOVE_STEP, n = (float)n1(c);
+    char k = !strncmp(a, "<C-", 3) ? a[3] : a[0];
+    if (!strcmp(a, "<Left>")) k = 'h';
+    if (!strcmp(a, "<Right>")) k = 'l';
+    if (!strcmp(a, "<Up>")) k = 'k';
+    if (!strcmp(a, "<Down>")) k = 'j';
+    object_move(w, (k == 'l' ? s : k == 'h' ? -s : 0) * n, (k == 'k' ? s : k == 'j' ? -s : 0) * n);
+}
+
+/* H L narrower / wider, K J shorter / taller: 4% of the size a step. */
+static void a_object_resize(Window *w, View *v, int c, const char *a)
+{
+    (void)v;
+    PRect r = w->obj_rect;
+    float n = (float)n1(c), sw = SDL_max(2.0f, (r.r - r.l) * 0.04f) * n, sh = SDL_max(2.0f, (r.t - r.b) * 0.04f) * n;
+    object_resize(w, a[0] == 'L' ? sw : a[0] == 'H' ? -sw : 0, a[0] == 'J' ? sh : a[0] == 'K' ? -sh : 0);
+}
+
+static void a_object_bigger(Window *w, View *v, int c, const char *a) { (void)v, (void)a; object_scale(w, SDL_powf(1.05f, (float)n1(c))); }
+static void a_object_smaller(Window *w, View *v, int c, const char *a) { (void)v, (void)a; object_scale(w, SDL_powf(1 / 1.05f, (float)n1(c))); }
+static void a_object_ratio(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_proportions(w); }
+static void a_object_done(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_done(w, true); }
+static void a_object_cancel(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_done(w, false); }
+static void a_object_delete(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_delete(w); }
+
 /* ---------- keymaps ---------- */
 /* A titled group on the help screen; "<#>" is never typed, so it never runs. */
 #define GROUP(title) {"<#>", NULL, title}
@@ -512,6 +547,10 @@ static const Binding area_map[] = {
     {"M", a_area_mark, "highlight the area: pastel blue"},
     {"c", a_area_comment, "highlight with a comment, or edit the comment"},
     {"x", a_note_delete, "delete the highlight under the cursor"},
+    GROUP("Images, moving and resizing"),
+    {"I", a_image_file, "put an image here (PNG, JPEG): inside the rectangle, or at the cross"},
+    {"P", a_image_paste, "paste an image from the clipboard (a screenshot) here"},
+    {"e", a_object_edit, "move / resize the image or highlighted area under the cross"},
     GROUP("Other"),
     {"<C-v>", a_to_caret, "back to the text cursor"}, {"<Esc>", a_leave, "cancel / leave"},
     {"<Enter>", a_source, "LaTeX: open this spot in the editor (SyncTeX)"},
@@ -541,8 +580,27 @@ static const Binding help_map[] = {
     {"<S-Tab>", a_help_prev_tab, NULL}, {"h", a_help_prev_tab, NULL}, {"<Left>", a_help_prev_tab, NULL},
     {"1", a_help_tab, NULL}, {"2", a_help_tab, NULL}, {"3", a_help_tab, NULL}, {"4", a_help_tab, NULL},
     {"5", a_help_tab, NULL}, {"6", a_help_tab, NULL}, {"7", a_help_tab, NULL}, {"8", a_help_tab, NULL},
+    {"9", a_help_tab, NULL},
     {"/", a_help_search, NULL},
     {"<leader>c", a_help_close, NULL}, {"<Esc>", a_help_escape, NULL}, {"q", a_help_close, NULL},
+};
+
+static const Binding object_map[] = {
+    GROUP("Moving"),
+    {"h", a_object_move, "move"}, {"j", a_object_move, "move"}, {"k", a_object_move, "move"},
+    {"l", a_object_move, "move"}, {"<Left>", a_object_move, NULL}, {"<Down>", a_object_move, NULL},
+    {"<Up>", a_object_move, NULL}, {"<Right>", a_object_move, NULL},
+    {"<C-h>", a_object_move, "move faster"}, {"<C-j>", a_object_move, "move faster"},
+    {"<C-k>", a_object_move, "move faster"}, {"<C-l>", a_object_move, "move faster"},
+    GROUP("Resizing"),
+    {"+", a_object_bigger, "bigger / smaller, keeping the proportions"},
+    {"-", a_object_smaller, "bigger / smaller, keeping the proportions"},
+    {"=", a_object_ratio, "image: back to its own proportions"},
+    {"H", a_object_resize, "narrower / wider"}, {"L", a_object_resize, "narrower / wider"},
+    {"K", a_object_resize, "shorter / taller"}, {"J", a_object_resize, "shorter / taller"},
+    GROUP("Finishing"),
+    {"<Enter>", a_object_done, "done"}, {"<Esc>", a_object_cancel, "undo: put it back where it was"},
+    {"x", a_object_delete, "delete it"},
 };
 
 static const Binding preview_map[] = {
@@ -562,6 +620,7 @@ static const Binding *keymap(Mode m, int *n)
     case MODE_PANEL: *n = SDL_arraysize(panel_map); return panel_map;
     case MODE_HELP: *n = SDL_arraysize(help_map); return help_map;
     case MODE_PREVIEW: *n = SDL_arraysize(preview_map); return preview_map;
+    case MODE_OBJECT: *n = SDL_arraysize(object_map); return object_map;
     default: *n = 0; return NULL;
     }
 }
@@ -869,6 +928,7 @@ int help_lines(HelpLine **out)
     }
     help_title(&lines, &n, &cap, "Forms", true);
     help_static(&lines, &n, &cap, form, SDL_arraysize(form));
+    help_section(&lines, &n, &cap, "Move/resize", object_map, SDL_arraysize(object_map), false);
     /* drop titles with nothing under them (groups of keys shared with Reading) */
     int k = 0;
     for (int i = 0; i < n; i++) {

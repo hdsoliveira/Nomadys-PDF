@@ -135,6 +135,32 @@ The comment is stored in the PDF as the text you typed, so other readers show
 `$\sigma = E\varepsilon$` as is, and `:export` gives Markdown that Obsidian
 and similar apps render with the equations.
 
+**Images.** Put a picture on the page (a signature, a screenshot, a figure):
+in the free cursor (`Ctrl-v`) press `I` for a file (PNG, JPEG, BMP; `Tab`
+completes) or `P` to paste an image from the clipboard; or type `:image
+file.png` anywhere. With a rectangle marked (`v`) the picture fits inside it;
+otherwise its top-left corner goes at the cross, at its natural size but never
+more than 80% of the page. Transparent PNGs stay transparent. The resolution
+is reduced to 250 dpi at the placed size and JPEG stays JPEG, so a phone photo
+adds a few hundred KB, not megabytes. Images are standard stamp annotations:
+other readers show them, `x` deletes them, and the panel lists them.
+
+**Moving and resizing** an image or a highlighted area, even long after it was
+placed: put the cross on it and press `e` (a new image starts there directly).
+
+| Key | Action |
+|---|---|
+| `h` `j` `k` `l` (`Ctrl-` for faster) | move |
+| `+` `-` | bigger / smaller, keeping the proportions |
+| `H` `L` | narrower / wider |
+| `K` `J` | shorter / taller |
+| `=` | an image back to its own proportions |
+| `Enter` | done |
+| `Esc` | undo: back where it was |
+| `x` | delete it |
+
+Highlighted text stays with its words; areas and images move.
+
 **Export to Markdown.** `:export` writes every highlight and comment, plus the
 marks, to `paper-notes.md` next to `paper.pdf` (or `:export name.md`; a
 relative name is taken from the PDF's folder). Page by page, in reading order,
@@ -213,6 +239,7 @@ listed above the line and `Tab` / `Shift-Tab` cycle through them (`:` then
 | `:dark` / `:light` | dark / light mode |
 | `:marks`, `:notes` | the panel |
 | `:noh` | clear the search highlight |
+| `:image file.png` | put a picture on the page, then move / resize it |
 | `:export [file.md]` | highlights, comments and marks to Markdown (`:export!` overwrites a file it did not write) |
 | `:reload` | reload the PDF from disk |
 | `:print`, `Ctrl-p` | print through CUPS; options in any order: pages `3-7,10`, copies `x2`, printer `@name` (`Tab` lists them), `duplex`. Unsaved highlights and form entries are saved first, so they are printed too |
@@ -224,9 +251,12 @@ description); the help screen and the completion list are built from it.
 ## Saving
 
 By default, form entries and highlights are saved automatically about 1 s
-after a change (also when leaving a field and when closing). Saving is
-incremental: the original content is kept and changes are appended; the file
-is written to a temporary file and atomically renamed over the original. With
+after a change (also when leaving a field and when closing). The file is
+rewritten compactly (an incremental save would append every object PDFium
+loaded, photos included, making big papers tens of MB larger each time; it
+also drops old revisions left by earlier incremental saves). Digitally signed
+PDFs are saved incrementally, which keeps the signature valid. The file is
+written to a temporary file and atomically renamed over the original. With
 `autosave = false`, save with `Ctrl-s`/`:w`; closing with pending changes asks
 for confirmation.
 
@@ -311,6 +341,8 @@ One feature per file in `src/`; `nomadys.h` has the shared types and a module ma
 | `comment.c` | comment box: layout of text and equations, editing |
 | `math.c` | equations: `pdflatex` in the background, cache, textures |
 | `links.c` | link hints (`f`), reference preview (`F`), clicking links |
+| `image.c` | images on the page: loading (stb_image), size, stamp annotations |
+| `object.c` | moving and resizing images and highlighted areas |
 | `help.c` | the help screen (`\c`): tabs, groups, keycaps, search |
 | `panel.c` | the marks / notes / contents panel |
 | `font.c` | UI text through fontconfig and FreeType |
@@ -349,3 +381,5 @@ crashes and hangs; it exits non-zero on any finding.
 
 Nomadys-PDF code: MIT (`LICENSE`). PDFium: BSD-3/Apache-2.0
 (`third_party/pdfium/LICENSE` and `licenses/`).
+`third_party/stb/` (stb_image, stb_image_write by Sean Barrett): public
+domain or MIT, at your choice; checksums in `third_party/stb/SHA256SUMS`.

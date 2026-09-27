@@ -111,6 +111,7 @@ static int tab_for_mode(Window *w)
     case MODE_PANEL: return 4;
     case MODE_PREVIEW: return 5;
     case MODE_FORM: return 7;
+    case MODE_OBJECT: return 8;
     default: return 0;
     }
 }
@@ -326,7 +327,7 @@ void help_draw(Window *w)
     ui_fill(w, b.x, list_bottom, b.bw, SDL_max(1.0f, w->density), t->panel_header, 90);
     char foot[200];
     snprintf(foot, sizeof foot - 4, "%s", h.filter[0] ? "j k move   / new search   Esc leaves the search"
-                                                  : "Tab h l  sections   1-8  go to one   j k  move   /  search   Esc  close");
+                                                  : "Tab h l  sections   1-9  go to one   j k  move   /  search   Esc  close");
     font_fit(w->font, foot, (int)b.bw - 3 * b.pad - font_width(w->font, "\u2193  888/888")); /* room for the position */
     font_draw(w->font, b.x + b.pad, list_bottom + b.pad / 2.0f, foot, t->panel_header);
     if (!h.nrows) {

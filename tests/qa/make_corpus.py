@@ -66,3 +66,22 @@ objs[25] = f'<< {w} /FT /Tx /T (maxlen) /MaxLen 5 /Rect [50 300 300 320] >>'
 objs[26] = '<< /Type /Annot /Subtype /Text /Rect [400 700 420 720] /Contents (A sticky note) /P 10 0 R >>'
 write_pdf('many_fields.pdf', objs)
 print('ok')
+
+# images for ":image" and I in the fuzzer: good, transparent, broken
+import struct
+def png(path, w, h, alpha=True, cut=None):
+    def chunk(t, d): return struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t + d) & 0xffffffff)
+    rows = b''.join(b'\0' + b''.join(bytes((x * 30 % 256, y * 40 % 256, 90) + ((x * 20 % 256,) if alpha else ()))
+                                     for x in range(w)) for y in range(h))
+    data = (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 6 if alpha else 2, 0, 0, 0))
+            + chunk(b'IDAT', zlib.compress(rows)) + chunk(b'IEND', b''))
+    open(path, 'wb').write(data[:cut] if cut else data)
+png('pic.png', 64, 40)
+png('opaque.png', 30, 90, alpha=False)
+png('trunc.png', 64, 40, cut=60)
+open('bad.png', 'wb').write(bytes(random.randrange(256) for _ in range(500)))
+try:
+    from PIL import Image
+    Image.new('RGB', (120, 80), (200, 30, 40)).save('pic.jpg', quality=80)
+except ImportError:
+    pass

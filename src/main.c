@@ -229,6 +229,7 @@ static void draw(Window *w, uint64_t now)
         ui_fill(w, SDL_min(x0, x1), SDL_min(y0, y1), SDL_fabsf(x1 - x0), SDL_fabsf(y1 - y0), wtheme(w)->caret, 70);
     }
     cursor_draw(w, v, top);
+    object_draw(w, v, top);
     if (w->mode == MODE_FORM)
         form_draw_focus(w, v, top);
     ui_draw_overlays(w, now);

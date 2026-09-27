@@ -1,6 +1,7 @@
 """Random key sequences drawn from every keymap, plus text and specials."""
 import random, re, sys
 seed, n = int(sys.argv[1]), int(sys.argv[2])
+work = sys.argv[3] if len(sys.argv) > 3 else '/tmp/nomadys-qa'
 random.seed(seed)
 src = open(__import__('os').path.expanduser('~/development/Nomadys-PDF/src/input.c')).read()
 keys = set(re.findall(r'\{"((?:[^"\\]|\\.)+)", a_', src))
@@ -11,7 +12,8 @@ for k in keys:
 specials = ['<Esc>', '<Enter>', '<Tab>', '<S-Tab>', '<BS>', '<Del>', '<Up>', '<Down>', '<Left>', '<Right>',
             '<Home>', '<End>', '<PageUp>', '<PageDown>', '<C-a>', '<C-z>', '<C-u>', '<C-w>', '<C-x>', '<C-q>']
 words = ['hello', 'ção ü 漢字 🙂', 'x' * 300, ' ', ':', '/', '0', '42', '999999', 'rotate 90', 'zoom 1',
-         'zoom 99999', 'e /nonexistent', 'e ~', 'page -5', 'page 0', 'marks', 'reload', 'w', 'q!', 'noh']
+         'zoom 99999', 'e /nonexistent', 'e ~', 'page -5', 'page 0', 'marks', 'reload', 'w', 'q!', 'noh',
+         'image /nonexistent.png'] + ['image %s/corpus/%s' % (work, f) for f in ('pic.png', 'opaque.png', 'trunc.png', 'bad.png', 'pic.jpg')]
 out = []
 for i in range(n):
     r = random.random()

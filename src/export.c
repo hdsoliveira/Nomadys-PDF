@@ -192,7 +192,9 @@ int export_write(Doc *d, FILE *f, int *ncomments)
             char hex[16];
             const char *color = color_name(n->color, hex, sizeof hex);
             char *text = note_text(d, page, n), *comment = note_comment(d, page, o[i].note);
-            if (text)
+            if (n->subtype == FPDF_ANNOT_STAMP)
+                fprintf(f, "- *(image)* placed on the page\n\n");
+            else if (text)
                 fprintf(f, "- *(%s)* “%s”\n\n", color, text); /* blank lines: easier to read */
             else
                 fprintf(f, "- *(%s, area)* highlighted region — figure, table or equation\n\n", color);

@@ -13,7 +13,7 @@
 
 typedef void (*CommandFn)(Window *w, View *v, const char *arg);
 
-enum { ARG_NONE, ARG_FILE, ARG_NUMBER, ARG_PRINT, ARG_MD };
+enum { ARG_NONE, ARG_FILE, ARG_NUMBER, ARG_PRINT, ARG_MD, ARG_IMAGE };
 
 typedef struct {
     const char *name;
@@ -113,6 +113,18 @@ static void c_print(Window *w, View *v, const char *a) { print_document(w, v, a)
 static void c_export(Window *w, View *v, const char *a) { export_notes(w, v, a, false); }
 static void c_export_force(Window *w, View *v, const char *a) { export_notes(w, v, a, true); }
 
+static void c_image(Window *w, View *v, const char *a)
+{
+    (void)v;
+    if (!*a) {
+        ui_message(w, "usage: :image picture.png  (in the free cursor: inside the rectangle or at the cross)");
+        return;
+    }
+    char *path = expand_home(a);
+    image_insert_file(w, path);
+    free(path);
+}
+
 static void c_page(Window *w, View *v, const char *a) { goto_page(w, v, atoi(a) - 1); }
 
 static const Command commands[] = {
@@ -129,6 +141,7 @@ static const Command commands[] = {
     {"light", ARG_NONE, c_light, "light mode"},
     {"export", ARG_MD, c_export, "highlights and comments to Markdown (paper-notes.md)"},
     {"export!", ARG_MD, c_export_force, "the same, overwriting any file"},
+    {"image", ARG_IMAGE, c_image, "put a PNG / JPEG on the page (then move and resize it)"},
     {"marks", ARG_NONE, c_panel, "panel: tabs, summary, marks, highlights"},
     {"notes", ARG_NONE, c_panel, "panel: tabs, summary, marks, highlights"},
     {"noh", ARG_NONE, c_nohl, "clear the search highlight"},
@@ -143,7 +156,7 @@ void command_describe(int i, char *keys, size_t cap, const char **text)
 {
     const Command *c = &commands[i];
     snprintf(keys, cap, ":%s%s", c->name,
-             c->arg == ARG_FILE ? " file" : c->arg == ARG_MD ? " [file.md]" : c->arg == ARG_NUMBER ? " N" : c->arg == ARG_PRINT ? " [options]" : "");
+             c->arg == ARG_FILE ? " file" : c->arg == ARG_MD ? " [file.md]" : c->arg == ARG_IMAGE ? " file.png" : c->arg == ARG_NUMBER ? " N" : c->arg == ARG_PRINT ? " [options]" : "");
     *text = c->help;
 }
 
@@ -188,10 +201,21 @@ static void add_candidate(Window *w, const char *s)
     w->comp[w->ncomp++] = xstrdup(s);
 }
 
-static bool is_pdf_or_dir(const char *p, const char *ext)
+/* A folder, or a file with one of the extensions ("pdf" or "png jpg ..."). */
+static bool is_pdf_or_dir(const char *p, const char *exts)
 {
     size_t n = strlen(p);
-    return (n && p[n - 1] == '/') || (n > 4 && !strcasecmp(p + n - strlen(ext), ext));
+    if (n && p[n - 1] == '/')
+        return true;
+    const char *dot = strrchr(p, '.');
+    if (!dot || strchr(dot, '/'))
+        return false;
+    char list[64];
+    snprintf(list, sizeof list, "%s", exts);
+    for (char *save = NULL, *e = strtok_r(list, " ", &save); e; e = strtok_r(NULL, " ", &save))
+        if (!strcasecmp(dot + 1, e))
+            return true;
+    return false;
 }
 
 static void build_candidates(Window *w)
@@ -225,7 +249,7 @@ static void build_candidates(Window *w)
         free(list);
         return;
     }
-    if (!c || (c->arg != ARG_FILE && c->arg != ARG_MD))
+    if (!c || (c->arg != ARG_FILE && c->arg != ARG_MD && c->arg != ARG_IMAGE))
         return;
     const char *arg = space + strspn(space, " ");
     w->comp_start = (int)(arg - line);
@@ -238,7 +262,7 @@ static void build_candidates(Window *w)
     glob_t g;
     if (glob(pattern, GLOB_MARK, NULL, &g) == 0)
         for (size_t i = 0; i < g.gl_pathc; i++)
-            if (is_pdf_or_dir(g.gl_pathv[i], c->arg == ARG_MD ? ".md" : ".pdf"))
+            if (is_pdf_or_dir(g.gl_pathv[i], c->arg == ARG_MD ? "md" : c->arg == ARG_IMAGE ? "png jpg jpeg bmp" : "pdf"))
                 add_candidate(w, g.gl_pathv[i] + dirlen);
     globfree(&g);
     free(pattern);

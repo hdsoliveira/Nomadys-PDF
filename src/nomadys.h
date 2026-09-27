@@ -177,6 +177,7 @@ void doc_unref(Doc *d);
 FPDF_PAGE doc_page(Doc *d, int i);
 FPDF_TEXTPAGE doc_text(Doc *d, int i);
 void doc_mark_changed(Doc *d, int page);
+void doc_reload_page(Doc *d, int page);                   /* parse it again (stale appearances) */
 bool doc_save(Doc *d, char *err, size_t errlen);
 void doc_page_images(Doc *d, int i);
 void doc_page_widgets(Doc *d, int i);
@@ -200,6 +201,9 @@ bool note_create_area(Doc *d, int page, PRect r, const char *comment, uint32_t c
 char *note_comment(Doc *d, int page, int note);          /* malloc'd UTF-8, or NULL */
 bool note_set_comment(Doc *d, int page, int note, const char *comment);
 bool note_delete(Doc *d, int page, int note);
+int note_create_image(Doc *d, int page, PRect r, FPDF_PAGEOBJECT image); /* annotation index, or -1 */
+int note_move(Doc *d, int page, int annot, PRect r);     /* new annotation index, or -1 */
+int note_of_annot(Doc *d, int page, int annot);           /* note index, or -1 */
 
 /* ---------- views / tabs (render.c) ---------- */
 typedef struct {
@@ -213,7 +217,7 @@ typedef struct {
 } CacheEntry;
 
 typedef enum { MODE_NORMAL, MODE_FORM, MODE_CARET, MODE_AREA, MODE_PANEL, MODE_PROMPT, MODE_HELP,
-               MODE_HINTS, MODE_PREVIEW } Mode;
+               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT } Mode;
 
 typedef struct { int page, ch; } TextPos;
 
@@ -327,6 +331,12 @@ struct Window {
     PRect box_anchor;
     float box_maxw, box_scroll;
     uint64_t locate_at;      /* when the text or free cursor appeared (caret.c) */
+    /* an image or area being moved / resized (object.c) */
+    int obj_page, obj_annot; /* annotation index on the page */
+    PRect obj_rect, obj_orig;
+    float obj_ratio;         /* the picture's width / height */
+    bool obj_image;
+    Mode obj_return;
     char **comp;             /* completion candidates (commands.c) */
     int ncomp, comp_at, comp_start;
     /* key sequences */
@@ -421,6 +431,7 @@ void area_enter(Window *w, View *v);
 void area_move(Window *w, View *v, float dx, float dy);
 void area_toggle_select(Window *w, View *v);
 void area_mark(Window *w, View *v, bool comment, uint32_t color);
+bool area_target(View *v, int *page, PRect *rect, bool *is_rect); /* free cursor point or rectangle */
 bool cursor_note(Window *w, View *v, int *page, int *note); /* note under the cursor */
 void cursor_draw(Window *w, View *v, int top);
 #define LOCATE_MS 650    /* rings closing on a cursor when it appears */
@@ -523,6 +534,21 @@ void help_edge(Window *w, bool last);
 void help_switch(Window *w, int tab);                     /* -2 next, -1 previous */
 void help_search(Window *w);
 void help_escape(Window *w);
+
+/* image.c: images put on a page (stamp annotations) */
+void image_insert_file(Window *w, const char *path);
+void image_paste(Window *w);                              /* from the clipboard */
+
+/* object.c: moving and resizing images and areas */
+void object_begin(Window *w, View *v, int page, int annot, float ratio);
+void object_begin_at_cursor(Window *w, View *v);
+void object_move(Window *w, float dx, float dy);
+void object_resize(Window *w, float dw, float dh);
+void object_scale(Window *w, float f);
+void object_proportions(Window *w);
+void object_done(Window *w, bool keep);
+void object_delete(Window *w);
+void object_draw(Window *w, View *v, int top);
 
 /* export.c */
 int export_write(Doc *d, FILE *f, int *ncomments);       /* Markdown; returns highlights */

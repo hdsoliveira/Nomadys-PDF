@@ -343,6 +343,19 @@ static PRect area_rect(View *v)
                    SDL_max(v->area_x, v->area_ax), SDL_min(v->area_y, v->area_ay)};
 }
 
+/* The free cursor: the rectangle being marked, or just its point
+ * (rect.l, rect.t). Where a new image goes. */
+bool area_target(View *v, int *page, PRect *rect, bool *is_rect)
+{
+    if (!doc_page_ok(v->doc, v->area_page))
+        return false;
+    *page = v->area_page;
+    PRect r = area_rect(v);
+    *is_rect = v->area_selecting && r.r - r.l >= 2 && r.t - r.b >= 2;
+    *rect = *is_rect ? r : (PRect){v->area_x, v->area_y, v->area_x, v->area_y};
+    return true;
+}
+
 void area_enter(Window *w, View *v)
 {
     if (w->mode == MODE_CARET && valid(v, v->caret)) {
