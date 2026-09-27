@@ -25,10 +25,9 @@ $(OBJ): | $(PDFIUM)/lib/libpdfium.so
 $(PDFIUM)/lib/libpdfium.so:
 	tools/fetch_pdfium.sh
 
-# the command is npdf; nomadys-pdf stays as a link to it (older setups)
 install: npdf
 	install -Dm755 npdf $(PREFIX)/bin/npdf
-	ln -sf npdf $(PREFIX)/bin/nomadys-pdf
+	rm -f $(PREFIX)/bin/nomadys-pdf  # the old name of the command
 	install -Dm644 $(PDFIUM)/lib/libpdfium.so $(PREFIX)/lib/nomadys-pdf/libpdfium.so
 	install -d $(PREFIX)/share/nomadys-pdf/themes
 	install -m644 themes/*.conf $(PREFIX)/share/nomadys-pdf/themes/

@@ -21,7 +21,7 @@ SHA-256 verified) and is not stored in the repository.
 
 ```sh
 make                 # builds ./npdf
-make install         # ~/.local/bin/npdf (and nomadys-pdf, a link to it), ~/.local/lib/nomadys-pdf/libpdfium.so
+make install         # ~/.local/bin/npdf and ~/.local/lib/nomadys-pdf/libpdfium.so
 make uninstall
 ```
 
