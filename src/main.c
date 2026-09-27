@@ -1,4 +1,5 @@
 /* Nomadys-PDF: windows, tabs, drawing and the event loop. */
+#include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,6 +10,7 @@
 
 Window *windows[MAX_WINDOWS];
 int nwindows;
+static uint64_t last_input; /* any event: the reader is active */
 static const char *capture_path; /* test mode: save the next frame here */
 
 View *cur_view(Window *w) { return w->ntabs ? w->tabs[w->cur] : NULL; }
@@ -363,6 +365,7 @@ static void reload_due(uint64_t now, int *wait)
 static void handle_event(SDL_Event *e)
 {
     Window *w = NULL;
+    last_input = SDL_GetTicks();
     if (e->type == ipc_event) {
         if (e->user.code == IPC_REQUEST)
             handle_request(e->user.data1);
@@ -444,7 +447,8 @@ static void autosave(uint64_t now, int *wait)
         Doc *d = docs[i];
         if (!d->modified || d->save_failed || d->focus_page >= 0)
             continue;
-        uint64_t due = d->changed_at + (uint64_t)cfg.autosave_delay_ms;
+        /* a big file waits a little longer, so saving never gets in the way */
+        uint64_t due = d->changed_at + (uint64_t)SDL_max(cfg.autosave_delay_ms, 4 * d->save_ms);
         if (now < due) {
             int left = (int)(due - now);
             *wait = *wait < 0 ? left : SDL_min(*wait, left);
@@ -460,14 +464,55 @@ static void autosave(uint64_t now, int *wait)
 }
 
 /* Background work while nothing happens; returns true if there is more. */
+bool memory_freed;
+
+/* Reopens documents to free what PDFium kept of pages seen long ago: those
+ * out of sight after a few seconds, the one being read after a pause. */
+static bool compact_docs(uint64_t now)
+{
+    for (int i = 0; i < ndocs; i++) {
+        Doc *d = docs[i];
+        bool shown = false;
+        for (int k = 0; k < nwindows; k++)
+            shown |= windows[k]->ntabs && cur_view(windows[k])->doc == d;
+        if (shown)
+            d->hidden_since = 0;
+        else if (!d->hidden_since)
+            d->hidden_since = now ? now : 1;
+        bool due = shown ? now - last_input > 15000 && d->pages_opened >= 2 * LOADED_PAGE_CAP
+                         : now - d->hidden_since > 3000 && d->pages_opened >= 4;
+        if (due && doc_compact(d))
+            return true; /* one at a time */
+    }
+    return false;
+}
+
+static bool maintenance_pending(void)
+{
+    if (memory_freed)
+        return true;
+    for (int i = 0; i < ndocs; i++) { /* the same rules as compact_docs */
+        Doc *d = docs[i];
+        if (!d->modified && (d->hidden_since ? d->pages_opened >= 4 : d->pages_opened >= 2 * LOADED_PAGE_CAP))
+            return true;
+    }
+    return false;
+}
+
 static bool idle_work(void)
 {
     for (int i = 0; i < nwindows; i++)
         if (view_prefetch(windows[i], cur_view(windows[i]), top_of(windows[i])))
             return true;
-    for (int i = 0; i < ndocs; i++)
-        if (notes_scan(docs[i], 4)) /* list annotations for the panel */
-            return true;
+    /* annotations are listed when the panel needs them, not in advance:
+     * opening every page keeps its parsed objects in PDFium (tens of MB
+     * per big document) until the document is closed */
+    if (compact_docs(SDL_GetTicks()))
+        return true;
+    if (memory_freed) { /* freed pages and textures: back to the system, not kept by malloc */
+        malloc_trim(0);
+        memory_freed = false;
+    }
     return false;
 }
 
@@ -679,7 +724,11 @@ int main(int argc, char **argv)
         if (prefetching || script)
             wait = 0;
         SDL_Event e;
-        if (SDL_WaitEventTimeout(&e, wait < 0 ? 1000 : wait)) {
+        /* nothing scheduled: sleep until something happens, unless memory
+         * can be given back soon (compact_docs, malloc_trim) */
+        if (wait < 0 && maintenance_pending())
+            wait = 1000;
+        if (SDL_WaitEventTimeout(&e, wait)) {
             handle_event(&e);
             while (nwindows && SDL_PollEvent(&e))
                 handle_event(&e);

@@ -6,10 +6,43 @@
 #include "nomadys.h"
 
 #define GAP 18
-#define FULL_PAGE_MAX_PIXELS (12 * 1024 * 1024)
+#define FULL_PAGE_MAX_PIXELS (8 * 1024 * 1024)
 #define FULL_PAGE_MAX_SIDE 8192
+/* Page textures of every tab and window together; the least recently
+ * used go first (usually tabs out of sight), never what is on screen. */
+#define TEXTURE_BUDGET ((size_t)128 << 20)
 
-static uint64_t cache_clock;
+static uint64_t cache_clock, frame_start;
+static size_t texture_bytes;
+
+static size_t entry_bytes(const CacheEntry *e) { return e->tex ? (size_t)e->w * (size_t)e->h * 4 : 0; }
+
+static void drop_entry(CacheEntry *e)
+{
+    if (e->tex) {
+        texture_bytes -= entry_bytes(e);
+        SDL_DestroyTexture(e->tex);
+    }
+    *e = (CacheEntry){0};
+}
+
+static void trim_textures(void)
+{
+    while (texture_bytes > TEXTURE_BUDGET) {
+        CacheEntry *old = NULL;
+        for (int k = 0; k < nwindows; k++)
+            for (int t = 0; t < windows[k]->ntabs; t++)
+                for (int i = 0; i < CACHE_SLOTS; i++) {
+                    CacheEntry *e = &windows[k]->tabs[t]->cache[i];
+                    if (e->tex && e->used <= frame_start && (!old || e->used < old->used))
+                        old = e;
+                }
+        if (!old)
+            return; /* all on screen now */
+        drop_entry(old);
+        memory_freed = true;
+    }
+}
 
 View *view_new(Doc *d)
 {
@@ -47,11 +80,8 @@ View *view_clone(View *src)
 
 void view_invalidate_cache(View *v)
 {
-    for (int i = 0; i < CACHE_SLOTS; i++) {
-        if (v->cache[i].tex)
-            SDL_DestroyTexture(v->cache[i].tex);
-        v->cache[i] = (CacheEntry){0};
-    }
+    for (int i = 0; i < CACHE_SLOTS; i++)
+        drop_entry(&v->cache[i]);
 }
 
 /* After the document was reloaded: new page count and sizes, same place. */
@@ -340,7 +370,7 @@ SDL_Texture *view_render_area(Window *win, View *v, int page, int pw, int ph, in
         return NULL;
     FPDF_BITMAP bmp = FPDFBitmap_CreateEx(w, h, FPDFBitmap_BGRA, buf, stride);
     FPDFBitmap_FillRect(bmp, 0, 0, w, h, 0xFFFFFFFF);
-    int flags = FPDF_ANNOT | (cfg.subpixel_text ? FPDF_LCD_TEXT : 0);
+    int flags = FPDF_ANNOT | FPDF_RENDER_LIMITEDIMAGECACHE | (cfg.subpixel_text ? FPDF_LCD_TEXT : 0);
     FPDF_RenderPageBitmap(bmp, p, -cx, -cy, pw, ph, rot, flags);
     if (d->form)
         FPDF_FFLDraw(d->form, bmp, p, -cx, -cy, pw, ph, rot, flags);
@@ -396,11 +426,12 @@ static CacheEntry *cache_put(Window *win, View *v, int page, int cx, int cy, int
         if (!e->tex || e->used < slot->used)
             slot = e;
     }
-    if (slot->tex)
-        SDL_DestroyTexture(slot->tex);
+    drop_entry(slot);
     *slot = (CacheEntry){page, cx, cy, w, h, v->pwpx[page], v->phpx[page], v->dark,
                          v->doc->slots[page].version, t, ++cache_clock};
-    return slot;
+    texture_bytes += entry_bytes(slot);
+    trim_textures();
+    return slot->tex ? slot : NULL;
 }
 
 static bool big_page(View *v, int page)
@@ -473,6 +504,7 @@ void view_draw(Window *win, View *v, int top)
 {
     int W = win->W, H = win->H;
     double ox = offset_x(v, W);
+    frame_start = cache_clock; /* textures used from here on are on screen */
     /* shadows first, so one page's shadow never covers its neighbour */
     for (int i = 0; cfg.page_shadow && i < v->doc->npages; i++) {
         double sy = v->py[i] - v->sy + top, sx = v->px[i] + ox;
@@ -535,6 +567,8 @@ bool view_prefetch(Window *win, View *v, int top)
         int p = cand[k];
         if (p < 0 || p >= v->doc->npages || big_page(v, p))
             continue;
+        if (texture_bytes + (size_t)v->pwpx[p] * v->phpx[p] * 4 > TEXTURE_BUDGET * 3 / 4)
+            return false; /* memory for what is on screen comes first */
         if (!cache_find(v, p, 0, 0, v->pwpx[p], v->phpx[p])) {
             cache_put(win, v, p, 0, 0, v->pwpx[p], v->phpx[p]);
             return true;

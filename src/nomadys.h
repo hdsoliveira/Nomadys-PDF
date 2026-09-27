@@ -29,7 +29,10 @@
 #define MAX_WINDOWS 16
 #define MAX_DOCS 64
 #define CACHE_SLOTS 16
-#define LOADED_PAGE_CAP 48
+/* PDFium pages kept open, all documents together: an open page keeps its
+ * decoded images (a 24 Mpixel photo is ~70 MB), so few, least recently used
+ * first. Rendered pages stay as textures (render.c). */
+#define LOADED_PAGE_CAP 8
 #define CMD_MAX 4096
 #define NMARKS 26
 #define JUMPS_MAX 100
@@ -160,12 +163,14 @@ struct Doc {
     char *marks_path;
     Mark marks[NMARKS];
     Pos last;                /* last reading position, page -1 = none */
-    int notes_scanned;       /* pages whose notes were listed in the background */
     /* reloading after an external change (ipc.c watches the directory) */
     int watch_wd;
     uint64_t reload_at;      /* 0 = nothing pending */
     int reload_tries;
     long long saved_mtime_ns; /* our own last save, not an external change */
+    int pages_opened;        /* since the last (re)load: when to compact */
+    int save_ms;             /* how long the last save took */
+    uint64_t hidden_since;   /* 0 while a window shows it */
 };
 
 /* Every page accessor checks this: a reload can shrink the document under
@@ -186,15 +191,16 @@ int doc_run_timers(Doc *d, uint64_t now);    /* returns ms until next timer, -1 
 bool doc_focus_widget(Doc *d, int page, int w);
 void doc_kill_focus(Doc *d);
 bool doc_has_forms(Doc *d);
-bool doc_reload(Doc *d);                                  /* false while the file is incomplete */
+bool doc_reload(Doc *d);
+bool doc_compact(Doc *d);                                 /* reopen to free PDFium's caches */                                  /* false while the file is incomplete */
 long long file_mtime_ns(const char *path);
 extern Doc *docs[MAX_DOCS];
 extern int ndocs;
 extern bool need_redraw_all;
+extern bool memory_freed;                                  /* give memory back to the system when idle */
 
 /* ---------- annotations (annot.c) ---------- */
 void notes_page(Doc *d, int page);                       /* fills slots[page].notes */
-bool notes_scan(Doc *d, int pages);                      /* background listing; true if more remain */
 int note_at(Doc *d, int page, float x, float y);         /* index into notes, or -1 */
 bool note_create(Doc *d, int page, const PRect *quads, int n, const char *comment, uint32_t color);
 bool note_create_area(Doc *d, int page, PRect r, const char *comment, uint32_t color);

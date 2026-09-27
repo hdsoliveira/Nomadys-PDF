@@ -92,14 +92,6 @@ void notes_page(Doc *d, int page)
     s->notes_version = s->version + 1;
 }
 
-/* Lists the notes of a few more pages, so the panel opens instantly later. */
-bool notes_scan(Doc *d, int pages)
-{
-    for (int i = 0; i < pages && d->notes_scanned < d->npages; i++)
-        notes_page(d, d->notes_scanned++);
-    return d->notes_scanned < d->npages;
-}
-
 int note_at(Doc *d, int page, float x, float y)
 {
     if (!doc_page_ok(d, page))

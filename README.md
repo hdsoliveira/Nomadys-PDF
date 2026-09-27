@@ -260,6 +260,29 @@ written to a temporary file and atomically renamed over the original. With
 `autosave = false`, save with `Ctrl-s`/`:w`; closing with pending changes asks
 for confirmation.
 
+## Memory and speed
+
+Built to stay light with big PDFs and many tabs:
+
+- **Page textures**: one budget of 128 MB for all tabs and windows; the least
+  recently used go first (tabs out of sight), never what is on screen.
+  Neighbour pages are prepared ahead only while there is room.
+- **Open pages**: at most 8 PDFium pages loaded, over all documents; an open
+  page holds its decoded images (a 24-megapixel photo is ~70 MB).
+- **Document caches**: PDFium keeps every object it has parsed until the
+  document is closed (tens of MB after reading a big paper through). A tab out
+  of sight is reopened after 3 s, the one you read after 15 s without input,
+  when it has no unsaved changes and the file is unchanged; nothing on screen
+  changes. Annotations are listed only when the panel needs them.
+- Freed memory is given back to the system when idle (`malloc_trim`).
+- **Idle**: no timers, no polling; the program sleeps until something happens.
+- **Saving** rewrites the file compactly (0.1 s for a 255 MB paper) and waits
+  longer after a change when saving takes long, so it never gets in the way.
+
+Measured on a 255 MB, 26-page paper with 24-megapixel photos: 93 MB for the
+program itself, ~100–130 MB with 8 such papers open in tabs, peaks of ~500 MB
+while pages with the photos are drawn.
+
 ## Configuration
 
 `~/.config/nomadys-pdf/config`; `config.example` lists every setting with its

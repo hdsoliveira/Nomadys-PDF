@@ -118,7 +118,6 @@ static void attach(Doc *d, FPDF_DOCUMENT pdf)
     d->pdf = pdf;
     d->focus_page = -1;
     d->nloaded = 0;
-    d->notes_scanned = 0;
     d->npages = FPDF_GetPageCount(pdf);
     d->pw = xcalloc(d->npages ? d->npages : 1, sizeof *d->pw);
     d->ph = xcalloc(d->npages ? d->npages : 1, sizeof *d->ph);
@@ -193,6 +192,36 @@ bool doc_reload(Doc *d)
     attach(d, pdf);
     d->modified = false;
     need_redraw_all = true;
+    return true;
+}
+
+/* PDFium keeps every object it has parsed until the document is closed:
+ * after reading a big paper through, tens of MB. Opening the file again
+ * drops that. Only for an unmodified document whose file is still the one
+ * we have; page versions are kept, so textures on screen stay valid and
+ * nothing visible happens. */
+bool doc_compact(Doc *d)
+{
+    if (d->modified || d->reload_at || d->focus_page >= 0 || file_mtime_ns(d->path) != d->saved_mtime_ns)
+        return false;
+    FPDF_DOCUMENT pdf = FPDF_LoadDocument(d->path, NULL);
+    if (!pdf)
+        return false;
+    if (FPDF_GetPageCount(pdf) != d->npages) {
+        FPDF_CloseDocument(pdf);
+        return false;
+    }
+    int n = d->npages;
+    unsigned *versions = xmalloc((size_t)(n ? n : 1) * sizeof *versions);
+    for (int i = 0; i < n; i++)
+        versions[i] = d->slots[i].version;
+    detach(d);
+    attach(d, pdf);
+    for (int i = 0; i < n; i++)
+        d->slots[i].version = versions[i];
+    free(versions);
+    d->pages_opened = 0;
+    memory_freed = true;
     return true;
 }
 
@@ -286,6 +315,7 @@ void doc_unref(Doc *d)
     free(d->marks_path);
     free(d->path);
     free(d);
+    memory_freed = true;
 }
 
 /* Loads a page again from the document: PDFium keeps the parsed
@@ -299,20 +329,28 @@ void doc_reload_page(Doc *d, int i)
     close_slot(d, i);
 }
 
-/* Least-recently-used pages are closed once too many are loaded. */
-static void evict(Doc *d)
+/* Least-recently-used pages are closed once too many are loaded, across
+ * every open document. */
+static void evict(void)
 {
-    while (d->nloaded > LOADED_PAGE_CAP) {
+    for (;;) {
+        int total = 0;
+        Doc *vd = NULL;
         int victim = -1;
-        for (int i = 0; i < d->npages; i++) {
-            if (!d->slots[i].page || i == d->focus_page)
-                continue;
-            if (victim < 0 || d->slots[i].used < d->slots[victim].used)
-                victim = i;
+        for (int k = 0; k < ndocs; k++) {
+            Doc *d = docs[k];
+            total += d->nloaded;
+            for (int i = 0; i < d->npages && d->nloaded; i++) {
+                if (!d->slots[i].page || i == d->focus_page)
+                    continue;
+                if (victim < 0 || d->slots[i].used < vd->slots[victim].used)
+                    vd = d, victim = i;
+            }
         }
-        if (victim < 0)
+        if (total <= LOADED_PAGE_CAP || victim < 0)
             return;
-        close_slot(d, victim);
+        close_slot(vd, victim);
+        memory_freed = true;
     }
 }
 
@@ -328,11 +366,12 @@ FPDF_PAGE doc_page(Doc *d, int i)
     if (!s->page)
         return NULL;
     d->nloaded++;
+    d->pages_opened++;
     if (d->form) {
         FORM_OnAfterLoadPage(s->page, d->form);
         FORM_DoPageAAction(s->page, d->form, FPDFPAGE_AACTION_OPEN);
     }
-    evict(d);
+    evict();
     return s->page;
 }
 
@@ -429,6 +468,7 @@ bool doc_save(Doc *d, char *err, size_t errlen)
     struct stat st;
     if (stat(d->path, &st) == 0)
         fchmod(fd, st.st_mode & 07777);
+    uint64_t t0 = SDL_GetTicks();
     FdWriter w = {{1, write_block}, fd, false};
     /* A full rewrite keeps the file compact: an incremental save appends
      * every object PDFium has loaded (the page's photos included), so each
@@ -448,6 +488,7 @@ bool doc_save(Doc *d, char *err, size_t errlen)
     }
     free(tmp);
     d->modified = false;
+    d->save_ms = (int)(SDL_GetTicks() - t0);
     d->saved_mtime_ns = file_mtime_ns(d->path); /* our write: do not reload */
     return true;
 }
