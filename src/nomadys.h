@@ -235,7 +235,7 @@ typedef struct {
 } CacheEntry;
 
 typedef enum { MODE_NORMAL, MODE_FORM, MODE_CARET, MODE_AREA, MODE_PANEL, MODE_PROMPT, MODE_HELP,
-               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT, MODE_CROP } Mode;
+               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT, MODE_CROP, MODE_PICKER, MODE_GRID } Mode;
 
 typedef struct { int page, ch; } TextPos;
 
@@ -277,6 +277,11 @@ typedef struct {
     char query[CMD_MAX];
     int match_page, match_start, match_len;
     bool query_absent;       /* the whole document was searched in vain */
+    bool highlight_all;      /* every match on screen, until Esc or :noh */
+    bool match_case;         /* Ctrl-t in the prompt; otherwise smart case */
+    Pos search_origin;       /* where '/' was pressed: Esc goes back there */
+    char search_saved[CMD_MAX];
+    int search_saved_page;
 } View;
 
 View *view_new(Doc *d);
@@ -302,6 +307,7 @@ bool screen_to_page(View *v, float sx, float sy, int top, int *page, double *x, 
 
 /* ---------- windows ---------- */
 typedef struct Font Font;
+typedef struct Thumb Thumb;
 typedef void (*PromptFn)(Window *w, const char *text);
 
 typedef enum { PANEL_OPEN_TABS, PANEL_CONTENTS, PANEL_MARKS, PANEL_NOTES, PANEL_NTABS } PanelTab; /* tab order */
@@ -349,6 +355,14 @@ struct Window {
     PRect box_anchor;
     float box_maxw, box_scroll;
     uint64_t locate_at;      /* when the text or free cursor appeared (caret.c) */
+    /* recent files picker (recent.c) */
+    char picker_query[256];
+    int picker_sel, picker_first;
+    Mode picker_return;
+    /* page grid (grid.c) */
+    Thumb *thumbs;
+    int grid_sel, grid_top, grid_size;
+    Mode grid_return;
     /* an image or area being moved / resized (object.c) */
     int obj_page, obj_annot; /* annotation index on the page */
     PRect obj_rect, obj_orig;
@@ -485,6 +499,11 @@ char *print_printers(void);                              /* names, one per line 
 
 /* ---------- search (search.c) ---------- */
 bool search_run(Window *w, View *v, int dir, bool from_current);
+void search_begin(Window *w, View *v);
+void search_live(Window *w, View *v, const char *text);   /* the prompt changed */
+void search_cancel(Window *w, View *v);
+void search_commit(Window *w, View *v, const char *text);
+void search_forget(const Doc *d);
 void search_draw(Window *w, View *v, int top);
 
 /* ---------- panel (panel.c) ---------- */
@@ -576,6 +595,29 @@ void object_crop(Window *w, int side, float amount);      /* side 0-3: left righ
 void object_crop_reset(Window *w);
 void object_crop_done(Window *w, bool keep);
 void object_draw(Window *w, View *v, int top);
+
+/* recent.c: recent files, the session, the picker */
+void recent_add(const char *path);
+void recent_shutdown(void);
+void session_save(void);
+int session_files(char ***out, int *current);             /* the last session's files */
+void session_restore(Window *w);
+void picker_open(Window *w);
+void picker_key(Window *w, const char *tok);
+void picker_text(Window *w, const char *text);
+void picker_draw(Window *w);
+
+/* grid.c: the page grid */
+void grid_open(Window *w, View *v);
+void grid_close(Window *w);
+void grid_free(Window *w);
+void grid_move(Window *w, int dx, int dy);
+void grid_edge(Window *w, bool last);
+void grid_screen(Window *w, int dir);
+void grid_zoom(Window *w, int dir);
+void grid_go(Window *w);
+bool grid_work(void);                                      /* one thumbnail while idle */
+void grid_draw(Window *w);
 
 /* export.c */
 int export_write(Doc *d, FILE *f, int *ncomments);       /* Markdown; returns highlights */

@@ -56,6 +56,19 @@ A small coloured badge in the bottom-left corner shows the mode: `NORMAL`,
 | `r` / `R` | rotate the view 90° clockwise / counter-clockwise (the file is not changed) |
 | `i` | dark mode (images keep their colours) |
 | `/` `n` `N` | search / next / previous (`Esc` clears) |
+| `\g` | all pages as thumbnails: `h j k l` choose, `J K` a screen, `+ -` size, `Enter` go there (`Ctrl-o` returns), `Esc` close |
+| `\o` | open a recent file: type parts of its name (fuzzy), `Ctrl-j` `Ctrl-k` move, `Enter` open |
+
+**Search** is incremental: while you type after `/` the view goes to the
+first match from where you were (`Esc` goes back there, `Enter` keeps it, as
+a jump). Every match on screen is highlighted until `Esc` or `:noh`, and the
+message says which match it is ("match 3 of 17", for documents up to 150
+pages). Smart case: a query with a capital letter matches case, otherwise
+not; `Ctrl-t` in the prompt forces matching case (the prompt shows `/Aa`).
+
+**Sessions**: the open tabs are remembered as they change, so `npdf` with no
+file reopens them (also `:session`). Recent files and the session live in
+`~/.local/share/nomadys-pdf/`.
 
 ### Links and references
 
@@ -258,6 +271,9 @@ listed above the line and `Tab` / `Shift-Tab` cycle through them (`:` then
 | `:marks`, `:notes` | the panel |
 | `:noh` | clear the search highlight |
 | `:image file.png` | put a picture on the page, then move / resize it |
+| `:pages` | all pages as thumbnails (`\g`) |
+| `:recent` | open a recent file (`\o`) |
+| `:session` | reopen the tabs of the last session |
 | `:export [file.md]` | highlights, comments and marks to Markdown (`:export!` overwrites a file it did not write) |
 | `:reload` | reload the PDF from disk |
 | `:print`, `Ctrl-p` | print through CUPS; options in any order: pages `3-7,10`, copies `x2`, printer `@name` (`Tab` lists them), `duplex`. Unsaved highlights and form entries are saved first, so they are printed too |
@@ -384,6 +400,8 @@ One feature per file in `src/`; `nomadys.h` has the shared types and a module ma
 | `links.c` | link hints (`f`), reference preview (`F`), clicking links |
 | `image.c` | images on the page: loading (stb_image), size, stamp annotations |
 | `object.c` | moving and resizing images and highlighted areas |
+| `recent.c` | recent files, the session, the fuzzy file picker |
+| `grid.c` | the page grid (thumbnails drawn while idle) |
 | `help.c` | the help screen (`\c`): tabs, groups, keycaps, search |
 | `panel.c` | the marks / notes / contents panel |
 | `font.c` | UI text through fontconfig and FreeType |

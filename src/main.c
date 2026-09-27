@@ -90,6 +90,7 @@ static void window_destroy(Window *w)
         SDL_DestroyTexture(w->shadow);
     free(w->items);
     free(w->links);
+    grid_free(w);
     if (w->preview.tex)
         SDL_DestroyTexture(w->preview.tex);
     math_forget_renderer(w->ren);
@@ -155,7 +156,13 @@ void close_tab(Window *w, int i)
     View *v = w->tabs[i];
     discard_if_manual(v);
     if (w->ntabs == 1) {
+        /* the last tab of the last window: the session keeps it for next time */
+        bool last = nwindows == 1;
+        if (last)
+            session_save();
         window_destroy(w);
+        if (!last)
+            session_save();
         return;
     }
     view_free(v);
@@ -165,13 +172,19 @@ void close_tab(Window *w, int i)
         w->cur = w->ntabs - 1;
     w->redraw = true;
     update_title(w);
+    session_save();
 }
 
 void close_window(Window *w)
 {
     for (int i = 0; i < w->ntabs; i++)
         discard_if_manual(w->tabs[i]);
+    bool last = nwindows == 1;
+    if (last) /* quitting: the session keeps these tabs */
+        session_save();
     window_destroy(w);
+    if (!last)
+        session_save();
 }
 
 bool open_tab(Window *w, const char *path)
@@ -194,6 +207,8 @@ bool open_tab(Window *w, const char *path)
     w->tabs_flash_until = SDL_GetTicks() + 1000;
     update_title(w);
     w->redraw = true;
+    recent_add(path);
+    session_save();
     return true;
 }
 
@@ -221,6 +236,10 @@ static void draw(Window *w, uint64_t now)
     uint32_t bg = wtheme(w)->background;
     SDL_SetRenderDrawColor(w->ren, bg >> 16, (bg >> 8) & 0xFF, bg & 0xFF, 255);
     SDL_RenderClear(w->ren);
+    if (w->mode == MODE_GRID) { /* the grid replaces the pages */
+        grid_draw(w);
+        goto overlays;
+    }
     view_draw(w, v, top);
     ui_draw_notes(w, v, top);
     search_draw(w, v, top);
@@ -234,6 +253,7 @@ static void draw(Window *w, uint64_t now)
     object_draw(w, v, top);
     if (w->mode == MODE_FORM)
         form_draw_focus(w, v, top);
+overlays:
     ui_draw_overlays(w, now);
     if (capture_path) {
         SDL_Surface *shot = SDL_RenderReadPixels(w->ren, NULL);
@@ -507,6 +527,8 @@ static bool idle_work(void)
     /* annotations are listed when the panel needs them, not in advance:
      * opening every page keeps its parsed objects in PDFium (tens of MB
      * per big document) until the document is closed */
+    if (grid_work()) /* thumbnails of the page grid, one at a time */
+        return true;
     if (compact_docs(SDL_GetTicks()))
         return true;
     if (memory_freed) { /* freed pages and textures: back to the system, not kept by malloc */
@@ -625,17 +647,24 @@ int main(int argc, char **argv)
         if (request[0] && !script && ipc_send(request))
             return 0; /* a running instance shows it */
     }
-    if (argc < 2 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
+    /* npdf alone: the tabs of the last session */
+    char **files = argv + 1, **session = NULL;
+    int nfiles = argc - 1, session_cur = 0;
+    if (argc < 2) {
+        nfiles = session_files(&session, &session_cur);
+        files = session;
+    }
+    if (!nfiles || (argc >= 2 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))) {
         usage();
         return argc < 2;
     }
-    if (!strcmp(argv[1], "--version")) {
+    if (argc >= 2 && !strcmp(argv[1], "--version")) {
         puts("Nomadys-PDF (npdf) " VERSION);
         return 0;
     }
     FPDF_LIBRARY_CONFIG lib = {.version = 2};
     FPDF_InitLibraryWithConfig(&lib);
-    if (!strcmp(argv[1], "--export")) { /* highlights as Markdown, to standard output */
+    if (argc >= 2 && !strcmp(argv[1], "--export")) { /* highlights as Markdown, to standard output */
         char err[512];
         Doc *d = argc == 3 ? doc_open(argv[2], err, sizeof err) : NULL;
         if (!d)
@@ -651,13 +680,14 @@ int main(int argc, char **argv)
     }
     ipc_start();
     Window *w = NULL;
-    for (int i = 1; i < argc; i++) {
+    for (int i = 0; i < nfiles; i++) {
         char err[512];
-        Doc *d = doc_open(argv[i], err, sizeof err);
+        Doc *d = doc_open(files[i], err, sizeof err);
         if (!d) {
             fprintf(stderr, "npdf: %s\n", err);
             continue;
         }
+        recent_add(files[i]);
         View *v = view_new(d);
         if (!w) {
             w = window_new(v);
@@ -668,11 +698,17 @@ int main(int argc, char **argv)
             view_free(v);
         }
     }
+    for (int i = 0; session && i < nfiles; i++)
+        free(session[i]);
+    free(session);
     if (!w) {
         SDL_Quit();
         FPDF_DestroyLibrary();
         return 1;
     }
+    if (session && session_cur < w->ntabs)
+        w->cur = session_cur;
+    session_save();
     if (request[0]) {
         SDL_Event e = {0};
         e.type = ipc_event;
@@ -749,6 +785,7 @@ int main(int argc, char **argv)
     while (ndocs)
         doc_unref(docs[0]);
     ipc_stop();
+    recent_shutdown();
     math_shutdown();
     font_shutdown();
     SDL_Quit();

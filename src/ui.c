@@ -173,6 +173,8 @@ static void draw_mode(Window *w)
     case MODE_PREVIEW: label = "PREVIEW", color = t->search_match; break;
     case MODE_OBJECT: label = w->obj_image ? "IMAGE" : "MOVE", color = t->mode_visual; break;
     case MODE_CROP: label = "CROP", color = t->search_match; break;
+    case MODE_PICKER: label = "OPEN", color = t->tab_accent; break;
+    case MODE_GRID: label = "PAGES", color = t->tab_accent; break;
     case MODE_PROMPT:
         label = prompt_kind(w);
         color = !strcmp(label, "COMMAND") || !strcmp(label, "SEARCH") ? t->mode_command : t->mode_insert;
@@ -198,6 +200,8 @@ void ui_draw_overlays(Window *w, uint64_t now)
         help_draw(w);
     if (w->mode == MODE_HINTS)
         hints_draw(w);
+    if (w->mode == MODE_PICKER)
+        picker_draw(w);
     if (w->mode == MODE_PREVIEW)
         preview_draw(w);
     if (cfg.mode_indicator)

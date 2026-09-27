@@ -64,7 +64,7 @@ static void c_edit(Window *w, View *v, const char *a)
 }
 
 static void c_panel(Window *w, View *v, const char *a) { (void)v, (void)a; panel_open(w); }
-static void c_nohl(Window *w, View *v, const char *a) { (void)w, (void)a; v->match_page = -1; }
+static void c_nohl(Window *w, View *v, const char *a) { (void)w, (void)a; v->match_page = -1; v->highlight_all = false; }
 
 static void c_reload(Window *w, View *v, const char *a)
 {
@@ -125,6 +125,11 @@ static void c_image(Window *w, View *v, const char *a)
     free(path);
 }
 
+static void c_recent(Window *w, View *v, const char *a) { (void)v, (void)a; picker_open(w); }
+static void c_session(Window *w, View *v, const char *a) { (void)v, (void)a; session_restore(w); }
+
+static void c_pages(Window *w, View *v, const char *a) { (void)a; grid_open(w, v); }
+
 static void c_page(Window *w, View *v, const char *a) { goto_page(w, v, atoi(a) - 1); }
 
 static const Command commands[] = {
@@ -142,6 +147,9 @@ static const Command commands[] = {
     {"export", ARG_MD, c_export, "highlights and comments to Markdown (paper-notes.md)"},
     {"export!", ARG_MD, c_export_force, "the same, overwriting any file"},
     {"image", ARG_IMAGE, c_image, "put a PNG / JPEG on the page (then move and resize it)"},
+    {"pages", ARG_NONE, c_pages, "all pages as thumbnails (also \\g)"},
+    {"recent", ARG_NONE, c_recent, "open a recent file (also \\o)"},
+    {"session", ARG_NONE, c_session, "reopen the tabs of the last session"},
     {"marks", ARG_NONE, c_panel, "panel: tabs, summary, marks, highlights"},
     {"notes", ARG_NONE, c_panel, "panel: tabs, summary, marks, highlights"},
     {"noh", ARG_NONE, c_nohl, "clear the search highlight"},

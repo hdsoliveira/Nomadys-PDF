@@ -113,9 +113,10 @@ Most valuable for reading and reviewing papers by keyboard:
 Everyday comfort:
 
 6. Incremental search (highlight while typing, all matches on the page,
-   case toggle).
+   case toggle). *Done (src/search.c): smart case, Ctrl-t, "match 3 of 17".*
 7. Sessions: reopen the last tabs (`:session`), recent files with fuzzy search.
-8. Thumbnail grid of pages, navigated with hjkl.
+   *Done (src/recent.c): `npdf` alone reopens the session; `\o` / `:recent`.*
+8. Thumbnail grid of pages, navigated with hjkl. *Done (src/grid.c): `\g` / `:pages`.*
 9. Presentation mode: fullscreen, one page, nothing else (Beamer).
 10. Password-protected PDFs: ask for the password in the prompt line.
 

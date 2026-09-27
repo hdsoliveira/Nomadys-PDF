@@ -158,6 +158,7 @@ static void close_slot(Doc *d, int i);
 static void detach(Doc *d)
 {
     doc_kill_focus(d);
+    search_forget(d);
     for (int i = 0; i < d->npages; i++) {
         close_slot(d, i);
         free(d->slots[i].images);

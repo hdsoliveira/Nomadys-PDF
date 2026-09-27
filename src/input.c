@@ -136,6 +136,7 @@ static void a_clear(Window *w, View *v, int c, const char *a)
 {
     (void)w, (void)c, (void)a;
     v->match_page = -1;
+    v->highlight_all = false;
 }
 
 static void a_search_next(Window *w, View *v, int c, const char *a)
@@ -211,13 +212,7 @@ static void a_mark_set(Window *w, View *v, int c, const char *a)
 }
 
 /* ---------- prompt line: commands, search, comments ---------- */
-static void run_search(Window *w, const char *text)
-{
-    View *v = cur_view(w);
-    snprintf(v->query, sizeof v->query, "%s", text);
-    v->query_absent = false;
-    search_run(w, v, 1, true);
-}
+static void run_search(Window *w, const char *text) { search_commit(w, cur_view(w), text); }
 
 static void a_print(Window *w, View *v, int c, const char *a)
 {
@@ -234,7 +229,8 @@ static void a_command(Window *w, View *v, int c, const char *a)
 static void a_search(Window *w, View *v, int c, const char *a)
 {
     (void)v, (void)c, (void)a;
-    prompt_open(w, "/", "", run_search, 0);
+    search_begin(w, v);
+    prompt_open(w, v->match_case ? "/Aa " : "/", "", run_search, 0);
 }
 
 /* Whether the open prompt's action refers to the document (a comment, a mark
@@ -274,6 +270,8 @@ static void prompt_insert(Window *w, const char *t)
         memcpy(w->cmd + w->cmdlen, t, n + 1);
         w->cmdlen += (int)n;
     }
+    if (w->prompt_done == run_search) /* incremental search */
+        search_live(w, cur_view(w), w->cmd);
 }
 
 static void prompt_special(Window *w, const char *tok)
@@ -284,23 +282,37 @@ static void prompt_special(Window *w, const char *tok)
         return;
     }
     command_complete_reset(w);
+    bool searching = w->prompt_done == run_search;
     if (!strcmp(tok, "<Esc>")) {
         w->mode = w->prompt_return;
+        if (searching)
+            search_cancel(w, cur_view(w));
+    } else if (searching && !strcmp(tok, "<C-t>")) { /* match case, or smart case */
+        View *v = cur_view(w);
+        v->match_case = !v->match_case;
+        snprintf(w->prompt_label, sizeof w->prompt_label, "%s", v->match_case ? "/Aa " : "/");
+        search_live(w, v, w->cmd);
     } else if (!strcmp(tok, "<Enter>") || !strcmp(tok, "<S-Enter>")) {
         w->mode = w->prompt_return;
         char text[CMD_MAX];
         snprintf(text, sizeof text, "%s", w->cmd);
         w->prompt_done(w, text);
     } else if (!strcmp(tok, "<BS>")) {
-        if (w->cmdlen == 0 && (w->prompt_done == command_run || w->prompt_done == run_search)) {
+        if (w->cmdlen == 0 && (w->prompt_done == command_run || searching)) {
             w->mode = w->prompt_return; /* backspace on an empty ':' or '/' line */
+            if (searching)
+                search_cancel(w, cur_view(w));
             return;
         }
         while (w->cmdlen > 0 && ((unsigned char)w->cmd[--w->cmdlen] & 0xC0) == 0x80)
             ;
         w->cmd[w->cmdlen] = 0;
+        if (searching)
+            search_live(w, cur_view(w), w->cmd);
     } else if (!strcmp(tok, "<C-u>")) {
         w->cmd[w->cmdlen = 0] = 0;
+        if (searching)
+            search_live(w, cur_view(w), w->cmd);
     }
 }
 
@@ -427,6 +439,20 @@ static void a_preview_close(Window *w, View *v, int c, const char *a) { (void)v,
 /* ---------- images and moving / resizing ---------- */
 #define MOVE_STEP 2.0f  /* points per h j k l */
 #define MOVE_FAST 12.0f /* Ctrl-h j k l */
+static void a_recent(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; picker_open(w); }
+static void a_grid(Window *w, View *v, int c, const char *a) { (void)c, (void)a; grid_open(w, v); }
+static void a_grid_h(Window *w, View *v, int c, const char *a) { (void)v, (void)a; grid_move(w, -n1(c), 0); }
+static void a_grid_l(Window *w, View *v, int c, const char *a) { (void)v, (void)a; grid_move(w, n1(c), 0); }
+static void a_grid_j(Window *w, View *v, int c, const char *a) { (void)v, (void)a; grid_move(w, 0, n1(c)); }
+static void a_grid_k(Window *w, View *v, int c, const char *a) { (void)v, (void)a; grid_move(w, 0, -n1(c)); }
+static void a_grid_down(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; grid_screen(w, 1); }
+static void a_grid_up(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; grid_screen(w, -1); }
+static void a_grid_first(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; grid_edge(w, false); }
+static void a_grid_last(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; grid_edge(w, true); }
+static void a_grid_bigger(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; grid_zoom(w, 1); }
+static void a_grid_smaller(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; grid_zoom(w, -1); }
+static void a_grid_go(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; grid_go(w); }
+static void a_grid_close(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; grid_close(w); }
 static void a_image_file(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; prompt_open(w, ":", "image ", command_run, 0); }
 static void a_image_paste(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; image_paste(w); }
 static void a_object_edit(Window *w, View *v, int c, const char *a) { (void)c, (void)a; object_begin_at_cursor(w, v); }
@@ -523,6 +549,8 @@ static const Binding normal_map[] = {
     {"<Tab>", a_form_next, NULL}, {"<S-Tab>", a_form_prev, NULL},
     GROUP("Files, tabs and windows"),
     {":", a_command, "command line: :w save, :q close tab, :e file, :42 page"},
+    {"<leader>o", a_recent, "open a recent file (type to filter)"},
+    {"<leader>g", a_grid, "all pages as thumbnails"},
     {"<C-s>", a_save, "save"}, {"<C-p>", a_print, "print (opens :print; Enter prints everything)"},
     {"t", a_tabs, "show / hide tabs"},
     {"<C-,>", a_tab_prev, "previous tab"}, {"<C-.>", a_tab_next, "next tab"},
@@ -636,6 +664,19 @@ static const Binding crop_map[] = {
     {"<Enter>", a_crop_done, "done (back to moving and resizing)"}, {"<Esc>", a_crop_cancel, "cancel this cropping"},
 };
 
+static const Binding grid_map[] = {
+    GROUP("Choosing a page"),
+    {"h", a_grid_h, "move"}, {"j", a_grid_j, "move"}, {"k", a_grid_k, "move"}, {"l", a_grid_l, "move"},
+    {"<Left>", a_grid_h, NULL}, {"<Down>", a_grid_j, NULL}, {"<Up>", a_grid_k, NULL}, {"<Right>", a_grid_l, NULL},
+    {"J", a_grid_down, "a screen down / up"}, {"K", a_grid_up, "a screen down / up"},
+    {"<C-d>", a_grid_down, NULL}, {"<C-u>", a_grid_up, NULL}, {"<PageDown>", a_grid_down, NULL}, {"<PageUp>", a_grid_up, NULL},
+    {"gg", a_grid_first, "first / last page"}, {"G", a_grid_last, "first / last page"},
+    {"+", a_grid_bigger, "bigger / smaller thumbnails"}, {"-", a_grid_smaller, "bigger / smaller thumbnails"},
+    GROUP("Finishing"),
+    {"<Enter>", a_grid_go, "go to that page (Ctrl-o returns)"},
+    {"<Esc>", a_grid_close, "close"}, {"q", a_grid_close, "close"}, {"<leader>g", a_grid_close, NULL},
+};
+
 static const Binding preview_map[] = {
     {"j", a_preview_down, "scroll the preview"}, {"k", a_preview_up, "scroll the preview"},
     {"<Down>", a_preview_down, NULL}, {"<Up>", a_preview_up, NULL},
@@ -655,6 +696,7 @@ static const Binding *keymap(Mode m, int *n)
     case MODE_PREVIEW: *n = SDL_arraysize(preview_map); return preview_map;
     case MODE_OBJECT: *n = SDL_arraysize(object_map); return object_map;
     case MODE_CROP: *n = SDL_arraysize(crop_map); return crop_map;
+    case MODE_GRID: *n = SDL_arraysize(grid_map); return grid_map;
     default: *n = 0; return NULL;
     }
 }
@@ -755,6 +797,10 @@ void input_expire(uint64_t now)
 
 void input_token(Window *w, const char *tok)
 {
+    if (w->mode == MODE_PICKER) { /* typing filters the recent files */
+        picker_key(w, tok);
+        return;
+    }
     if (w->mode == MODE_PROMPT && w->prompt_box) { /* the comment box */
         comment_editor_key(w, tok);
         return;
@@ -964,6 +1010,7 @@ int help_lines(HelpLine **out)
     help_static(&lines, &n, &cap, form, SDL_arraysize(form));
     help_section(&lines, &n, &cap, "Move/resize", object_map, SDL_arraysize(object_map), false);
     help_section(&lines, &n, &cap, "Crop", crop_map, SDL_arraysize(crop_map), false);
+    help_section(&lines, &n, &cap, "Pages", grid_map, SDL_arraysize(grid_map), false);
     /* drop titles with nothing under them (groups of keys shared with Reading) */
     int k = 0;
     for (int i = 0; i < n; i++) {
@@ -1008,6 +1055,10 @@ void input_text_event(Window *w, const char *text)
     if (w->mode == MODE_FORM) {
         form_text(w, text);
         w->redraw = true;
+        return;
+    }
+    if (w->mode == MODE_PICKER) {
+        picker_text(w, text);
         return;
     }
     if (w->mode == MODE_PROMPT && w->prompt_box) {
