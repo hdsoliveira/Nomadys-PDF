@@ -144,6 +144,7 @@ typedef struct {
 
 struct Doc {
     char *path;
+    char *password;          /* only in memory, NULL when not protected */
     FPDF_DOCUMENT pdf;
     FPDF_FORMHANDLE form;
     FormInfo ffi;
@@ -177,6 +178,7 @@ struct Doc {
  * a pending action that still holds an old page number. */
 static inline bool doc_page_ok(const Doc *d, int i) { return i >= 0 && i < d->npages; }
 Doc *doc_open(const char *path, char *err, size_t errlen);
+Doc *doc_open_locked(const char *path, const char *password, bool *locked, char *err, size_t errlen);
 void doc_ref(Doc *d);
 void doc_unref(Doc *d);
 FPDF_PAGE doc_page(Doc *d, int i);
@@ -235,7 +237,7 @@ typedef struct {
 } CacheEntry;
 
 typedef enum { MODE_NORMAL, MODE_FORM, MODE_CARET, MODE_AREA, MODE_PANEL, MODE_PROMPT, MODE_HELP,
-               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT, MODE_CROP, MODE_PICKER, MODE_GRID } Mode;
+               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT, MODE_CROP, MODE_PICKER, MODE_GRID, MODE_PRESENT } Mode;
 
 typedef struct { int page, ch; } TextPos;
 
@@ -282,6 +284,7 @@ typedef struct {
     Pos search_origin;       /* where '/' was pressed: Esc goes back there */
     char search_saved[CMD_MAX];
     int search_saved_page;
+    struct Diff *diff;       /* :diff old.pdf (diff.c), NULL when off */
 } View;
 
 View *view_new(Doc *d);
@@ -308,6 +311,7 @@ bool screen_to_page(View *v, float sx, float sy, int top, int *page, double *x, 
 /* ---------- windows ---------- */
 typedef struct Font Font;
 typedef struct Thumb Thumb;
+typedef struct Slide Slide;
 typedef void (*PromptFn)(Window *w, const char *text);
 
 typedef enum { PANEL_OPEN_TABS, PANEL_CONTENTS, PANEL_MARKS, PANEL_NOTES, PANEL_NTABS } PanelTab; /* tab order */
@@ -350,6 +354,8 @@ struct Window {
     int prompt_arg;
     /* comments are edited in a box next to the highlight (comment.c) */
     bool prompt_box;
+    bool prompt_secret;      /* a password: shown as dots */
+    char pending_path[4096]; /* the PDF the password is for */
     int cmdpos;              /* cursor, byte offset into cmd */
     int box_page;            /* -1: centred */
     PRect box_anchor;
@@ -363,6 +369,11 @@ struct Window {
     Thumb *thumbs;
     int grid_sel, grid_top, grid_size;
     Mode grid_return;
+    /* presentation (present.c) */
+    Slide *slides;
+    int present_page;
+    bool present_black, present_was_full;
+    Mode present_return;
     /* an image or area being moved / resized (object.c) */
     int obj_page, obj_annot; /* annotation index on the page */
     PRect obj_rect, obj_orig;
@@ -416,6 +427,7 @@ int top_of(Window *w);
 const Theme *wtheme(Window *w);
 void window_new_from(Window *w);
 bool open_tab(Window *w, const char *path);
+void ask_password(Window *w, const char *path, bool again);
 void close_tab(Window *w, int i);
 void close_window(Window *w);
 bool confirm_close(Window *w, View *only);
@@ -618,6 +630,25 @@ void grid_zoom(Window *w, int dir);
 void grid_go(Window *w);
 bool grid_work(void);                                      /* one thumbnail while idle */
 void grid_draw(Window *w);
+
+/* present.c: presentation mode */
+void present_start(Window *w, View *v);
+void present_stop(Window *w);
+void present_free(Window *w);
+void present_go(Window *w, int page);
+void present_step(Window *w, int delta);
+void present_blank(Window *w);
+void present_draw(Window *w);
+bool present_work(void);                                   /* the next slide while idle */
+
+/* diff.c: comparing with an older version */
+typedef struct Diff Diff;
+void diff_start(Window *w, View *v, const char *old_path);
+void diff_stop(Window *w, View *v);
+void diff_free(Diff *d);
+void diff_refresh(View *v);                               /* the PDF was reloaded */
+void diff_step(Window *w, View *v, int dir);              /* ]c [c */
+void diff_draw(Window *w, View *v, int top);
 
 /* export.c */
 int export_write(Doc *d, FILE *f, int *ncomments);       /* Markdown; returns highlights */

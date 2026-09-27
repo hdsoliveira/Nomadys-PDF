@@ -1,6 +1,8 @@
 /* Nomadys-PDF: windows, tabs, drawing and the event loop. */
 #include <malloc.h>
 #include <stdio.h>
+#include <termios.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -91,6 +93,7 @@ static void window_destroy(Window *w)
     free(w->items);
     free(w->links);
     grid_free(w);
+    present_free(w);
     if (w->preview.tex)
         SDL_DestroyTexture(w->preview.tex);
     math_forget_renderer(w->ren);
@@ -187,14 +190,57 @@ void close_window(Window *w)
         session_save();
 }
 
+static bool add_tab(Window *w, Doc *d, const char *path);
+
+/* The password typed for w->pending_path: open it, or ask again. */
+static void password_done(Window *w, const char *text)
+{
+    char err[512], path[sizeof w->pending_path];
+    bool locked;
+    snprintf(path, sizeof path, "%s", w->pending_path);
+    Doc *d = doc_open_locked(path, text, &locked, err, sizeof err);
+    explicit_bzero(w->cmd, sizeof w->cmd); /* the typed password */
+    if (!d && locked) {
+        ask_password(w, path, true);
+        return;
+    }
+    if (!d) {
+        ui_message(w, "%s", err);
+        return;
+    }
+    w->pending_path[0] = 0;
+    add_tab(w, d, path);
+}
+
+/* Asks for the password of a protected PDF in the prompt, typed hidden. */
+void ask_password(Window *w, const char *path, bool again)
+{
+    const char *name = strrchr(path, '/') ? strrchr(path, '/') + 1 : path;
+    char label[64];
+    snprintf(label, sizeof label, "%s%.36s password: ", again ? "wrong, again: " : "", name);
+    snprintf(w->pending_path, sizeof w->pending_path, "%s", path);
+    prompt_open(w, label, "", password_done, 0);
+    w->prompt_secret = true;
+}
+
 bool open_tab(Window *w, const char *path)
 {
     char err[512];
-    Doc *d = doc_open(path, err, sizeof err);
+    bool locked;
+    Doc *d = doc_open_locked(path, NULL, &locked, err, sizeof err);
+    if (!d && locked) {
+        ask_password(w, path, false);
+        return false;
+    }
     if (!d) {
         ui_message(w, "%s", err);
         return false;
     }
+    return add_tab(w, d, path);
+}
+
+static bool add_tab(Window *w, Doc *d, const char *path)
+{
     if (w->ntabs == MAX_TABS) {
         doc_unref(d);
         ui_message(w, "too many tabs");
@@ -236,6 +282,10 @@ static void draw(Window *w, uint64_t now)
     uint32_t bg = wtheme(w)->background;
     SDL_SetRenderDrawColor(w->ren, bg >> 16, (bg >> 8) & 0xFF, bg & 0xFF, 255);
     SDL_RenderClear(w->ren);
+    if (w->mode == MODE_PRESENT) { /* a slide on black, nothing else */
+        present_draw(w);
+        goto shot;
+    }
     if (w->mode == MODE_GRID) { /* the grid replaces the pages */
         grid_draw(w);
         goto overlays;
@@ -243,6 +293,7 @@ static void draw(Window *w, uint64_t now)
     view_draw(w, v, top);
     ui_draw_notes(w, v, top);
     search_draw(w, v, top);
+    diff_draw(w, v, top);
     if (now < v->flash_until) {
         float x0, y0, x1, y1;
         page_to_screen(v, v->flash_page, v->flash_rect.l, v->flash_rect.t, &x0, &y0, top);
@@ -255,6 +306,7 @@ static void draw(Window *w, uint64_t now)
         form_draw_focus(w, v, top);
 overlays:
     ui_draw_overlays(w, now);
+shot:
     if (capture_path) {
         SDL_Surface *shot = SDL_RenderReadPixels(w->ren, NULL);
         if (shot) {
@@ -428,6 +480,11 @@ static void handle_event(SDL_Event *e)
         return;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
     case SDL_EVENT_MOUSE_BUTTON_UP:
+        /* presenting: left click forward, right click back */
+        if (e->type == SDL_EVENT_MOUSE_BUTTON_DOWN && (w = window_by_id(e->button.windowID)) && w->mode == MODE_PRESENT) {
+            present_step(w, e->button.button == SDL_BUTTON_RIGHT ? -1 : 1);
+            return;
+        }
         /* double click or Ctrl+click: go to the LaTeX source (SyncTeX) */
         if (e->type == SDL_EVENT_MOUSE_BUTTON_DOWN && (w = window_by_id(e->button.windowID)) &&
             e->button.button == SDL_BUTTON_LEFT &&
@@ -529,6 +586,8 @@ static bool idle_work(void)
      * per big document) until the document is closed */
     if (grid_work()) /* thumbnails of the page grid, one at a time */
         return true;
+    if (present_work()) /* the next slide, ready before it is asked for */
+        return true;
     if (compact_docs(SDL_GetTicks()))
         return true;
     if (memory_freed) { /* freed pages and textures: back to the system, not kept by malloc */
@@ -582,6 +641,27 @@ static bool script_step(void)
         input_token(w, tok);
     }
     return true;
+}
+
+/* A password from the terminal, not echoed. */
+static bool read_password(const char *path, char *out, size_t cap)
+{
+    struct termios old, quiet;
+    fprintf(stderr, "Password for %s: ", path);
+    fflush(stderr);
+    bool echo_off = tcgetattr(STDIN_FILENO, &old) == 0;
+    if (echo_off) {
+        quiet = old;
+        quiet.c_lflag &= ~(tcflag_t)ECHO;
+        tcsetattr(STDIN_FILENO, TCSAFLUSH, &quiet);
+    }
+    bool ok = fgets(out, (int)cap, stdin) != NULL;
+    if (echo_off)
+        tcsetattr(STDIN_FILENO, TCSAFLUSH, &old);
+    fputc('\n', stderr);
+    if (ok)
+        out[strcspn(out, "\r\n")] = 0;
+    return ok && *out;
 }
 
 static void usage(void)
@@ -680,9 +760,22 @@ int main(int argc, char **argv)
     }
     ipc_start();
     Window *w = NULL;
+    const char *ask_later = NULL; /* protected, no terminal: asked in the window */
     for (int i = 0; i < nfiles; i++) {
         char err[512];
-        Doc *d = doc_open(files[i], err, sizeof err);
+        bool locked;
+        Doc *d = doc_open_locked(files[i], NULL, &locked, err, sizeof err);
+        for (int tries = 0; !d && locked && isatty(STDIN_FILENO) && tries < 3; tries++) {
+            char pw[256];
+            if (!read_password(files[i], pw, sizeof pw))
+                break;
+            d = doc_open_locked(files[i], pw, &locked, err, sizeof err);
+            explicit_bzero(pw, sizeof pw);
+        }
+        if (!d && locked && !isatty(STDIN_FILENO) && !ask_later) {
+            ask_later = files[i];
+            continue;
+        }
         if (!d) {
             fprintf(stderr, "npdf: %s\n", err);
             continue;
@@ -698,16 +791,23 @@ int main(int argc, char **argv)
             view_free(v);
         }
     }
-    for (int i = 0; session && i < nfiles; i++)
-        free(session[i]);
-    free(session);
+    if (!w && ask_later)
+        fprintf(stderr, "npdf: %s is password protected: run npdf in a terminal, or open it with :e\n", ask_later);
     if (!w) {
+        for (int i = 0; session && i < nfiles; i++)
+            free(session[i]);
+        free(session);
         SDL_Quit();
         FPDF_DestroyLibrary();
         return 1;
     }
     if (session && session_cur < w->ntabs)
         w->cur = session_cur;
+    if (ask_later)
+        ask_password(w, ask_later, false);
+    for (int i = 0; session && i < nfiles; i++)
+        free(session[i]);
+    free(session);
     session_save();
     if (request[0]) {
         SDL_Event e = {0};

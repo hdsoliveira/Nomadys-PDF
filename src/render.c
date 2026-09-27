@@ -103,6 +103,7 @@ void view_doc_reloaded(View *v)
     v->match_page = -1;
     v->query_absent = false; /* the text may have changed */
     v->flash_until = 0;
+    diff_refresh(v); /* compare the new version again */
 }
 
 void view_free(View *v)
@@ -110,6 +111,7 @@ void view_free(View *v)
     if (v->lay_w)
         v->doc->last = view_pos(v);
     view_invalidate_cache(v);
+    diff_free(v->diff);
     doc_unref(v->doc);
     free(v->px);
     free(v->py);

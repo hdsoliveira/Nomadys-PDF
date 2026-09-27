@@ -114,6 +114,7 @@ static int tab_for_mode(Window *w)
     case MODE_OBJECT: return 8;
     case MODE_CROP: return 9;
     case MODE_GRID: return 10;
+    case MODE_PRESENT: return 11;
     default: return 0;
     }
 }

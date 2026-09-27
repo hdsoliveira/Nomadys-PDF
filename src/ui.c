@@ -120,7 +120,16 @@ static void draw_prompt(Window *w)
     if (w->ncomp > 1)
         draw_wildmenu(w);
     char line[CMD_MAX + 80];
-    snprintf(line, sizeof line, "%s%s", w->prompt_label, w->cmd);
+    if (w->prompt_secret) { /* a password: one dot a character */
+        int n = 0;
+        for (const char *c = w->cmd; *c; utf8_next(&c))
+            n++;
+        snprintf(line, sizeof line, "%s", w->prompt_label);
+        for (int i = 0; i < n && strlen(line) + 4 < sizeof line; i++)
+            SDL_strlcat(line, "\u2022", sizeof line);
+    } else {
+        snprintf(line, sizeof line, "%s%s", w->prompt_label, w->cmd);
+    }
     /* too long: keep the end, where the cursor is */
     const char *shown = line;
     while (*shown && font_width(w->font, shown) > w->W - 3 * p)
@@ -175,6 +184,7 @@ static void draw_mode(Window *w)
     case MODE_CROP: label = "CROP", color = t->search_match; break;
     case MODE_PICKER: label = "OPEN", color = t->tab_accent; break;
     case MODE_GRID: label = "PAGES", color = t->tab_accent; break;
+    case MODE_PRESENT: label = "", color = 0; break;
     case MODE_PROMPT:
         label = prompt_kind(w);
         color = !strcmp(label, "COMMAND") || !strcmp(label, "SEARCH") ? t->mode_command : t->mode_insert;

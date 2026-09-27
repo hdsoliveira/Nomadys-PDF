@@ -182,7 +182,7 @@ static void detach(Doc *d)
  * dropped: the file was rewritten by someone else (e.g. LaTeX). */
 bool doc_reload(Doc *d)
 {
-    FPDF_DOCUMENT pdf = FPDF_LoadDocument(d->path, NULL);
+    FPDF_DOCUMENT pdf = FPDF_LoadDocument(d->path, d->password);
     if (pdf && FPDF_GetPageCount(pdf) < 1) {
         FPDF_CloseDocument(pdf); /* half written, or broken: keep the old one */
         return false;
@@ -205,7 +205,7 @@ bool doc_compact(Doc *d)
 {
     if (d->modified || d->reload_at || d->focus_page >= 0 || file_mtime_ns(d->path) != d->saved_mtime_ns)
         return false;
-    FPDF_DOCUMENT pdf = FPDF_LoadDocument(d->path, NULL);
+    FPDF_DOCUMENT pdf = FPDF_LoadDocument(d->path, d->password);
     if (!pdf)
         return false;
     if (FPDF_GetPageCount(pdf) != d->npages) {
@@ -226,8 +226,13 @@ bool doc_compact(Doc *d)
     return true;
 }
 
-Doc *doc_open(const char *path, char *err, size_t errlen)
+/* Opens a PDF, or finds it open already. A password-protected one needs
+ * the password (else *locked is set); it is kept in memory only, to reload
+ * and save, and wiped when the document closes. */
+Doc *doc_open_locked(const char *path, const char *password, bool *locked, char *err, size_t errlen)
 {
+    if (locked)
+        *locked = false;
     char *real = realpath(path, NULL);
     if (!real) {
         snprintf(err, errlen, "%s: %s", path, strerror(errno));
@@ -245,7 +250,7 @@ Doc *doc_open(const char *path, char *err, size_t errlen)
         free(real);
         return NULL;
     }
-    FPDF_DOCUMENT pdf = FPDF_LoadDocument(real, NULL);
+    FPDF_DOCUMENT pdf = FPDF_LoadDocument(real, password);
     if (pdf && FPDF_GetPageCount(pdf) < 1) {
         FPDF_CloseDocument(pdf);
         snprintf(err, errlen, "%s: the PDF has no pages", path);
@@ -256,12 +261,15 @@ Doc *doc_open(const char *path, char *err, size_t errlen)
         static const char *why[] = {"ok", "unknown error", "cannot open file", "not a PDF or damaged",
                                     "password protected", "unsupported security", "page not found"};
         unsigned long e = FPDF_GetLastError();
-        snprintf(err, errlen, "%s: %s", path, e < 7 ? why[e] : "error");
+        if (e == FPDF_ERR_PASSWORD && locked)
+            *locked = true;
+        snprintf(err, errlen, "%s: %s", path, e == FPDF_ERR_PASSWORD && password ? "wrong password" : e < 7 ? why[e] : "error");
         free(real);
         return NULL;
     }
     Doc *d = xcalloc(1, sizeof *d);
     d->path = real;
+    d->password = password ? xstrdup(password) : NULL;
     d->refs = 1;
     attach(d, pdf);
     d->last.page = -1;
@@ -270,6 +278,8 @@ Doc *doc_open(const char *path, char *err, size_t errlen)
     docs[ndocs++] = d;
     return d;
 }
+
+Doc *doc_open(const char *path, char *err, size_t errlen) { return doc_open_locked(path, NULL, NULL, err, errlen); }
 
 void doc_ref(Doc *d) { d->refs++; }
 
@@ -315,6 +325,10 @@ void doc_unref(Doc *d)
     }
     free(d->marks_path);
     free(d->path);
+    if (d->password) { /* not left in freed memory */
+        explicit_bzero(d->password, strlen(d->password));
+        free(d->password);
+    }
     free(d);
     memory_freed = true;
 }

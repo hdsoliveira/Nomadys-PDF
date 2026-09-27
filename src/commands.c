@@ -128,6 +128,19 @@ static void c_image(Window *w, View *v, const char *a)
 static void c_recent(Window *w, View *v, const char *a) { (void)v, (void)a; picker_open(w); }
 static void c_session(Window *w, View *v, const char *a) { (void)v, (void)a; session_restore(w); }
 
+static void c_diff(Window *w, View *v, const char *a)
+{
+    if (!*a) {
+        ui_message(w, "usage: :diff older-version.pdf  (:nodiff hides the changes)");
+        return;
+    }
+    char *path = expand_home(a);
+    diff_start(w, v, path);
+    free(path);
+}
+
+static void c_nodiff(Window *w, View *v, const char *a) { (void)a; diff_stop(w, v); }
+static void c_present(Window *w, View *v, const char *a) { (void)a; present_start(w, v); }
 static void c_pages(Window *w, View *v, const char *a) { (void)a; grid_open(w, v); }
 
 static void c_page(Window *w, View *v, const char *a) { goto_page(w, v, atoi(a) - 1); }
@@ -147,6 +160,9 @@ static const Command commands[] = {
     {"export", ARG_MD, c_export, "highlights and comments to Markdown (paper-notes.md)"},
     {"export!", ARG_MD, c_export_force, "the same, overwriting any file"},
     {"image", ARG_IMAGE, c_image, "put a PNG / JPEG on the page (then move and resize it)"},
+    {"diff", ARG_FILE, c_diff, "compare with an older version: new text green, changed amber, deleted red"},
+    {"nodiff", ARG_NONE, c_nodiff, "hide the comparison"},
+    {"present", ARG_NONE, c_present, "presentation: fullscreen, one page at a time (also F5)"},
     {"pages", ARG_NONE, c_pages, "all pages as thumbnails (also \\g)"},
     {"recent", ARG_NONE, c_recent, "open a recent file (also \\o)"},
     {"session", ARG_NONE, c_session, "reopen the tabs of the last session"},

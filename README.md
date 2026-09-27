@@ -66,6 +66,25 @@ message says which match it is ("match 3 of 17", for documents up to 150
 pages). Smart case: a query with a capital letter matches case, otherwise
 not; `Ctrl-t` in the prompt forces matching case (the prompt shows `/Aa`).
 
+**Comparing versions**: `:diff old.pdf` compares the PDF shown with an older
+version, word by word: new text is shaded green, changed text amber, and a red
+mark shows where text was deleted. `]c` / `[c` go through the changes, and the
+message says what the old text was ("change 3 of 9: changed, was “0.47”").
+Nothing is written to the PDF; `:nodiff` hides it. When LaTeX recompiles the
+PDF the comparison is made again, which is handy for answers to reviewers.
+Line-end hyphens and ligatures are undone and page numbers ignored, so page
+breaks do not show as changes.
+
+**Presenting**: `F5` (or `:present`) shows one page at a time, fullscreen on
+black, nothing else: `j` `l` `Space` `→` `Enter` or a click go forward, `k`
+`h` `←` `Backspace` or a right click go back, `gg` `G` `12G`, `.` or `b` a
+black screen, `Esc` `q` `F5` stop (reading goes on at that slide). The next
+slide is prepared while you talk.
+
+**Password-protected PDFs** ask for the password (hidden) in the prompt, or
+on the terminal when opened from one. It is kept in memory only, to reload
+and save (the file stays encrypted), and wiped when the PDF closes.
+
 **Sessions**: the open tabs are remembered as they change, so `npdf` with no
 file reopens them (also `:session`). Recent files and the session live in
 `~/.local/share/nomadys-pdf/`.
@@ -272,6 +291,8 @@ listed above the line and `Tab` / `Shift-Tab` cycle through them (`:` then
 | `:noh` | clear the search highlight |
 | `:image file.png` | put a picture on the page, then move / resize it |
 | `:pages` | all pages as thumbnails (`\g`) |
+| `:diff old.pdf` | compare with an older version (`]c` `[c`); `:nodiff` hides it |
+| `:present` | presentation (`F5`) |
 | `:recent` | open a recent file (`\o`) |
 | `:session` | reopen the tabs of the last session |
 | `:export [file.md]` | highlights, comments and marks to Markdown (`:export!` overwrites a file it did not write) |
@@ -400,6 +421,8 @@ One feature per file in `src/`; `nomadys.h` has the shared types and a module ma
 | `links.c` | link hints (`f`), reference preview (`F`), clicking links |
 | `image.c` | images on the page: loading (stb_image), size, stamp annotations |
 | `object.c` | moving and resizing images and highlighted areas |
+| `diff.c` | `:diff`: words of both versions, patience diff, drawing, `]c` `[c` |
+| `present.c` | presentation mode |
 | `recent.c` | recent files, the session, the fuzzy file picker |
 | `grid.c` | the page grid (thumbnails drawn while idle) |
 | `help.c` | the help screen (`\c`): tabs, groups, keycaps, search |

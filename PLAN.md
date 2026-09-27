@@ -108,7 +108,8 @@ Most valuable for reading and reviewing papers by keyboard:
 4. **Copy a region as an image** — free cursor (`Ctrl-v`), select, `y` copies
    a high-resolution image to the clipboard (for slides).
 5. **Compare two versions of a PDF** (`:diff old.pdf`): highlight what changed
-   (answers to reviewers, co-author edits).
+   (answers to reviewers, co-author edits). *Done (src/diff.c): patience diff on
+   words, green / amber / red, `]c` `[c` with the old text, redone on reload.*
 
 Everyday comfort:
 
@@ -117,8 +118,8 @@ Everyday comfort:
 7. Sessions: reopen the last tabs (`:session`), recent files with fuzzy search.
    *Done (src/recent.c): `npdf` alone reopens the session; `\o` / `:recent`.*
 8. Thumbnail grid of pages, navigated with hjkl. *Done (src/grid.c): `\g` / `:pages`.*
-9. Presentation mode: fullscreen, one page, nothing else (Beamer).
-10. Password-protected PDFs: ask for the password in the prompt line.
+9. Presentation mode: fullscreen, one page, nothing else (Beamer). *Done (src/present.c): `F5`.*
+10. Password-protected PDFs: ask for the password in the prompt line. *Done: hidden prompt or terminal; kept in memory only.*
 
 More ambitious:
 

@@ -241,6 +241,8 @@ const char *prompt_kind(Window *w)
         return "COMMAND";
     if (w->prompt_done == run_search)
         return "SEARCH";
+    if (w->prompt_secret)
+        return "PASSWORD";
     return !strncmp(w->prompt_label, "comment", 7) ? "COMMENT" : "EDIT";
 }
 
@@ -259,6 +261,7 @@ void prompt_open(Window *w, const char *label, const char *initial, PromptFn don
     w->prompt_done = done;
     w->prompt_arg = arg;
     w->prompt_box = false;
+    w->prompt_secret = false;
     w->redraw = true;
 }
 
@@ -287,6 +290,8 @@ static void prompt_special(Window *w, const char *tok)
         w->mode = w->prompt_return;
         if (searching)
             search_cancel(w, cur_view(w));
+        if (w->prompt_secret) /* a password not used: wiped */
+            explicit_bzero(w->cmd, sizeof w->cmd), w->cmdlen = 0;
     } else if (searching && !strcmp(tok, "<C-t>")) { /* match case, or smart case */
         View *v = cur_view(w);
         v->match_case = !v->match_case;
@@ -453,6 +458,15 @@ static void a_grid_bigger(Window *w, View *v, int c, const char *a) { (void)v, (
 static void a_grid_smaller(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; grid_zoom(w, -1); }
 static void a_grid_go(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; grid_go(w); }
 static void a_grid_close(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; grid_close(w); }
+static void a_present(Window *w, View *v, int c, const char *a) { (void)c, (void)a; present_start(w, v); }
+static void a_present_next(Window *w, View *v, int c, const char *a) { (void)v, (void)a; present_step(w, n1(c)); }
+static void a_present_prev(Window *w, View *v, int c, const char *a) { (void)v, (void)a; present_step(w, -n1(c)); }
+static void a_present_first(Window *w, View *v, int c, const char *a) { (void)v, (void)a; present_go(w, c ? c - 1 : 0); }
+static void a_present_last(Window *w, View *v, int c, const char *a) { (void)a; present_go(w, c ? c - 1 : v->doc->npages - 1); }
+static void a_present_blank(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; present_blank(w); }
+static void a_present_stop(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; present_stop(w); }
+static void a_diff_next(Window *w, View *v, int c, const char *a) { (void)a; for (int i = 0; i < SDL_min(n1(c), 500); i++) diff_step(w, v, 1); }
+static void a_diff_prev(Window *w, View *v, int c, const char *a) { (void)a; for (int i = 0; i < SDL_min(n1(c), 500); i++) diff_step(w, v, -1); }
 static void a_image_file(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; prompt_open(w, ":", "image ", command_run, 0); }
 static void a_image_paste(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; image_paste(w); }
 static void a_object_edit(Window *w, View *v, int c, const char *a) { (void)c, (void)a; object_begin_at_cursor(w, v); }
@@ -537,6 +551,8 @@ static const Binding normal_map[] = {
     GROUP("Search and links"),
     {"/", a_search, "search"}, {"n", a_search_next, "next match"},
     {"N", a_search_prev, "previous match"}, {"<Esc>", a_clear, "clear the search"},
+    {"]c", a_diff_next, "next / previous change (after :diff old.pdf)"},
+    {"[c", a_diff_prev, "next / previous change (after :diff old.pdf)"},
     {"f", a_follow, "follow a link: type its letters (Ctrl-o returns)"},
     {"F", a_peek, "preview a reference (figure, equation, citation) in place"},
     GROUP("Highlights and comments"),
@@ -551,6 +567,7 @@ static const Binding normal_map[] = {
     {":", a_command, "command line: :w save, :q close tab, :e file, :42 page"},
     {"<leader>o", a_recent, "open a recent file (type to filter)"},
     {"<leader>g", a_grid, "all pages as thumbnails"},
+    {"<F5>", a_present, "present: fullscreen, one page at a time"},
     {"<C-s>", a_save, "save"}, {"<C-p>", a_print, "print (opens :print; Enter prints everything)"},
     {"t", a_tabs, "show / hide tabs"},
     {"<C-,>", a_tab_prev, "previous tab"}, {"<C-.>", a_tab_next, "next tab"},
@@ -677,6 +694,21 @@ static const Binding grid_map[] = {
     {"<Esc>", a_grid_close, "close"}, {"q", a_grid_close, "close"}, {"<leader>g", a_grid_close, NULL},
 };
 
+static const Binding present_map[] = {
+    GROUP("Slides"),
+    {"j", a_present_next, "next slide"}, {"l", a_present_next, "next slide"}, {" ", a_present_next, "next slide"},
+    {"<Right>", a_present_next, "next slide"}, {"<Down>", a_present_next, "next slide"},
+    {"<PageDown>", a_present_next, "next slide"}, {"<Enter>", a_present_next, "next slide"},
+    {"k", a_present_prev, "previous slide"}, {"h", a_present_prev, "previous slide"},
+    {"<Left>", a_present_prev, "previous slide"}, {"<Up>", a_present_prev, "previous slide"},
+    {"<PageUp>", a_present_prev, "previous slide"}, {"<BS>", a_present_prev, "previous slide"},
+    {"gg", a_present_first, "first / last slide (12G: slide 12)"}, {"G", a_present_last, "first / last slide (12G: slide 12)"},
+    {".", a_present_blank, "black screen, and back"}, {"b", a_present_blank, "black screen, and back"},
+    GROUP("Finishing"),
+    {"<Esc>", a_present_stop, "stop (reading goes on at this slide)"}, {"q", a_present_stop, "stop (reading goes on at this slide)"},
+    {"<F5>", a_present_stop, "stop (reading goes on at this slide)"},
+};
+
 static const Binding preview_map[] = {
     {"j", a_preview_down, "scroll the preview"}, {"k", a_preview_up, "scroll the preview"},
     {"<Down>", a_preview_down, NULL}, {"<Up>", a_preview_up, NULL},
@@ -697,6 +729,7 @@ static const Binding *keymap(Mode m, int *n)
     case MODE_OBJECT: *n = SDL_arraysize(object_map); return object_map;
     case MODE_CROP: *n = SDL_arraysize(crop_map); return crop_map;
     case MODE_GRID: *n = SDL_arraysize(grid_map); return grid_map;
+    case MODE_PRESENT: *n = SDL_arraysize(present_map); return present_map;
     default: *n = 0; return NULL;
     }
 }
@@ -1011,6 +1044,7 @@ int help_lines(HelpLine **out)
     help_section(&lines, &n, &cap, "Move/resize", object_map, SDL_arraysize(object_map), false);
     help_section(&lines, &n, &cap, "Crop", crop_map, SDL_arraysize(crop_map), false);
     help_section(&lines, &n, &cap, "Pages", grid_map, SDL_arraysize(grid_map), false);
+    help_section(&lines, &n, &cap, "Present", present_map, SDL_arraysize(present_map), false);
     /* drop titles with nothing under them (groups of keys shared with Reading) */
     int k = 0;
     for (int i = 0; i < n; i++) {
@@ -1029,7 +1063,7 @@ bool input_key_event(Window *w, const SDL_KeyboardEvent *e)
         {SDLK_ESCAPE, "<Esc>"}, {SDLK_RETURN, "<Enter>"}, {SDLK_KP_ENTER, "<Enter>"},
         {SDLK_BACKSPACE, "<BS>"}, {SDLK_DELETE, "<Del>"}, {SDLK_UP, "<Up>"}, {SDLK_DOWN, "<Down>"},
         {SDLK_LEFT, "<Left>"}, {SDLK_RIGHT, "<Right>"}, {SDLK_PAGEUP, "<PageUp>"},
-        {SDLK_PAGEDOWN, "<PageDown>"}, {SDLK_HOME, "<Home>"}, {SDLK_END, "<End>"},
+        {SDLK_PAGEDOWN, "<PageDown>"}, {SDLK_HOME, "<Home>"}, {SDLK_END, "<End>"}, {SDLK_F5, "<F5>"},
     };
     char tok[TOKEN_LEN];
     if ((e->mod & SDL_KMOD_CTRL) && e->key >= 32 && e->key < 127) {
