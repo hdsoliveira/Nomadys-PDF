@@ -10,6 +10,9 @@ rising sun, and a page lit in the doorway: reading goes wherever you go.
 A minimal, fast PDF reader for Linux (Wayland/X11), driven by vim-style keys.
 When opened it shows the PDF and nothing else.
 
+**Documentation**: the [wiki](docs/wiki/Home.md) explains every feature, with
+key and command references.
+
 - Engine: [PDFium](https://pdfium.googlesource.com/pdfium/) (Chrome's PDF
   engine), prebuilt binary from
   [bblanchon/pdfium-binaries](https://github.com/bblanchon/pdfium-binaries),
@@ -22,7 +25,7 @@ When opened it shows the PDF and nothing else.
 
 ## Build and install
 
-System dependencies: `sudo apt install libsdl3-dev libfreetype-dev libfontconfig-dev`. PDFium is downloaded
+System dependencies: `sudo apt install libsdl3-dev libfreetype-dev libfontconfig-dev zlib1g-dev`. PDFium is downloaded
 automatically on the first `make` by `tools/fetch_pdfium.sh` (pinned release,
 SHA-256 verified) and is not stored in the repository.
 
