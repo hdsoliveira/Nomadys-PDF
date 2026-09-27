@@ -31,7 +31,10 @@ make uninstall
 nomadys-pdf file.pdf [other.pdf ...]    # each file opens in a tab
 ```
 
-Press `\c` for a help screen with every key (`\c` again or `Esc` closes it).
+Press `\c` for the help screen: every key, in tabs like the panel (Reading,
+Text cursor, Free cursor, Comments, Panel, Preview, Commands, Forms), grouped
+and drawn as keycaps. It opens on the tab of the mode you are in; `Tab` / `h`
+`l` / `1`–`8` switch tabs, `j` `k` move, `/` searches every tab, `Esc` closes.
 It is generated from the keymaps in `input.c`, so it is always up to date.
 
 A small coloured badge in the bottom-left corner shows the mode: `NORMAL`,
@@ -308,13 +311,14 @@ One feature per file in `src/`; `nomadys.h` has the shared types and a module ma
 | `comment.c` | comment box: layout of text and equations, editing |
 | `math.c` | equations: `pdflatex` in the background, cache, textures |
 | `links.c` | link hints (`f`), reference preview (`F`), clicking links |
+| `help.c` | the help screen (`\c`): tabs, groups, keycaps, search |
 | `panel.c` | the marks / notes / contents panel |
 | `font.c` | UI text through fontconfig and FreeType |
 | `ui.c` | tab bar, prompt, messages, comment box |
 
 To add or change a key, edit a line in the keymap tables of `input.c`,
 e.g. `{"<leader>l", a_panel, "painel: marcas, destaques e sumário"}`; the
-third field is the description on the help screen (`\c`), `NULL` hides it. To add a colour, add a field to `Theme`
+third field is the description on the help screen (`\c`), `NULL` hides it; `GROUP("Title")` starts a titled group there. To add a colour, add a field to `Theme`
 (`nomadys.h`), its defaults and one `COLOR(name)` line in `config.c`.
 
 ## Tests

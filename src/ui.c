@@ -149,49 +149,6 @@ static void draw_message(Window *w)
     font_draw(w->font, (float)(w->W - tw), (float)(w->H - h - p + p / 2), text, t->message_fg);
 }
 
-/* Help screen (\\c): every key with its description, generated from the keymaps. */
-void ui_draw_help(Window *w)
-{
-    const Theme *t = wtheme(w);
-    HelpLine *lines;
-    int n = help_lines(&lines);
-    int p = pad(w) + (int)(6 * w->density), lh = font_height(w->font) + (int)(4 * w->density);
-    int bw = SDL_min(w->W - 2 * p, (int)(900 * w->density)), bh = w->H - top_of(w) - 2 * p;
-    float x = (w->W - bw) / 2.0f, y = (float)(top_of(w) + p);
-    int keyw = 0;
-    for (int i = 0; i < n; i++)
-        if (!lines[i].header)
-            keyw = SDL_max(keyw, font_width(w->font, lines[i].keys));
-    keyw = SDL_min(keyw, bw * 2 / 5);
-    int rows = SDL_max(1, (bh - 2 * p) / lh - 2);
-    w->help_first = SDL_clamp(w->help_first, 0, SDL_max(0, n - rows));
-    ui_fill(w, x, y, (float)bw, (float)bh, t->panel_bg, 255);
-    ui_frame(w, x, y, (float)bw, (float)bh, SDL_max(1.0f, w->density), t->panel_header);
-    char title[128];
-    snprintf(title, sizeof title, "Keys    j/k scroll    %sc or Esc closes", leader_label());
-    font_fit(w->font, title, bw - 2 * p);
-    font_draw(w->font, x + p, y + p / 2.0f, title, t->panel_header);
-    for (int i = 0; i < rows && w->help_first + i < n; i++) {
-        HelpLine *l = &lines[w->help_first + i];
-        float ry = y + p / 2.0f + (i + 2) * lh;
-        char keys[sizeof l->keys + 4], text[260];
-        snprintf(keys, sizeof l->keys, "%s", l->keys);
-        if (l->header) {
-            font_fit(w->font, keys, bw - 2 * p);
-            font_draw(w->font, x + p, ry, keys, t->panel_header);
-            continue;
-        }
-        font_fit(w->font, keys, keyw);
-        snprintf(text, 256, "%s", l->text);
-        font_fit(w->font, text, bw - 3 * p - keyw);
-        font_draw(w->font, x + 2 * p, ry, keys, t->tab_accent);
-        font_draw(w->font, x + 2 * p + keyw + p, ry, text, t->panel_fg);
-    }
-    if (w->help_first + rows < n)
-        font_draw(w->font, x + bw - p - font_width(w->font, "\u2193 more"), y + bh - lh, "\u2193 more", t->panel_header);
-    free(lines);
-}
-
 /* The current mode, as a small coloured badge in the bottom-left corner. */
 static void draw_mode(Window *w)
 {
@@ -235,8 +192,8 @@ void ui_draw_overlays(Window *w, uint64_t now)
         draw_tabbar(w);
     if (w->mode == MODE_PANEL || (w->mode == MODE_PROMPT && w->prompt_return == MODE_PANEL))
         panel_draw(w);
-    if (w->mode == MODE_HELP)
-        ui_draw_help(w);
+    if (w->mode == MODE_HELP || (w->mode == MODE_PROMPT && w->prompt_return == MODE_HELP))
+        help_draw(w);
     if (w->mode == MODE_HINTS)
         hints_draw(w);
     if (w->mode == MODE_PREVIEW)
@@ -252,6 +209,17 @@ void ui_draw_overlays(Window *w, uint64_t now)
 }
 
 /* Word-wrapped comment box at the bottom of the window. */
+/* Mixes two 0xRRGGBB colours: f = 0 gives a, 1 gives b. */
+uint32_t rgb_mix(uint32_t a, uint32_t b, float f)
+{
+    uint32_t out = 0;
+    for (int sh = 0; sh <= 16; sh += 8) {
+        float ca = (float)((a >> sh) & 0xFF), cb = (float)((b >> sh) & 0xFF);
+        out |= (uint32_t)(ca + (cb - ca) * f + 0.5f) << sh;
+    }
+    return out;
+}
+
 /* A small corner marker on highlights that carry a comment. */
 void ui_draw_notes(Window *w, View *v, int top)
 {

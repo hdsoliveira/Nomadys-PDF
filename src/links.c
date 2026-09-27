@@ -296,7 +296,7 @@ void preview_draw(Window *w)
     }
     ui_fill(w, x, y + w->preview.th, bw, (float)bar, t->panel_bg, 255);
     char info[128];
-    snprintf(info, sizeof info, "p. %d    Enter go there   j/k scroll   Esc close", w->preview.page + 1);
+    snprintf(info, sizeof info - 4, "p. %d    Enter go there   j/k scroll   Esc close", w->preview.page + 1);
     font_fit(w->font, info, (int)bw - 2 * pad);
     font_draw(w->font, x + pad, y + w->preview.th + pad / 4.0f, info, t->panel_fg);
 }
@@ -345,17 +345,6 @@ void hints_key(Window *w, const char *tok)
         follow(w, v, &l);
 }
 
-/* Mixes two colours, f = 0 gives a, 1 gives b. */
-static uint32_t mix(uint32_t a, uint32_t b, float f)
-{
-    uint32_t out = 0;
-    for (int sh = 0; sh <= 16; sh += 8) {
-        float ca = (float)((a >> sh) & 0xFF), cb = (float)((b >> sh) & 0xFF);
-        out |= (uint32_t)(ca + (cb - ca) * f + 0.5f) << sh;
-    }
-    return out;
-}
-
 void hints_draw(Window *w)
 {
     View *v = cur_view(w);
@@ -366,8 +355,8 @@ void hints_draw(Window *w)
     int lum = (int)(((bg >> 16) & 0xFF) * 299 + ((bg >> 8) & 0xFF) * 587 + (bg & 0xFF) * 114) / 1000;
     uint32_t ink = lum > 140 ? 0x101010 : 0xFFFFFF;
     if (lum <= 140) /* mid-tone badges (gruvbox light): darken so white reads well */
-        bg = mix(bg, 0x000000, 0.4f);
-    uint32_t typed = mix(ink, bg, 0.55f);
+        bg = rgb_mix(bg, 0x000000, 0.4f);
+    uint32_t typed = rgb_mix(ink, bg, 0.55f);
     int fh = font_height(w->font);
     for (int i = 0; i < w->nlinks; i++) {
         Link *l = &w->links[i];

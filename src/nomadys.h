@@ -337,7 +337,8 @@ struct Window {
     uint64_t quit_warned;    /* close confirmation valid until this time */
     /* help screen */
     Mode help_return;
-    int help_first;
+    int help_tab, help_sel, help_top; /* tab, selected row, first row shown */
+    char help_filter[64];    /* '/' in the help: rows matching this, from every tab */
     /* panel */
     PanelItem *items;        /* entries of the current panel tab */
     int nitems, sel, first;
@@ -375,7 +376,12 @@ void save(Window *w, View *v);
 void update_title(Window *w);
 
 /* ---------- input (input.c) ---------- */
-typedef struct { char keys[64]; const char *text; bool header; } HelpLine;
+typedef struct {
+    char keys[64];
+    const char *text;
+    bool header, group;      /* a tab / a titled group of keys */
+    bool command;            /* ":name args": one key, arguments dimmed */
+} HelpLine;
 int help_lines(HelpLine **out);                          /* generated from the keymaps */
 void input_token(Window *w, const char *tok);            /* "<Esc>", "<C-j>", "a", ... */
 bool input_key_event(Window *w, const SDL_KeyboardEvent *e);
@@ -468,6 +474,7 @@ void font_fit(Font *f, char *s, int maxw);         /* ellipsis; s needs 3 spare 
 void font_draw(Font *f, float x, float y, const char *s, uint32_t rgb);   /* y = top */
 
 /* ---------- drawing helpers and overlays (ui.c) ---------- */
+uint32_t rgb_mix(uint32_t a, uint32_t b, float f);       /* f = 0: a, 1: b */
 void ui_fill(Window *w, float x, float y, float wd, float ht, uint32_t rgb, uint8_t a);
 void ui_frame(Window *w, float x, float y, float wd, float ht, float t, uint32_t rgb);
 void ui_message(Window *w, const char *fmt, ...);
@@ -476,7 +483,6 @@ int ui_bar_height(Window *w);
 int ui_tabbar_height(Window *w);
 void ui_draw_overlays(Window *w, uint64_t now);
 void ui_draw_notes(Window *w, View *v, int top);
-void ui_draw_help(Window *w);
 
 /* ---------- utilities (ui.c) ---------- */
 /* Allocation that cannot return NULL: out of memory ends the program with a
@@ -504,6 +510,15 @@ void comment_editor_open(Window *w, int page, PRect anchor);
 bool comment_editor_key(Window *w, const char *tok);    /* false: not handled */
 void comment_editor_insert(Window *w, const char *text); /* typed text */
 void comment_editor_draw(Window *w);
+
+/* help.c: the help screen (\c) */
+void help_open(Window *w);
+void help_draw(Window *w);
+void help_move(Window *w, int delta);
+void help_edge(Window *w, bool last);
+void help_switch(Window *w, int tab);                     /* -2 next, -1 previous */
+void help_search(Window *w);
+void help_escape(Window *w);
 
 /* export.c */
 int export_write(Doc *d, FILE *f, int *ncomments);       /* Markdown; returns highlights */

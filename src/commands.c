@@ -93,9 +93,7 @@ static void c_light(Window *w, View *v, const char *a) { (void)w, (void)a; v->da
 static void c_help(Window *w, View *v, const char *a)
 {
     (void)v, (void)a;
-    w->help_return = w->mode;
-    w->help_first = 0;
-    w->mode = MODE_HELP;
+    help_open(w);
 }
 
 /* :rotate 90, :rotate -90, :rotate 180 ... relative to the current view. */

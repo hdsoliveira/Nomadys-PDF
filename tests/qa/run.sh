@@ -8,7 +8,7 @@ make clean >/dev/null
 make CFLAGS="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined" >/dev/null
 mv nomadys-pdf nomadys-pdf-asan && make clean >/dev/null && make >/dev/null
 python3 tests/qa/make_corpus.py "$work/corpus" >/dev/null
-seq='jjkkGgg+++---=zdir\l<Tab><Tab><Tab>jk<Enter>v<Esc>vjwv$C<Esc><C-v>jjlllvVx<Esc><Esc>/a<Enter>nN5n<C-j>abc<BS><Esc>:rotate 90<Enter>:zoom 400<Enter>jjll:zoom 5<Enter><resize:1,1>jj<resize:3000,2000>\maGma<C-o><C-i>mm\c<Esc>fa<Esc>Fa<Enter>f<Esc>vjjc$x^2$<S-Enter>$$\frac{a}{b}$$ $\bad$<wait:2000><Left><Up><Enter>d<C-n>q:reload<Enter><wait:300>'
+seq='jjkkGgg+++---=zdir\l<Tab><Tab><Tab>jk<Enter>v<Esc>vjwv$C<Esc><C-v>jjlllvVx<Esc><Esc>/a<Enter>nN5n<C-j>abc<BS><Esc>:rotate 90<Enter>:zoom 400<Enter>jjll:zoom 5<Enter><resize:1,1>jj<resize:3000,2000>\maGma<C-o><C-i>mm\cljjG/ma<Enter>j<Esc>4k<Esc>fa<Esc>Fa<Enter>f<Esc>vjjc$x^2$<S-Enter>$$\frac{a}{b}$$ $\bad$<wait:2000><Left><Up><Enter>d<C-n>q:reload<Enter><wait:300>'
 fail=0
 for f in "$work"/corpus/*.pdf tests/sample.pdf /nonexistent.pdf; do
     target=$f

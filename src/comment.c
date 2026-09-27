@@ -55,16 +55,6 @@ static void draw_n(Font *f, float x, float y, const char *s, int n, uint32_t rgb
     font_draw(f, x, y, buf, rgb);
 }
 
-static uint32_t mix(uint32_t a, uint32_t b, float f)
-{
-    uint32_t out = 0;
-    for (int sh = 0; sh <= 16; sh += 8) {
-        float ca = (float)((a >> sh) & 0xFF), cb = (float)((b >> sh) & 0xFF);
-        out |= (uint32_t)(ca + (cb - ca) * f + 0.5f) << sh;
-    }
-    return out;
-}
-
 typedef struct {
     Window *win;
     const char *text;
@@ -162,7 +152,7 @@ static int math_end(const char *s, int i, int n, bool display)
 static void layout_build(Window *win, const char *text, int cursor, float maxw, Layout *L)
 {
     const Theme *t = wtheme(win);
-    uint32_t dim = mix(t->comment_fg, t->comment_bg, 0.45f), bad = t->caret;
+    uint32_t dim = rgb_mix(t->comment_fg, t->comment_bg, 0.45f), bad = t->caret;
     L->n = 0;
     L->error[0] = 0;
     L->pending = false;
@@ -422,24 +412,24 @@ void comment_editor_draw(Window *w)
     SDL_Rect clip = {(int)x, (int)cy0, (int)bw, (int)ch + 1};
     SDL_SetRenderClipRect(w->ren, &clip);
     if (!w->cmd[0])
-        font_draw(w->font, x + p, cy0, "write a comment; $E = mc^2$ for equations", mix(t->comment_fg, t->comment_bg, 0.55f));
+        font_draw(w->font, x + p, cy0, "write a comment; $E = mc^2$ for equations", rgb_mix(t->comment_fg, t->comment_bg, 0.55f));
     layout_paint(w, w->cmd, &L, x + p, cy0 - w->box_scroll);
     float cur_h = ln->asc + ln->desc;
     ui_fill(w, x + p + cx, cy0 + ln->y - w->box_scroll, SDL_max(2.0f, 2 * w->density), cur_h, t->bar_cursor, 255);
     SDL_SetRenderClipRect(w->ren, NULL);
     /* the last line: keys, or what LaTeX did not like */
     char hint[256];
-    uint32_t hc = mix(t->comment_fg, t->comment_bg, 0.4f);
+    uint32_t hc = rgb_mix(t->comment_fg, t->comment_bg, 0.4f);
     if (L.error[0]) {
-        snprintf(hint, sizeof hint, "LaTeX: %s", L.error);
+        snprintf(hint, sizeof hint - 4, "LaTeX: %s", L.error);
         hc = t->caret;
     } else {
-        snprintf(hint, sizeof hint, "%sEnter saves   Shift-Enter new line   Esc cancels",
+        snprintf(hint, sizeof hint - 4, "%sEnter saves   Shift-Enter new line   Esc cancels",
                  L.pending ? "typesetting…   " : "");
     }
     font_fit(w->font, hint, (int)maxw);
     float hy = y + p + ch + p / 2.0f;
-    ui_fill(w, x + p, hy - p / 4.0f, maxw, 1, mix(t->comment_fg, t->comment_bg, 0.8f), 255);
+    ui_fill(w, x + p, hy - p / 4.0f, maxw, 1, rgb_mix(t->comment_fg, t->comment_bg, 0.8f), 255);
     font_draw(w->font, x + p, hy, hint, hc);
     layout_free(&L);
 }
