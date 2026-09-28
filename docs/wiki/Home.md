@@ -58,7 +58,7 @@ you go.
 
 **Making it yours**
 - [Configuration](Configuration.md): every setting
-- [Themes and dark mode](Themes-and-Dark-Mode.md): nine themes, your own themes, fonts
+- [Themes and dark mode](Themes-and-Dark-Mode.md): fifteen themes, your own themes, fonts
 
 **Reference**
 - [Keyboard reference](Keyboard-Reference.md): every key, by mode

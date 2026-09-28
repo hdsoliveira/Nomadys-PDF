@@ -1,9 +1,11 @@
 # Themes and dark mode
 
-## Nine themes, each light and dark
+## Fifteen themes, each light and dark
 
 Built from the official palettes, each with a light and a dark mode (`i`
-switches between them while reading):
+switches between them while reading). Every one keeps its text readable:
+the ink of dark pages at least 11:1 against the paper, the text of the
+interface at least 7:1, its dim text at least 4.5:1.
 
 | Theme | Light / dark |
 |---|---|
@@ -16,6 +18,12 @@ switches between them while reading):
 | **dracula** | Alucard / Dracula |
 | **nord** | light / dark |
 | **solarized** | light / dark |
+| **flexoki** | light / dark (made for reading: warm paper, soft ink) |
+| **github** | light / dark |
+| **one** | One Light / One Dark |
+| **ayu** | light / dark |
+| **nightfox** | Dayfox / Nightfox |
+| **selenized** | light / dark (made for contrast) |
 
 ![the themes](../themes.png)
 
@@ -79,16 +87,30 @@ also be changed in the [configuration](Configuration.md#colours), in
 ## Dark mode
 
 Dark mode recolours the pages: lightness is inverted but hue is kept (red
-stays red), with the theme's `page_bg` and `page_fg` as paper and ink.
+stays red), with the theme's `page_bg` and `page_fg` as paper and ink. The
+ink is given a little more weight than a plain inversion would, so light
+letters on dark paper look as firm as dark letters on white.
+
 Images are judged one by one (`dark_images = smart`, the default):
 
 - **photos** keep their colours;
 - **figures drawn on white** (plots, diagrams, schematics: most scientific
-  figures) are recoloured with the page, so no white blocks glare.
+  figures) are recoloured with the page, so no white blocks glare. Only the
+  part of a figure that shows counts: one trimmed in LaTeX leaves no light
+  frame around it;
+- **pictures you placed** (`Ctrl-v` then `i`, `:image`) always keep their
+  own colours, screenshots on white included. A picture with a transparent
+  background keeps the colours of what it draws, and the page shows through
+  it in dark mode.
+
+**Highlights** stay readable: the text under them keeps the theme's ink and
+only the paper around the letters takes the highlight's colour, lighter on
+an area (`Ctrl-v`, then `C` `V` `B` `N` `M`) than on text, so a figure under
+an area highlight keeps its colours.
 
 `dark_images = keep` leaves every image as it is; `invert` recolours all of
-them. Copying a region as an image and printing always use the page's own
-colours.
+them, pictures you placed included. Copying a region as an image and
+printing always use the page's own colours.
 
 Dark mode is remembered per file.
 

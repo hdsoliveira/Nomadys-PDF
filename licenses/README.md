@@ -37,6 +37,12 @@ The palettes in `themes/` follow these projects:
 | Rosé Pine | MIT | `themes/rosepine.txt` |
 | Solarized | MIT | `themes/solarized.txt` |
 | Tokyo Night | Apache-2.0 | `themes/tokyonight.txt` |
+| Flexoki | MIT | `themes/flexoki.txt` |
+| GitHub (Primer) | MIT | `themes/github.txt` |
+| One Light / One Dark (Atom) | MIT | `themes/one.txt` |
+| Ayu | MIT | `themes/ayu.txt` |
+| Nightfox / Dayfox | MIT | `themes/nightfox.txt` |
+| Selenized | MIT | `themes/selenized.txt` |
 
 Programs that Nomadys-PDF only runs when they are installed (pdflatex,
 synctex, lp, xdg-open) are not part of it and keep their own licences.
