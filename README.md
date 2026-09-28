@@ -152,6 +152,12 @@ sequences: `tests/qa/run.sh`. The code is organised one feature per file in
 
 ## Licence
 
-MIT (`LICENSE`), by Hugo Oliveira. PDFium: BSD-3 / Apache-2.0
-(`third_party/pdfium/LICENSE`). stb_image and stb_image_write: public domain
-or MIT.
+MIT (`LICENSE`), by Hugo Oliveira. The libraries it uses (PDFium and the
+libraries inside it, SDL3, FreeType, fontconfig, zlib, stb) and the colour
+themes it follows are all under permissive licences: see
+[`licenses/`](licenses/README.md) for the list and the texts. `make install`
+copies them to `share/doc/nomadys-pdf/`.
+
+Portions of this software are copyright © The FreeType Project
+(www.freetype.org). All rights reserved. This software is based in part on
+the work of the Independent JPEG Group.

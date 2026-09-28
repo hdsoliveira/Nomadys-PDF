@@ -88,7 +88,8 @@ static float body(Window *w, float x, float bw, float y, bool draw)
     y = centred(w, x, bw, y, NOMADYS_CONTACT, t->tab_accent, draw);
     y = centred(w, x, bw, y, NOMADYS_URL, t->tab_accent, draw);
     y += gap;
-    y = centred(w, x, bw, y, "MIT licence   \u00b7   PDFium, SDL3, FreeType, fontconfig, stb", t->panel_header, draw);
+    y = centred(w, x, bw, y, "MIT licence   \u00b7   PDFium, SDL3, FreeType, fontconfig, zlib, stb", t->panel_header, draw);
+    y = centred(w, x, bw, y, "their licences: share/doc/nomadys-pdf/licenses", t->panel_header, draw);
     y += gap * 0.5f;
     y = centred(w, x, bw, y, "any key closes this", t->panel_header, draw);
     return y - y0;

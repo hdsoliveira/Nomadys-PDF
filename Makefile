@@ -36,6 +36,11 @@ install: npdf
 	done
 	install -Dm644 docs/icon.svg $(PREFIX)/share/icons/hicolor/scalable/apps/nomadys-pdf.svg
 	install -Dm644 npdf.desktop $(PREFIX)/share/applications/npdf.desktop
+	install -d $(PREFIX)/share/doc/nomadys-pdf/licenses/themes $(PREFIX)/share/doc/nomadys-pdf/licenses/pdfium
+	install -m644 LICENSE $(PREFIX)/share/doc/nomadys-pdf/
+	install -m644 licenses/*.txt licenses/README.md $(PREFIX)/share/doc/nomadys-pdf/licenses/
+	install -m644 licenses/themes/*.txt $(PREFIX)/share/doc/nomadys-pdf/licenses/themes/
+	install -m644 $(PDFIUM)/LICENSE $(PDFIUM)/licenses/* $(PREFIX)/share/doc/nomadys-pdf/licenses/pdfium/
 	@gtk-update-icon-cache -q $(PREFIX)/share/icons/hicolor 2>/dev/null || true
 	@update-desktop-database -q $(PREFIX)/share/applications 2>/dev/null || true
 
@@ -44,6 +49,7 @@ uninstall:
 	rm -rf $(PREFIX)/lib/nomadys-pdf $(PREFIX)/share/nomadys-pdf/themes  # keeps marks/ (user data)
 	rm -f $(PREFIX)/share/icons/hicolor/*/apps/nomadys-pdf.png $(PREFIX)/share/icons/hicolor/scalable/apps/nomadys-pdf.svg
 	rm -f $(PREFIX)/share/applications/npdf.desktop
+	rm -rf $(PREFIX)/share/doc/nomadys-pdf
 
 clean:
 	rm -rf build npdf
