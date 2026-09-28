@@ -276,13 +276,15 @@ void undo_pages(Doc *d, int page, char *snapshot, const Mark *marks_before); /* 
 char *pages_snapshot(Doc *d);                              /* the document as it is, to a temporary file */
 bool pages_restore(Doc *d, const char *snapshot, const Mark *marks); /* back to a snapshot (undo) */
 void doc_pages_changed(Doc *d);
-void pages_delete(Window *w, Doc *d, int first, int last);
-void pages_rotate(Window *w, Doc *d, int first, int last, int quarters);
+bool *pages_pick(int npages, int first, int last);        /* first..last as one bool per page (free it) */
+bool pages_pick_span(const bool *pick, int n, int *first, int *last); /* side by side? */
+void pages_delete(Window *w, Doc *d, const bool *pick);
+void pages_rotate(Window *w, Doc *d, const bool *pick, int quarters);
 int pages_move(Window *w, Doc *d, int first, int last, int dest); /* where they went, or -1 */
-bool pages_extract(Window *w, Doc *d, int first, int last, const char *path);
+bool pages_extract(Window *w, Doc *d, const bool *pick, const char *path);
 void pages_insert(Window *w, Doc *d, const char *path, int after);
 bool pages_parse_range(const char *s, int npages, int *first, int *last); /* "3-7" */
-void pages_default_name(Doc *d, int first, int last, char *out, size_t cap);
+void pages_default_name(Doc *d, const bool *pick, char *out, size_t cap);
 bool doc_replace_pdf(Doc *d, const char *path);
 bool pdf_write(FPDF_DOCUMENT pdf, const char *path, char *err, size_t errlen);
 typedef struct { int added, already, skipped, first_page; bool pages_differ; } MergeResult;
@@ -446,6 +448,10 @@ struct Window {
     Thumb *thumbs;
     int grid_sel, grid_top, grid_size;
     int grid_anchor;         /* v in the grid: the other end of the pages chosen, -1 none */
+    bool *grid_marked;       /* Space in the grid: pages chosen one by one */
+    int grid_marked_n;       /* the page count they were chosen in */
+    bool *grid_extract;      /* y: the pages to save, while their name is typed */
+    int grid_extract_n;
     Mode grid_return;
     /* presentation (present.c) */
     /* about screen (about.c) */
@@ -756,6 +762,10 @@ void grid_edge(Window *w, bool last);
 void grid_screen(Window *w, int dir);
 void grid_zoom(Window *w, int dir);
 void grid_go(Window *w);
+bool *grid_pick(Window *w, View *v);                       /* the pages a change acts on (free it) */
+void grid_mark(Window *w);                                 /* Space: choose / unchoose this page */
+void grid_marks_remap(Window *w, const Doc *d, const int *map, int old_n); /* after the pages changed */
+int grid_cols(Window *w);
 bool grid_work(void);                                      /* one thumbnail while idle */
 void grid_draw(Window *w);
 

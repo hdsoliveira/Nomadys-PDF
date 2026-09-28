@@ -71,6 +71,7 @@ static void refresh(Doc *d, const int *map, int old_n)
         present_reset(w);
         w->grid_sel = SDL_clamp(w->grid_sel, 0, SDL_max(0, d->npages - 1));
         w->grid_anchor = -1;
+        grid_marks_remap(w, d, map, old_n); /* the pages chosen go where their pages went */
         w->redraw = true;
     }
     need_redraw_all = true;
@@ -143,18 +144,62 @@ static void finish(Doc *d, Before *b, const int *map, int page)
     refresh(d, map, b->old_n);
 }
 
-static void range_label(int first, int last, char *out, size_t cap)
+/* The pages first..last as a pick: one bool per page (free it). */
+bool *pages_pick(int npages, int first, int last)
 {
-    if (first == last)
-        snprintf(out, cap, "p. %d", first + 1);
-    else
-        snprintf(out, cap, "pp. %d–%d", first + 1, last + 1);
+    bool *pick = xmalloc((size_t)SDL_max(1, npages) * sizeof *pick);
+    for (int i = 0; i < npages; i++)
+        pick[i] = i >= first && i <= last;
+    return pick;
 }
 
-void pages_delete(Window *w, Doc *d, int first, int last)
+/* How many pages are picked; first and last of them (-1 if none). */
+static int pick_count(const bool *pick, int n, int *first, int *last)
 {
-    first = SDL_clamp(first, 0, d->npages - 1), last = SDL_clamp(last, first, d->npages - 1);
-    if (last - first + 1 >= d->npages) {
+    int k = 0;
+    *first = *last = -1;
+    for (int i = 0; i < n; i++)
+        if (pick[i]) {
+            if (*first < 0)
+                *first = i;
+            *last = i;
+            k++;
+        }
+    return k;
+}
+
+/* True if the pages picked are side by side (first..last, none missing). */
+bool pages_pick_span(const bool *pick, int n, int *first, int *last)
+{
+    int k = pick_count(pick, n, first, last);
+    return k > 0 && k == *last - *first + 1;
+}
+
+/* "p. 3", "pp. 3–7", "pp. 1, 4, 9", or "12 pages" when the list is too long. */
+static void pick_label(const bool *pick, int n, char *out, size_t cap)
+{
+    int first, last, k = pick_count(pick, n, &first, &last);
+    if (k == 1 || (k > 1 && k == last - first + 1)) {
+        if (first == last)
+            snprintf(out, cap, "p. %d", first + 1);
+        else
+            snprintf(out, cap, "pp. %d–%d", first + 1, last + 1);
+        return;
+    }
+    size_t used = (size_t)snprintf(out, cap, "pp.");
+    for (int i = 0; i < n && used < cap; i++)
+        if (pick[i])
+            used += (size_t)snprintf(out + used, cap - used, "%s %d", used > 3 ? "," : "", i + 1);
+    if (used >= cap)
+        snprintf(out, cap, "%d pages", k);
+}
+
+void pages_delete(Window *w, Doc *d, const bool *pick)
+{
+    int first, last, k = pick_count(pick, d->npages, &first, &last);
+    if (k == 0)
+        return;
+    if (k >= d->npages) {
         ui_message(w, "a PDF needs at least one page");
         return;
     }
@@ -163,28 +208,31 @@ void pages_delete(Window *w, Doc *d, int first, int last)
         return;
     doc_kill_focus(d);
     render_cancel(d, -1);
-    for (int i = last; i >= first; i--) {
-        doc_reload_page(d, i); /* closed before it goes */
-        FPDFPage_Delete(d->pdf, i);
-    }
+    for (int i = last; i >= first; i--)
+        if (pick[i]) {
+            doc_reload_page(d, i); /* closed before it goes */
+            FPDFPage_Delete(d->pdf, i);
+        }
     int *map = xmalloc((size_t)b.old_n * sizeof *map);
-    for (int i = 0; i < b.old_n; i++)
-        map[i] = i < first ? i : i > last ? i - (last - first + 1) : -1;
-    finish(d, &b, map, SDL_min(first, b.old_n - (last - first + 1) - 1));
+    for (int i = 0, gone = 0; i < b.old_n; i++)
+        map[i] = pick[i] ? (gone++, -1) : i - gone;
+    finish(d, &b, map, SDL_min(first, b.old_n - k - 1));
     free(map);
-    char what[48];
-    range_label(first, last, what, sizeof what);
+    char what[80];
+    pick_label(pick, b.old_n, what, sizeof what);
     ui_message_long(w, 5000, "deleted %s   u undoes it", what);
 }
 
-void pages_rotate(Window *w, Doc *d, int first, int last, int quarters)
+void pages_rotate(Window *w, Doc *d, const bool *pick, int quarters)
 {
-    first = SDL_clamp(first, 0, d->npages - 1), last = SDL_clamp(last, first, d->npages - 1);
+    int first, last;
+    if (pick_count(pick, d->npages, &first, &last) == 0)
+        return;
     Before b;
     if (!begin(w, d, &b))
         return;
     for (int i = first; i <= last; i++) {
-        FPDF_PAGE p = doc_page(d, i);
+        FPDF_PAGE p = pick[i] ? doc_page(d, i) : NULL;
         if (p)
             FPDFPage_SetRotation(p, ((FPDFPage_GetRotation(p) + quarters) % 4 + 4) % 4);
     }
@@ -193,8 +241,8 @@ void pages_rotate(Window *w, Doc *d, int first, int last, int quarters)
         map[i] = i;
     finish(d, &b, map, first);
     free(map);
-    char what[48];
-    range_label(first, last, what, sizeof what);
+    char what[80];
+    pick_label(pick, b.old_n, what, sizeof what);
     ui_message(w, "%s turned %s (in the file)   u undoes it", what, quarters > 0 ? "right" : "left");
 }
 
@@ -239,24 +287,23 @@ int pages_move(Window *w, Doc *d, int first, int last, int dest)
     return dest;
 }
 
-/* Pages first..last as a new PDF at path. */
-bool pages_extract(Window *w, Doc *d, int first, int last, const char *path)
+/* The pages picked, in their order, as a new PDF at path. */
+bool pages_extract(Window *w, Doc *d, const bool *pick, const char *path)
 {
-    first = SDL_clamp(first, 0, d->npages - 1), last = SDL_clamp(last, first, d->npages - 1);
     FPDF_DOCUMENT out = FPDF_CreateNewDocument();
-    int n = last - first + 1;
-    int *idx = xmalloc((size_t)n * sizeof *idx);
-    for (int i = 0; i < n; i++)
-        idx[i] = first + i;
+    int *idx = xmalloc((size_t)SDL_max(1, d->npages) * sizeof *idx), n = 0;
+    for (int i = 0; i < d->npages; i++)
+        if (pick[i])
+            idx[n++] = i;
     doc_kill_focus(d);
-    bool ok = out && FPDF_ImportPagesByIndex(out, d->pdf, idx, (unsigned long)n, 0);
+    bool ok = out && n > 0 && FPDF_ImportPagesByIndex(out, d->pdf, idx, (unsigned long)n, 0);
     free(idx);
     char err[600] = "cannot copy the pages";
     ok = ok && pdf_write(out, path, err, sizeof err);
     if (out)
         FPDF_CloseDocument(out);
-    char what[48];
-    range_label(first, last, what, sizeof what);
+    char what[80];
+    pick_label(pick, d->npages, what, sizeof what);
     if (ok)
         ui_message_long(w, 6000, "%s saved as %s   (:e opens it)", what, strrchr(path, '/') ? strrchr(path, '/') + 1 : path);
     else
@@ -321,14 +368,27 @@ bool pages_parse_range(const char *s, int npages, int *first, int *last)
     return true;
 }
 
-/* "paper.pdf", pages 3-5 -> "paper-p3-5.pdf" next to it. */
-void pages_default_name(Doc *d, int first, int last, char *out, size_t cap)
+/* "paper.pdf", pages 3-5 -> "paper-p3-5.pdf" next to it; pages 1 and 4 ->
+ * "paper-p1,4.pdf"; too many pages apart -> "paper-12-pages.pdf". */
+void pages_default_name(Doc *d, const bool *pick, char *out, size_t cap)
 {
     size_t n = strlen(d->path);
     if (n > 4 && !strcasecmp(d->path + n - 4, ".pdf"))
         n -= 4;
-    if (first == last)
-        snprintf(out, cap, "%.*s-p%d.pdf", (int)n, d->path, first + 1);
-    else
-        snprintf(out, cap, "%.*s-p%d-%d.pdf", (int)n, d->path, first + 1, last + 1);
+    int first, last, k = pick_count(pick, d->npages, &first, &last);
+    char pages[64];
+    if (k == 1 || (k > 1 && k == last - first + 1)) {
+        if (first == last)
+            snprintf(pages, sizeof pages, "p%d", first + 1);
+        else
+            snprintf(pages, sizeof pages, "p%d-%d", first + 1, last + 1);
+    } else {
+        size_t used = (size_t)snprintf(pages, sizeof pages, "p");
+        for (int i = 0; i < d->npages && used < sizeof pages; i++)
+            if (pick[i])
+                used += (size_t)snprintf(pages + used, sizeof pages - used, "%s%d", used > 1 ? "," : "", i + 1);
+        if (used >= sizeof pages)
+            snprintf(pages, sizeof pages, "%d-pages", k);
+    }
+    snprintf(out, cap, "%.*s-%s.pdf", (int)n, d->path, pages);
 }

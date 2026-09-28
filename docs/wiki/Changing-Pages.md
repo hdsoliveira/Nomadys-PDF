@@ -6,24 +6,35 @@ change), and every change can be undone.
 
 ## In the page grid
 
-Open the grid with `\g`. The page under the frame is the *selected* one.
-To act on several pages, press `v` and move to the other end: the pages
-between are tinted.
+Open the grid with `\g`. The page under the frame is the *selected* one;
+`h` `j` `k` `l` move the frame. The changes act on the pages *chosen*
+(tinted), or on the selected page when none is chosen:
+
+- `Space` chooses or unchooses one page. The chosen pages need not be side
+  by side: choose page 1, go to page 4, choose it, and `y` saves a PDF with
+  just pages 1 and 4.
+- `v` chooses a run of pages: press it, then move to the other end.
 
 | Key | Action |
 |---|---|
-| `v` | choose several pages (again: stop) |
+| `Space` | choose / unchoose this page |
+| `v` | choose a run of pages (again: stop) |
 | `x` or `d` | delete them |
 | `r` / `R` | turn them 90° right / left, in the file |
-| `<` / `>` | move them one place earlier / later (`3>`: three places) |
-| `y` | save them as a new PDF; the name is asked (`paper-p3-7.pdf` is offered) |
+| `←` / `→` | move them one place earlier / later (`3→`: three places); also `<` / `>` |
+| `↑` / `↓` | move them a row up / down |
+| `y` | save them as a new PDF; the name is asked (`paper-p3-7.pdf` or `paper-p1,4.pdf` is offered) |
 | `i` | insert another PDF after the selected page (`Tab` completes the path) |
 | `u` / `Ctrl-r` | undo / redo |
 | `Enter` | go to the page |
 | `Esc` | close the grid |
 
-The bottom line of the grid always lists the keys; after `v` it shows which
-pages are chosen.
+Only pages side by side move with the arrows, as one block, and they stay
+chosen where they go, so `→` `→` `→` walks them along. Chosen pages apart
+can be deleted, turned or saved, not moved.
+
+The bottom line of the grid always lists the keys and says which pages are
+chosen.
 
 ## From the command line
 

@@ -1,8 +1,10 @@
 /* The page grid (\g or :pages): every page as a thumbnail, hjkl to choose,
- * Enter to go there. Thumbnails are drawn while idle, a few at a time,
- * so the grid shows at once even for heavy papers; they are freed when the
- * grid closes. */
+ * Enter to go there. Space chooses pages one by one, v a run of them; the
+ * page changes act on those chosen. Thumbnails are drawn while idle, a few
+ * at a time, so the grid shows at once even for heavy papers; they are
+ * freed when the grid closes. */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "nomadys.h"
@@ -71,6 +73,10 @@ void grid_reset(Window *w)
 
 void grid_free(Window *w)
 {
+    free(w->grid_marked);
+    free(w->grid_extract);
+    w->grid_marked = w->grid_extract = NULL;
+    w->grid_marked_n = w->grid_extract_n = 0;
     if (!w->thumbs)
         return;
     for (int i = 0; i < THUMBS; i++)
@@ -114,6 +120,63 @@ void grid_close(Window *w)
     grid_free(w);
     w->redraw = true;
 }
+
+/* The pages chosen with Space, one per page; none if the page count
+ * changed under them (another window, :append). */
+static bool *marks(Window *w, View *v)
+{
+    int n = v->doc->npages;
+    if (w->grid_marked && w->grid_marked_n == n)
+        return w->grid_marked;
+    free(w->grid_marked);
+    w->grid_marked = xcalloc((size_t)SDL_max(1, n), sizeof *w->grid_marked);
+    w->grid_marked_n = n;
+    return w->grid_marked;
+}
+
+static bool chosen(Window *w, View *v, int page)
+{
+    if (w->grid_anchor >= 0 && page >= SDL_min(w->grid_anchor, w->grid_sel) && page <= SDL_max(w->grid_anchor, w->grid_sel))
+        return true;
+    return marks(w, v)[page];
+}
+
+/* Those chosen with Space and with v; none: the page selected. */
+bool *grid_pick(Window *w, View *v)
+{
+    int n = v->doc->npages;
+    bool *pick = pages_pick(n, w->grid_sel, w->grid_sel), any = false;
+    for (int i = 0; i < n; i++)
+        any |= chosen(w, v, i);
+    for (int i = 0; any && i < n; i++)
+        pick[i] = chosen(w, v, i);
+    return pick;
+}
+
+void grid_mark(Window *w)
+{
+    View *v = cur_view(w);
+    bool *m = marks(w, v);
+    m[w->grid_sel] = !m[w->grid_sel];
+    w->redraw = true;
+}
+
+void grid_marks_remap(Window *w, const Doc *d, const int *map, int old_n)
+{
+    View *v = cur_view(w);
+    if (!w->grid_marked || !v || v->doc != d)
+        return;
+    bool *old = w->grid_marked;
+    int from = w->grid_marked_n;
+    w->grid_marked = NULL;
+    bool *m = marks(w, v);
+    for (int i = 0; map && from == old_n && i < old_n; i++)
+        if (old[i] && map[i] >= 0 && map[i] < d->npages)
+            m[map[i]] = true;
+    free(old);
+}
+
+int grid_cols(Window *w) { return layout(w, cur_view(w)).cols; }
 
 void grid_move(Window *w, int dx, int dy)
 {
@@ -222,9 +285,7 @@ void grid_draw(Window *w)
                 ui_fill(w, dx, dy, dw, dh, t->panel_header, 40);
             }
             bool sel = page == w->grid_sel;
-            bool chosen = w->grid_anchor >= 0 && page >= SDL_min(w->grid_anchor, w->grid_sel) &&
-                          page <= SDL_max(w->grid_anchor, w->grid_sel);
-            if (chosen) /* v: the pages the next change acts on */
+            if (chosen(w, v, page)) /* Space, v: the pages the next change acts on */
                 ui_fill(w, dx, dy, dw, dh, t->caret, 60);
             if (sel) {
                 ui_frame(w, dx - 5 * th, dy - 5 * th, dw + 10 * th, dh + 10 * th, 3 * th, t->caret);
@@ -238,12 +299,20 @@ void grid_draw(Window *w)
                       sel ? t->caret : page == current ? t->tab_accent : t->panel_fg);
         }
     }
-    char info[200];
-    if (w->grid_anchor >= 0)
-        snprintf(info, sizeof info - 4, "pp. %d\u2013%d chosen   x delete   r R turn   < > move   y save as PDF   v stop",
-                 SDL_min(w->grid_anchor, w->grid_sel) + 1, SDL_max(w->grid_anchor, w->grid_sel) + 1);
+    char info[240];
+    int nchosen = 0, first = -1, last = -1;
+    for (int i = 0; i < n; i++)
+        if (chosen(w, v, i))
+            first = first < 0 ? i : first, last = i, nchosen++;
+    if (nchosen == 1)
+        snprintf(info, sizeof info - 4, "p. %d chosen   x delete   r R turn   \u2190 \u2192 move   y save as PDF   Space unchoose", first + 1);
+    else if (nchosen && nchosen == last - first + 1)
+        snprintf(info, sizeof info - 4, "pp. %d\u2013%d chosen   x delete   r R turn   \u2190 \u2192 move   y save as PDF%s",
+                 first + 1, last + 1, w->grid_anchor >= 0 ? "   v stop" : "");
+    else if (nchosen)
+        snprintf(info, sizeof info - 4, "%d pages chosen   x delete   r R turn   y save them as a PDF   Space choose / unchoose", nchosen);
     else
-        snprintf(info, sizeof info - 4, "p. %d of %d   Enter go   v choose pages   x delete   r turn   < > move   y save as PDF   i insert a PDF   u undo",
+        snprintf(info, sizeof info - 4, "p. %d of %d   Enter go   Space v choose pages   x delete   r turn   \u2190 \u2192 move   y save as PDF   i insert a PDF   u undo",
                  w->grid_sel + 1, n);
     int bar = ui_bar_height(w), p = (int)(8 * w->density);
     ui_fill(w, 0, (float)(w->H - bar), (float)w->W, (float)bar, t->bar_bg, 240);

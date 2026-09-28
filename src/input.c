@@ -485,14 +485,6 @@ static void a_grid_bigger(Window *w, View *v, int c, const char *a) { (void)v, (
 static void a_grid_smaller(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; grid_zoom(w, -1); }
 static void a_grid_go(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; grid_go(w); }
 
-/* The pages a grid change acts on: those chosen with v, or the one selected. */
-static void grid_range(Window *w, int *first, int *last)
-{
-    *first = *last = w->grid_sel;
-    if (w->grid_anchor >= 0)
-        *first = SDL_min(w->grid_anchor, w->grid_sel), *last = SDL_max(w->grid_anchor, w->grid_sel);
-}
-
 static void a_grid_choose(Window *w, View *v, int c, const char *a)
 {
     (void)v, (void)c, (void)a;
@@ -500,57 +492,78 @@ static void a_grid_choose(Window *w, View *v, int c, const char *a)
     w->redraw = true;
 }
 
+static void a_grid_mark(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; grid_mark(w); }
+
 static void a_grid_delete(Window *w, View *v, int c, const char *a)
 {
     (void)c, (void)a;
-    int first, last;
-    grid_range(w, &first, &last);
-    pages_delete(w, v->doc, first, last);
+    bool *pick = grid_pick(w, v);
+    int first = w->grid_sel;
+    for (int i = v->doc->npages - 1; i >= 0; i--)
+        first = pick[i] ? i : first;
+    pages_delete(w, v->doc, pick);
+    free(pick);
     w->grid_sel = SDL_clamp(first, 0, v->doc->npages - 1);
 }
 
 static void a_grid_rotate(Window *w, View *v, int c, const char *a)
 {
     (void)c;
-    int first, last, anchor = w->grid_anchor;
-    grid_range(w, &first, &last);
-    pages_rotate(w, v->doc, first, last, a[0] == 'R' ? -1 : 1);
+    int anchor = w->grid_anchor;
+    bool *pick = grid_pick(w, v);
+    pages_rotate(w, v->doc, pick, a[0] == 'R' ? -1 : 1);
+    free(pick);
     w->grid_anchor = anchor; /* still chosen: turn again, or move them */
 }
 
+/* < > and the arrows: the pages chosen, side by side, a place (a row for
+ * up / down) earlier or later. */
 static void a_grid_shift(Window *w, View *v, int c, const char *a)
 {
-    int first, last, step = (a[0] == '<' ? -1 : 1) * n1(c);
-    grid_range(w, &first, &last);
+    bool back = !strcmp(a, "<lt>") || !strcmp(a, "<Left>") || !strcmp(a, "<Up>");
+    bool row = !strcmp(a, "<Up>") || !strcmp(a, "<Down>");
+    int first, last, step = (back ? -1 : 1) * (row ? grid_cols(w) : 1) * n1(c);
+    bool *pick = grid_pick(w, v);
+    bool span = pages_pick_span(pick, v->doc->npages, &first, &last);
+    free(pick);
+    if (!span) {
+        ui_message(w, "only pages side by side move together (x r y work on these)");
+        return;
+    }
     bool chosen = w->grid_anchor >= 0;
     int anchor_off = chosen ? w->grid_anchor - first : 0, sel_off = w->grid_sel - first;
+    if (sel_off < 0 || sel_off > last - first)
+        sel_off = 0; /* chosen with Space, the frame elsewhere: it goes with them */
     int to = pages_move(w, v->doc, first, last, first + step);
     if (to < 0)
         return;
     w->grid_sel = to + sel_off; /* the pages stay chosen where they went */
     w->grid_anchor = chosen ? to + anchor_off : -1;
+    grid_move(w, 0, 0);         /* in sight */
     ui_message(w, "moved to p. %d   u undoes it", to + 1);
 }
 
 static void extract_done(Window *w, const char *text)
 {
     View *v = cur_view(w);
-    int first = w->prompt_arg >> 16, last = w->prompt_arg & 0xFFFF;
-    if (!*text || !v)
-        return;
-    char *path = expand_home(text);
-    pages_extract(w, v->doc, first, last, path);
-    free(path);
+    if (*text && v && w->grid_extract && w->grid_extract_n == v->doc->npages) {
+        char *path = expand_home(text);
+        pages_extract(w, v->doc, w->grid_extract, path);
+        free(path);
+    }
+    free(w->grid_extract);
+    w->grid_extract = NULL;
 }
 
 static void a_grid_extract(Window *w, View *v, int c, const char *a)
 {
     (void)c, (void)a;
-    int first, last;
-    grid_range(w, &first, &last);
+    free(w->grid_extract);
+    w->grid_extract = grid_pick(w, v); /* kept until the name is typed */
+    w->grid_extract_n = v->doc->npages;
     char name[CMD_MAX - 8];
-    pages_default_name(v->doc, first, last, name, sizeof name);
-    prompt_open(w, "save the pages as: ", name, extract_done, first << 16 | last);
+    pages_default_name(v->doc, w->grid_extract, name, sizeof name);
+    prompt_open(w, "save the pages as: ", name, extract_done, 0);
 }
 
 static void a_grid_insert(Window *w, View *v, int c, const char *a)
@@ -838,17 +851,20 @@ static const Binding crop_map[] = {
 static const Binding grid_map[] = {
     GROUP("Choosing a page"),
     {"h", a_grid_h, "move"}, {"j", a_grid_j, "move"}, {"k", a_grid_k, "move"}, {"l", a_grid_l, "move"},
-    {"<Left>", a_grid_h, NULL}, {"<Down>", a_grid_j, NULL}, {"<Up>", a_grid_k, NULL}, {"<Right>", a_grid_l, NULL},
     {"J", a_grid_down, "a screen down / up"}, {"K", a_grid_up, "a screen down / up"},
     {"<C-d>", a_grid_down, NULL}, {"<C-u>", a_grid_up, NULL}, {"<PageDown>", a_grid_down, NULL}, {"<PageUp>", a_grid_up, NULL},
     {"gg", a_grid_first, "first / last page"}, {"G", a_grid_last, "first / last page"},
     {"+", a_grid_bigger, "bigger / smaller thumbnails"}, {"-", a_grid_smaller, "bigger / smaller thumbnails"},
     GROUP("Changing the pages (u undoes)"),
+    {" ", a_grid_mark, "choose / unchoose this page (several, apart)"},
     {"v", a_grid_choose, "choose several pages (then move to the other end)"},
     {"x", a_grid_delete, "delete the page(s)"}, {"d", a_grid_delete, NULL},
     {"r", a_grid_rotate, "turn right / left, in the file"}, {"R", a_grid_rotate, "turn right / left, in the file"},
-    {"<lt>", a_grid_shift, "move the page(s) one place earlier / later"},
-    {">", a_grid_shift, "move the page(s) one place earlier / later"},
+    {"<Left>", a_grid_shift, "move the page(s) one place earlier / later"},
+    {"<Right>", a_grid_shift, "move the page(s) one place earlier / later"},
+    {"<Up>", a_grid_shift, "move the page(s) a row up / down"},
+    {"<Down>", a_grid_shift, "move the page(s) a row up / down"},
+    {"<lt>", a_grid_shift, NULL}, {">", a_grid_shift, NULL},
     {"y", a_grid_extract, "save the page(s) as a new PDF"},
     {"i", a_grid_insert, "insert another PDF after this page"},
     {"u", a_undo, "undo / redo"}, {"<C-r>", a_undo, "undo / redo"},

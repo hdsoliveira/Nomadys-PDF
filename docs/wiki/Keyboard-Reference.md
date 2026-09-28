@@ -200,15 +200,17 @@ Scrolling, marks, jumps, undo, `\l` and `\c` work here too.
 
 | Key | Action |
 |---|---|
-| `h` `j` `k` `l`, arrows | choose a page |
+| `h` `j` `k` `l` | choose a page |
 | `J` `K`, `Ctrl-d` `Ctrl-u` | a screen down / up |
 | `gg` / `G` | first / last page |
 | `+` / `-` | bigger / smaller thumbnails |
 | `Enter` | go to the page |
-| `v` | choose several pages |
+| `Space` | choose / unchoose this page (pages apart too) |
+| `v` | choose a run of pages |
 | `x`, `d` | delete them |
 | `r` / `R` | turn them in the file |
-| `<` / `>` | move them earlier / later |
+| `←` `→`, `<` `>` | move them earlier / later (side by side only) |
+| `↑` `↓` | move them a row up / down |
 | `y` | save them as a new PDF |
 | `i` | insert a PDF after this page |
 | `u` / `Ctrl-r` | undo / redo |

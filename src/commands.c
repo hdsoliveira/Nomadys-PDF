@@ -232,14 +232,16 @@ static void c_extract(Window *w, View *v, const char *a)
         return;
     }
     char name[4200];
+    bool *pick = pages_pick(v->doc->npages, first, last);
     if (used && a[used]) {
         char *p = expand_home(a + used);
         snprintf(name, sizeof name, "%s", p);
         free(p);
     } else {
-        pages_default_name(v->doc, first, last, name, sizeof name);
+        pages_default_name(v->doc, pick, name, sizeof name);
     }
-    pages_extract(w, v->doc, first, last, name);
+    pages_extract(w, v->doc, pick, name);
+    free(pick);
 }
 
 /* :delete 3-7 */
@@ -250,7 +252,9 @@ static void c_delete_pages(Window *w, View *v, const char *a)
         ui_message(w, "usage: :delete 3-7  (u undoes it)");
         return;
     }
-    pages_delete(w, v->doc, first, last);
+    bool *pick = pages_pick(v->doc->npages, first, last);
+    pages_delete(w, v->doc, pick);
+    free(pick);
 }
 
 static void c_bibtex(Window *w, View *v, const char *a) { (void)a; cite_bibtex(w, v); }
