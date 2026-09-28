@@ -26,6 +26,8 @@ static PRect norm(FS_RECTF r)
                    SDL_max(r.left, r.right), SDL_min(r.top, r.bottom)};
 }
 
+static bool get_string(FPDF_ANNOTATION a, const char *key, char *out, size_t cap);
+
 static void free_notes(PageSlot *s)
 {
     for (int i = 0; i < s->nnotes; i++)
@@ -98,6 +100,11 @@ void notes_page(Doc *d, int page)
             /* length in bytes includes the UTF-16 terminator */
             nt->has_comment = FPDFAnnot_GetStringValue(a, "Contents", NULL, 0) > 2;
             nt->color = note_color(a);
+            /* marked by note_create_area; older ones: one quad taller than a line */
+            char mark[8];
+            nt->area = type == FPDF_ANNOT_HIGHLIGHT &&
+                       ((get_string(a, "NomadysArea", mark, sizeof mark) && mark[0] == '1') ||
+                        (nt->nquads == 1 && nt->quads[0].t - nt->quads[0].b > 40));
         }
         FPDFPage_CloseAnnot(a);
     }
@@ -426,7 +433,7 @@ static void finish_note(Doc *d, int page, FPDF_ANNOTATION a, PRect bounds, const
     doc_mark_changed(d, page);
 }
 
-bool note_create(Doc *d, int page, const PRect *quads, int n, const char *comment, uint32_t color)
+static bool highlight(Doc *d, int page, const PRect *quads, int n, const char *comment, uint32_t color, bool area)
 {
     FPDF_PAGE p = doc_page(d, page);
     if (!p || n <= 0)
@@ -434,6 +441,8 @@ bool note_create(Doc *d, int page, const PRect *quads, int n, const char *commen
     FPDF_ANNOTATION a = FPDFPage_CreateAnnot(p, FPDF_ANNOT_HIGHLIGHT);
     if (!a)
         return false;
+    if (area)
+        set_string(a, "NomadysArea", "1"); /* dark mode tints it more lightly than text */
     PRect u = quads[0];
     for (int i = 0; i < n; i++) {
         PRect r = quads[i];
@@ -446,12 +455,17 @@ bool note_create(Doc *d, int page, const PRect *quads, int n, const char *commen
     return true;
 }
 
+bool note_create(Doc *d, int page, const PRect *quads, int n, const char *comment, uint32_t color)
+{
+    return highlight(d, page, quads, n, comment, color, false);
+}
+
 /* An area such as a figure: a highlight (like Acrobat) or, with
  * area_style = frame, a rectangle drawn around it. */
 bool note_create_area(Doc *d, int page, PRect r, const char *comment, uint32_t color)
 {
     if (!cfg.area_frame)
-        return note_create(d, page, &r, 1, comment, color);
+        return highlight(d, page, &r, 1, comment, color, true);
     FPDF_PAGE p = doc_page(d, page);
     FPDF_ANNOTATION a = p ? FPDFPage_CreateAnnot(p, FPDF_ANNOT_SQUARE) : NULL;
     if (!a)
@@ -529,8 +543,9 @@ int note_move(Doc *d, int page, int annot, PRect r)
         return annot;
     }
     uint32_t color = note_color(a);
-    char name[64];
+    char name[64], area[8] = "";
     annot_name(a, name, sizeof name); /* the new one is the same annotation */
+    get_string(a, "NomadysArea", area, sizeof area);
     char *comment = NULL;
     unsigned long bytes = FPDFAnnot_GetStringValue(a, "Contents", NULL, 0);
     if (bytes > 2) {
@@ -559,6 +574,8 @@ int note_move(Doc *d, int page, int annot, PRect r)
     } else {
         FS_QUADPOINTSF q = {r.l, r.t, r.r, r.t, r.l, r.b, r.r, r.b};
         FPDFAnnot_AppendAttachmentPoints(n, &q);
+        if (area[0] == '1')
+            set_string(n, "NomadysArea", "1");
     }
     finish_note(d, page, n, r, comment, color, name);
     free(comment);

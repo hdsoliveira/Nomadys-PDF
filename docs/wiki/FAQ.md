@@ -51,9 +51,10 @@ Set `font = ` to a name from `fc-list : family` (for example
 starts.
 
 **Dark mode makes a figure look wrong.**
-Photos keep their colours and drawings on white are recoloured; if one is
-judged wrongly, `dark_images = keep` leaves every image untouched (or
-switch with `i` for that figure).
+Photos and the pictures you placed (`Ctrl-v` then `i`, `:image`) keep their
+colours, and drawings on white are recoloured; if one is judged wrongly,
+`dark_images = keep` leaves every image untouched (or switch with `i` for
+that figure).
 
 **Form calculations do not update.**
 Nomadys-PDF does not run JavaScript inside PDFs, which some forms use for

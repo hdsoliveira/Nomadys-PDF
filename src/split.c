@@ -106,18 +106,16 @@ static void pane_label(Window *w, SDL_Rect r, View *v, bool focused)
 }
 
 /* Between the panes: a gutter in the theme's chrome colour with a small
- * grip; the focused pane framed in the accent, the other one dimmed a
- * little; each pane's file named in a pill. */
+ * grip; the focused pane framed in the accent, the other one shown as it
+ * is; each pane's file named in a pill. */
 void split_draw_frame(Window *w)
 {
     if (!w->split)
         return;
     const Theme *t = wtheme(w);
-    SDL_Rect a = pane_rect(w, false), b = pane_rect(w, true), f = w->split_focus ? b : a, o = w->split_focus ? a : b;
+    SDL_Rect a = pane_rect(w, false), b = pane_rect(w, true), f = w->split_focus ? b : a;
     float d = w->density, line = SDL_max(2.0f, SDL_roundf(2 * d));
     uint32_t gutter = t->tab_bg, grip = rgb_mix(t->tab_bg, t->panel_header, 0.7f);
-    /* the other pane steps back */
-    ui_fill(w, (float)o.x, (float)o.y, (float)o.w, (float)o.h, t->background, 70);
     if (w->split_side) {
         float gx = (float)(a.x + a.w), gw = (float)(b.x - a.x - a.w), cy = a.y + a.h / 2.0f;
         ui_fill(w, gx, (float)a.y, gw, (float)a.h, gutter, 255);

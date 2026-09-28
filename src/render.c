@@ -319,16 +319,22 @@ void view_show_rect(View *v, int page, PRect r, int W, int H, int top)
 /* ---------- dark mode ---------- */
 /* Recolours a rendered page with the theme's paper and ink, outside images.
  * Dark mode first inverts lightness (keeping hue: c + 255 - max - min), so
- * white paper becomes 0; each channel then maps linearly: paper -> page_bg,
- * ink -> page_fg. (Light mode never calls this: pages stay white.) */
+ * white paper becomes 0; each channel then maps paper -> page_bg, ink ->
+ * page_fg. The map bends towards the ink (INK_WEIGHT): light text on dark
+ * paper looks thinner than dark text on white, and the half-covered pixels
+ * at the edges of letters would otherwise fade into the paper. (Light mode
+ * never calls this: pages stay white.) */
+#define INK_WEIGHT 1.6
 static void recolor(uint8_t *px, int w, int h, int stride, const uint8_t *keep, bool dark)
 {
     const Theme *t = theme_of(dark);
     uint8_t lut[3][256];
     for (int c = 0; c < 3; c++) {
         int paper = (t->page_bg >> (8 * c)) & 0xFF, ink = (t->page_fg >> (8 * c)) & 0xFF;
-        for (int i = 0; i < 256; i++)
-            lut[c][i] = (uint8_t)(dark ? paper + i * (ink - paper) / 255 : ink + i * (paper - ink) / 255);
+        for (int i = 0; i < 256; i++) {
+            double k = dark ? 1 - pow(1 - i / 255.0, INK_WEIGHT) : i / 255.0;
+            lut[c][i] = (uint8_t)SDL_lround(dark ? paper + k * (ink - paper) : ink + k * (paper - ink));
+        }
     }
     for (int y = 0; y < h; y++) {
         uint8_t *p = px + (size_t)y * stride;
@@ -385,12 +391,34 @@ static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w,
         int t = SDL_max(0, SDL_min(y0, y1)), b = SDL_min(h, SDL_max(y0, y1) + 1);
         if (l >= rr || t >= b)
             continue;
-        if (cfg.dark_images == DARK_IMAGES_SMART && !looks_like_photo(px, stride, l, t, rr, b))
+        if (cfg.dark_images == DARK_IMAGES_SMART && k < s->placed_from && !looks_like_photo(px, stride, l, t, rr, b))
             continue;
         if (!m && !(m = calloc((size_t)w * h, 1)))
             return NULL; /* no memory for the mask: recolour everything */
+        const Alpha *al = k >= s->placed_from && s->alphas ? &s->alphas[k - s->placed_from] : NULL;
+        if (!al || !al->a) {
+            for (int y = t; y < b; y++)
+                memset(m + (size_t)y * w + l, 1, rr - l);
+            continue;
+        }
+        /* a see-through picture: only where it is opaque; the page around
+         * and under it is recoloured. Its top-left corner and edges on
+         * screen give each pixel's place in the picture. */
+        int ox, oy, ux, uy, vx, vy;
+        FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, r.l, r.t, &ox, &oy);
+        FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, r.r, r.t, &ux, &uy);
+        FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, r.l, r.b, &vx, &vy);
+        double ax = ux - ox, ay = uy - oy, bx = vx - ox, by = vy - oy, det = ax * by - ay * bx;
+        if (SDL_fabs(det) < 1)
+            continue;
         for (int y = t; y < b; y++)
-            memset(m + (size_t)y * w + l, 1, rr - l);
+            for (int x = l; x < rr; x++) {
+                double dx = x + 0.5 - ox, dy = y + 0.5 - oy;
+                double u = (dx * by - dy * bx) / det, vv = (ax * dy - ay * dx) / det;
+                int iu = (int)(u * al->w), iv = (int)(vv * al->h);
+                if (iu >= 0 && iu < al->w && iv >= 0 && iv < al->h && al->a[(size_t)iv * al->w + iu] >= 128)
+                    m[(size_t)y * w + x] = 1;
+            }
     }
     return m;
 }
@@ -454,6 +482,105 @@ static void render_cancel_view(View *v)
         job_drop();
 }
 
+/* ---------- highlights in dark mode ----------
+ * PDFium draws a highlight by multiplying the page with its colour: black
+ * text on yellow. Recoloured for dark mode that becomes light text on a
+ * glaring yellow block. So on a dark page the highlighted places are drawn
+ * again without annotations, recoloured like the rest, and then tinted
+ * with the highlight's colour where the paper shows, the text keeping the
+ * theme's ink. An area (a figure) is tinted more lightly than text. */
+#define TINT_TEXT 0.35f
+#define TINT_AREA 0.22f
+
+typedef struct { int l, t, r, b; uint32_t color; bool area; } Tint;
+
+static uint8_t *white_bitmap(int w, int h, FPDF_BITMAP *bmp);
+
+/* The highlights of the page on the bitmap (cx, cy, w, h), in pixels. */
+static int highlight_marks(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w, int h, int pw, int ph, int rot,
+                           Tint **out)
+{
+    notes_page(d, page);
+    PageSlot *s = &d->slots[page];
+    int n = 0, cap = 0;
+    *out = NULL;
+    for (int i = 0; i < s->nnotes; i++) {
+        const Note *nt = &s->notes[i];
+        if (nt->subtype != FPDF_ANNOT_HIGHLIGHT)
+            continue;
+        for (int q = 0; q < nt->nquads; q++) {
+            PRect r = nt->quads[q];
+            int x0, y0, x1, y1;
+            FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, r.l, r.t, &x0, &y0);
+            FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, r.r, r.b, &x1, &y1);
+            Tint m = {SDL_max(0, SDL_min(x0, x1)), SDL_max(0, SDL_min(y0, y1)), SDL_min(w, SDL_max(x0, x1) + 1),
+                      SDL_min(h, SDL_max(y0, y1) + 1), nt->color, nt->area};
+            if (m.l >= m.r || m.t >= m.b)
+                continue;
+            if (n == cap)
+                *out = xrealloc(*out, (size_t)(cap = cap ? cap * 2 : 8) * sizeof **out);
+            (*out)[n++] = m;
+        }
+    }
+    return n;
+}
+
+/* The page under the highlights, as it is without them: drawn again in
+ * bands, one for each group of highlights that overlap in height, so a
+ * page with a highlight at the top and one at the bottom is not drawn
+ * again whole (PDFium skips what lies outside the band). */
+static int by_top(const void *a, const void *b) { return ((const Tint *)a)->t - ((const Tint *)b)->t; }
+
+static void unhighlight(FPDF_PAGE p, uint8_t *buf, int stride, int cx, int cy, int pw, int ph, int rot,
+                        const Tint *marks, int n)
+{
+    Tint *m = xmalloc((size_t)n * sizeof *m);
+    memcpy(m, marks, (size_t)n * sizeof *m);
+    qsort(m, (size_t)n, sizeof *m, by_top);
+    for (int first = 0, last; first < n; first = last) {
+        int l = m[first].l, t = m[first].t, r = m[first].r, b = m[first].b;
+        for (last = first + 1; last < n && m[last].t <= b + 4; last++)
+            l = SDL_min(l, m[last].l), r = SDL_max(r, m[last].r), b = SDL_max(b, m[last].b);
+        FPDF_BITMAP bmp;
+        uint8_t *under = white_bitmap(r - l, b - t, &bmp);
+        if (!under)
+            continue;
+        FPDF_RenderPageBitmap(bmp, p, -(cx + l), -(cy + t), pw, ph, rot, RENDER_FLAGS & ~FPDF_ANNOT);
+        FPDFBitmap_Destroy(bmp);
+        for (int i = first; i < last; i++)
+            for (int y = m[i].t; y < m[i].b; y++)
+                memcpy(buf + (size_t)y * stride + 4 * m[i].l,
+                       under + (size_t)(y - t) * (r - l) * 4 + 4 * (m[i].l - l), (size_t)(m[i].r - m[i].l) * 4);
+        free(under);
+    }
+    free(m);
+}
+
+static int luma(int r, int g, int b) { return (r * 54 + g * 183 + b * 19) >> 8; }
+
+static void tint(uint8_t *buf, int stride, const Tint *m, int n)
+{
+    const Theme *t = theme_of(true);
+    int paper = luma(t->page_bg >> 16, (t->page_bg >> 8) & 0xFF, t->page_bg & 0xFF);
+    int ink = luma(t->page_fg >> 16, (t->page_fg >> 8) & 0xFF, t->page_fg & 0xFF);
+    int span = SDL_max(1, SDL_abs(ink - paper));
+    for (int i = 0; i < n; i++) {
+        int cr = m[i].color >> 16, cg = (m[i].color >> 8) & 0xFF, cb = m[i].color & 0xFF;
+        float strength = m[i].area ? TINT_AREA : TINT_TEXT;
+        for (int y = m[i].t; y < m[i].b; y++) {
+            uint8_t *px = buf + (size_t)y * stride + 4 * m[i].l;
+            for (int x = m[i].l; x < m[i].r; x++, px += 4) {
+                /* full tint on the paper, none on the ink */
+                float inkness = SDL_clamp((float)SDL_abs(luma(px[2], px[1], px[0]) - paper) / span, 0.0f, 1.0f);
+                float a = strength * (1 - inkness);
+                px[0] = (uint8_t)(px[0] + (cb - px[0]) * a);
+                px[1] = (uint8_t)(px[1] + (cg - px[1]) * a);
+                px[2] = (uint8_t)(px[2] + (cr - px[2]) * a);
+            }
+        }
+    }
+}
+
 /* The page's pixels become a texture: form fields drawn on top, dark mode. */
 static SDL_Texture *finish_pixels(Window *win, View *v, int page, FPDF_PAGE p, FPDF_BITMAP bmp, uint8_t *buf,
                                   int pw, int ph, int rot, int cx, int cy, int w, int h, int stride, bool dark)
@@ -463,9 +590,16 @@ static SDL_Texture *finish_pixels(Window *win, View *v, int page, FPDF_PAGE p, F
         FPDF_FFLDraw(d->form, bmp, p, -cx, -cy, pw, ph, rot, RENDER_FLAGS);
     FPDFBitmap_Destroy(bmp);
     if (dark) { /* light mode shows pages as they are */
+        Tint *marks;
+        int nmarks = highlight_marks(d, page, p, cx, cy, w, h, pw, ph, rot, &marks);
+        if (nmarks)
+            unhighlight(p, buf, stride, cx, cy, pw, ph, rot, marks, nmarks);
         uint8_t *keep = image_mask(d, page, p, cx, cy, w, h, pw, ph, rot, buf, stride);
         recolor(buf, w, h, stride, keep, dark);
         free(keep);
+        if (nmarks)
+            tint(buf, stride, marks, nmarks);
+        free(marks);
     }
     SDL_Texture *t = SDL_CreateTexture(win->ren, SDL_PIXELFORMAT_BGRA32, SDL_TEXTUREACCESS_STATIC, w, h);
     if (t) {
