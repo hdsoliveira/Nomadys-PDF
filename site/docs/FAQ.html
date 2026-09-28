@@ -7,7 +7,7 @@
 </head><body>
 <header class="top"><div class="wrap">
 <a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="">Nomadys-PDF</a>
-<nav><a href="../index.html#features">Features</a><a href="../index.html#research">For research</a>
+<nav><a href="../index.html#features">Features</a><a href="../index.html#themes">Themes</a><a href="../index.html#research">For research</a>
 <a class="docs-link" href="../docs/index.html">Documentation</a><a href="../index.html#install">Install</a>
 <a class="gh" href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a></nav>
 </div></header>
@@ -26,7 +26,7 @@
 <p><strong>Equations in comments show as plain text.</strong> They need <code>pdflatex</code> (TeX Live) with <code>amsmath</code> and <code>amssymb</code>. Errors appear under the comment.</p>
 <p>**<code>:bibtex</code> says "no DOI or arXiv number found".** The paper does not print its DOI on the first two pages, nor in its metadata. It needs <code>curl</code> and an internet connection.</p>
 <p><strong>The interface font is wrong.</strong> Set <code>font = </code> to a name from <code>fc-list : family</code> (for example <code>font = JetBrains Mono</code>). An unknown name is reported when the program starts.</p>
-<p><strong>Dark mode makes a figure look wrong.</strong> Photos keep their colours and drawings on white are recoloured; if one is judged wrongly, <code>dark_images = keep</code> leaves every image untouched (or switch with <code>i</code> for that figure).</p>
+<p><strong>Dark mode makes a figure look wrong.</strong> Photos and the pictures you placed (<code>Ctrl-v</code> then <code>i</code>, <code>:image</code>) keep their colours, and drawings on white are recoloured; if one is judged wrongly, <code>dark_images = keep</code> leaves every image untouched (or switch with <code>i</code> for that figure).</p>
 <p><strong>Form calculations do not update.</strong> Nomadys-PDF does not run JavaScript inside PDFs, which some forms use for automatic calculations.</p>
 <p><strong>Can I undo deleting or moving pages?</strong> Yes, with <code>u</code>, until the file is closed. The pages of signed PDFs cannot be changed.</p>
 <p><strong>How do I make it the default PDF reader?</strong> <code>xdg-mime default npdf.desktop application/pdf</code></p>

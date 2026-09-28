@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nomadys-PDF · the keyboard-driven PDF reader for research</title>
-<meta name="description" content="A fast, minimal PDF reader for Linux, driven by vim-style keys: highlights and comments with LaTeX equations, search across every PDF you own, reference previews, version comparison, SyncTeX. Open source.">
+<meta name="description" content="For people who read PDFs for hours: a fast, minimal PDF reader for Linux, driven by vim-style keys: highlights and comments with LaTeX equations, search across every PDF you own, reference previews, version comparison, SyncTeX. Open source.">
 <meta property="og:title" content="Nomadys-PDF">
 <meta property="og:description" content="The keyboard-driven PDF reader for research.">
 <meta property="og:image" content="assets/demos/highlight.jpg">
@@ -17,6 +17,7 @@
   <a class="brand" href="index.html"><img src="assets/icon.svg" alt="">Nomadys-PDF</a>
   <nav>
     <a href="#features">Features</a>
+    <a href="#themes">Themes</a>
     <a href="#research">For research</a>
     <a class="docs-link" href="docs/index.html">Documentation</a>
     <a href="#install">Install</a>
@@ -27,10 +28,13 @@
 <main>
 <div class="hero"><div class="wrap">
   <img class="icon" src="assets/icon.svg" alt="The Nomadys-PDF icon: a tent at dawn, a trail towards the mountain, a page lit in the doorway">
-  <h1>Read papers at the<br><span>speed of thought.</span></h1>
-  <p class="lead">Nomadys-PDF is a fast, minimal PDF reader for Linux, driven entirely by the
-    keyboard. Highlight, comment with LaTeX, search every paper you own and follow every
-    reference, without touching the mouse.</p>
+  <h1>For people who read PDFs<br><span>for hours on end.</span></h1>
+  <p class="lead">If you spend your days inside papers, books and reports, you know the choice:
+    readers bloated with toolbars, side panels, accounts and cloud sync, or bare viewers that
+    leave you alone with the page. Nomadys-PDF sits in between. It is minimal (the page gets the
+    whole window, and everything is a key away), but it brings the quality-of-life tools that
+    make long reading sessions easier.</p>
+  <p class="lead small">I wrote it for my own daily reading, and I give it to the community for free.</p>
   <div class="buttons">
     <a class="btn primary" href="#install">Install</a>
     <a class="btn" href="docs/index.html">Read the documentation</a>
@@ -45,11 +49,18 @@
     </video>
   </div>
 
-  <div class="facts">
-    <div><b>0 buttons</b><span>the page gets the whole window; <kbd>\c</kbd> shows every key</span></div>
-    <div><b>14 000 PDFs</b><span>searched by their text in about a second</span></div>
-    <div><b>Standard notes</b><span>highlights and comments that every other reader shows</span></div>
-    <div><b>93 MB</b><span>for a 255 MB paper full of photos; idle means idle</span></div>
+  <div class="qol">
+    <p class="eyebrow">Little things that add up</p>
+    <ul>
+      <li><b>Reopens where you left off</b>: each file keeps its page, zoom and dark mode; <code>npdf</code> alone brings back your last session</li>
+      <li><b>Never lose your place</b>: <kbd>Ctrl-o</kbd> jumps back after any jump, <kbd>F</kbd> previews a reference without leaving the page</li>
+      <li><b>Every link by its letters</b>: <kbd>f</kbd> then the letters shown on the link, like Vimium in a browser</li>
+      <li><b>Find any paper</b>: <kbd>\f</kbd> by name, <kbd>\/</kbd> by its text, <kbd>\o</kbd> the recent ones</li>
+      <li><b>Notes that travel</b>: highlights and comments saved in the PDF, shown by every other reader</li>
+      <li><b>Undo anything</b>: highlights, comments, images, deleted pages</li>
+      <li><b>Easy on the eyes</b>: a dark mode that keeps photographs, fifteen themes, any system font</li>
+      <li><b>No learning wall</b>: <kbd>\c</kbd> shows every key of the mode you are in, and messages say what the next key does</li>
+    </ul>
   </div>
 </div></div>
 
@@ -161,10 +172,11 @@
     </div>
     <div>
       <h3>A dark mode that understands figures</h3>
-      <p>Press <kbd>i</kbd>: text and plots are recoloured for the night, while photographs
-        keep their colours. Nine colour themes (gruvbox, catppuccin, tokyonight, nord…), each
-        with a light and a dark side, or your own.</p>
+      <p>Press <kbd>i</kbd>: text and plots are recoloured for the night, with firm, readable
+        letters, while photographs and the pictures you placed keep their colours.
+        Highlights stay readable too: the paper takes their colour, the letters keep the ink.</p>
       <ul>
+        <li>Figures trimmed in LaTeX leave no light frame behind</li>
         <li>Each file remembers its zoom, dark mode and page</li>
         <li>Heavy pages render in slices: scrolling never freezes</li>
       </ul>
@@ -174,13 +186,14 @@
 
   <div class="feature">
     <div class="media window">
-      <div class="bar"><i></i><i></i><i></i><span>\g · v l · &gt; &gt; · x · u</span></div>
+      <div class="bar"><i></i><i></i><i></i><span>\g · Space · r · v l · → → · x · u</span></div>
       <video autoplay muted loop playsinline preload="metadata" poster="assets/demos/pages.jpg"><source src="assets/demos/pages.mp4" type="video/mp4"></video>
     </div>
     <div>
       <h3>Rearrange pages without another program</h3>
-      <p>All pages as thumbnails with <kbd>\g</kbd>. Choose some, then move, turn or delete
-        them, save them as a new PDF, or insert another PDF. Every change can be undone.</p>
+      <p>All pages as thumbnails with <kbd>\g</kbd>. Choose pages one by one with <kbd>Space</kbd>
+        (pages 1 and 4, say) or a run with <kbd>v</kbd>, then turn or delete them, or save just
+        those as a new PDF. The arrows walk a block of pages along. Every change can be undone.</p>
       <ul>
         <li><code>:extract 3-7</code>, <code>:insert</code>, <code>:append</code>, <code>:delete</code></li>
         <li>Your marks follow their pages</li>
@@ -190,7 +203,32 @@
   </div>
 </div></section>
 
-<section class="soft" id="research"><div class="wrap">
+<section class="soft" id="themes"><div class="wrap">
+  <p class="eyebrow">Themes</p>
+  <h2>Fifteen themes, each with a light and a dark side</h2>
+  <p class="intro">Built from the official palettes and checked for contrast: the ink of dark
+    pages at least 11:1 against the paper. <kbd>\T</kbd> tries them live on your PDF,
+    <kbd>i</kbd> switches sides, <code>:theme new</code> starts your own.</p>
+  <div class="feature">
+    <div class="media window">
+      <div class="bar"><i></i><i></i><i></i><span>\T · j · i · Enter</span></div>
+      <video autoplay muted loop playsinline preload="metadata" poster="assets/demos/themes.jpg"><source src="assets/demos/themes.mp4" type="video/mp4"></video>
+    </div>
+    <div>
+      <h3>Pick one while you read</h3>
+      <p>Moving in the list applies each theme at once; <kbd>Enter</kbd> keeps it,
+        <kbd>Esc</kbd> goes back.</p>
+      <ul>
+        <li>gruvbox, tokyonight, catppuccin, rosé pine, kanagawa</li>
+        <li>everforest, dracula, nord, solarized, flexoki</li>
+        <li>github, one, ayu, nightfox, selenized</li>
+      </ul>
+      <p class="keys"><a href="docs/Themes-and-Dark-Mode.html">How it works →</a> · <a class="gif" href="assets/demos/themes.gif">GIF</a></p>
+    </div>
+  </div>
+</div></section>
+
+<section id="research"><div class="wrap">
   <p class="eyebrow">Made for research</p>
   <h2>Built around how papers are read and written</h2>
   <p class="intro">Nomadys-PDF was written by a researcher, for the daily work of reading
@@ -212,6 +250,16 @@
       <p>Fullscreen, one page at a time, the next slide prepared while you talk.</p></div>
     <div class="card"><span class="k">Ctrl-j</span><h4>Forms and signatures</h4>
       <p>Fill in forms from the keyboard; signed PDFs keep their signatures valid.</p></div>
+    <div class="card"><span class="k">f · F</span><h4>Links by their letters</h4>
+      <p>Every link gets a few letters: type them to follow it, or preview where it goes.</p></div>
+    <div class="card"><span class="k">Ctrl-w v · t</span><h4>Tabs, panes, sessions</h4>
+      <p>Several papers in tabs, two in split view, and everything reopens as you left it.</p></div>
+    <div class="card"><span class="k">u · Ctrl-r</span><h4>Undo everything</h4>
+      <p>Highlights, comments, images and page changes, back and forth, until you close the file.</p></div>
+    <div class="card"><span class="k">:print</span><h4>Printing</h4>
+      <p>Through CUPS, with page ranges, copies and both sides, from the command line.</p></div>
+    <div class="card"><span class="k">\ma · ma</span><h4>Marks and jumps</h4>
+      <p>Marks in each paper and a jump list: <kbd>Ctrl-o</kbd> takes you back.</p></div>
     <div class="card"><span class="k">local</span><h4>Private by design</h4>
       <p>No accounts, no cloud, no telemetry. Your files and notes never leave your computer.</p></div>
   </div>
@@ -244,6 +292,18 @@ npdf                    <span class="c"># your last session</span></pre>
       <p>Optional: TeX Live for equations in comments and SyncTeX, <code>curl</code> for BibTeX,
         CUPS for printing.</p>
     </div>
+  </div>
+</div></section>
+
+<section class="soft" id="support"><div class="wrap support">
+  <p class="eyebrow">Free, and it stays free</p>
+  <h2>Enjoying it? Help it grow</h2>
+  <p class="intro">Nomadys-PDF has no ads, no accounts and no paid version: I build it in my free
+    time and share it with everyone. A star on GitHub helps others find it, and every bug report
+    or idea makes it better.</p>
+  <div class="buttons">
+    <a class="btn primary" href="https://github.com/hdsoliveira/Nomadys-PDF">Star it on GitHub</a>
+    <a class="btn" href="https://github.com/hdsoliveira/Nomadys-PDF/issues">Report a bug or an idea</a>
   </div>
 </div></section>
 </main>

@@ -98,12 +98,20 @@ kbd {
 .window video, .window img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: #d9d9d9; }
 .hero .window { max-width: 1000px; margin: 48px auto 0; }
 
-/* ---------- facts ---------- */
-.facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line);
-  border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin: 56px 0 0; }
-.facts div { background: var(--bg-card); padding: 22px 20px; }
-.facts b { display: block; font-size: 24px; letter-spacing: -.02em; }
-.facts span { color: var(--ink-soft); font-size: 14px; }
+/* ---------- little things (under the hero video) ---------- */
+.qol { background: var(--bg-card); border: 1px solid var(--line); border-radius: 14px; padding: 24px 28px; max-width: 1000px; margin: 28px auto 0; text-align: left; }
+.qol .eyebrow { margin: 0 0 10px; }
+.qol ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 32px; }
+.qol li { padding: 6px 0 6px 22px; position: relative; color: var(--ink-soft); font-size: 15px; }
+.qol li::before { content: ""; position: absolute; left: 2px; top: 14px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.qol b { color: var(--ink); font-weight: 600; }
+.lead.small { font-size: 16px; margin-top: -6px; }
+
+/* ---------- support ---------- */
+.support { text-align: center; }
+.support .intro { margin-left: auto; margin-right: auto; }
+.support .buttons { justify-content: center; }
+
 
 /* ---------- sections ---------- */
 section { padding: 72px 0; }
@@ -181,7 +189,6 @@ footer .right { margin-left: auto; display: flex; gap: 18px; }
   .feature, .feature.flip { grid-template-columns: 1fr; gap: 24px; }
   .feature.flip .media { order: 0; }
   .grid { grid-template-columns: 1fr 1fr; }
-  .facts { grid-template-columns: 1fr 1fr; }
   .install { grid-template-columns: 1fr; }
   .docs { grid-template-columns: 1fr; gap: 20px; }
   .side { position: static; max-height: none; border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
@@ -190,7 +197,7 @@ footer .right { margin-left: auto; display: flex; gap: 18px; }
 }
 @media (max-width: 560px) {
   .wrap { padding: 0 16px; }
-  .grid, .facts { grid-template-columns: 1fr; }
+  .grid, .qol ul { grid-template-columns: 1fr; }
   .hero { padding-top: 44px; }
   section { padding: 52px 0; }
 }

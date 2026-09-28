@@ -2,9 +2,15 @@
 
 <img src="docs/icon.svg" width="120" align="right" alt="the Nomadys-PDF icon">
 
-**A keyboard-driven PDF reader for Linux, made for research.**
-Minimal, fast and vim-friendly: when it opens, it shows your PDF and
-nothing else, and everything is one or two keys away.
+**For people who read PDFs for hours on end.**
+If you spend your days inside papers, books and reports, you know the
+choice: readers bloated with toolbars, side panels, accounts and cloud sync,
+or bare viewers that leave you alone with the page. Nomadys-PDF sits in
+between: a minimal, fast, keyboard-driven reader for Linux (the page gets
+the whole window, and everything is one or two keys away) that brings the
+quality-of-life tools that make long reading sessions easier.
+
+Free and open source, for everyone.
 
 ![Highlighting, and a comment with an equation](site/assets/demos/highlight.gif)
 
@@ -50,6 +56,8 @@ you go.
 - `f` follows any link by typing its letters; `F` **previews** a citation,
   figure or equation in place, without losing your page
 - a panel with the table of contents, your marks and all your highlights
+- a dark mode that recolours text and plots but keeps photographs and the
+  pictures you placed, with readable highlights and firm letters
 - presentation mode (`F5`)
 
 **Annotating**
@@ -73,9 +81,12 @@ you go.
 
 **Everything else**
 - tabs, split view (`Ctrl-w v`), several windows, sessions
-- nine themes (gruvbox, catppuccin, tokyonight, nord, …) with light and dark
-  sides, or your own; any system font
-- delete, turn, move, extract and insert pages
+- fifteen themes (gruvbox, catppuccin, tokyonight, nord, flexoki, github,
+  one, ayu, …), each with a light and a dark side, all checked for contrast,
+  or your own; any system font
+- a page grid (`\g`): choose pages one by one (`Space`) or a run (`v`), then
+  delete, turn, move them with the arrows, or save just those as a new PDF;
+  insert another PDF
 - forms, printing through CUPS, password-protected and signed PDFs
 - light on memory, and fast on heavy pages (they render a slice at a time)
 
@@ -83,10 +94,20 @@ you go.
 
 | | |
 |---|---|
-| ![Previewing a citation](site/assets/demos/preview.gif) | ![Searching every PDF](site/assets/demos/library.gif) |
-| `F`: preview a reference in place | `\/`: search the text of every PDF |
-| ![Split view](site/assets/demos/split.gif) | ![Comparing versions](site/assets/demos/diff.gif) |
-| `Ctrl-w v`: the figure and the text side by side | `:diff`: what changed since the submitted version |
+| ![Quoting with the page](site/assets/demos/quote.gif) | ![Previewing a citation](site/assets/demos/preview.gif) |
+| `Y`: copy a quotation with its page number | `F`: preview a reference in place |
+| ![Searching every PDF](site/assets/demos/library.gif) | ![Comparing versions](site/assets/demos/diff.gif) |
+| `\/`: search the text of every PDF | `:diff`: what changed since the submitted version |
+| ![Split view](site/assets/demos/split.gif) | ![Changing pages](site/assets/demos/pages.gif) |
+| `Ctrl-w v`: the figure and the text side by side | `\g`: choose pages apart, turn them, move a block |
+| ![Dark mode](site/assets/demos/reading.gif) | ![Themes](site/assets/demos/themes.gif) |
+| `i`: dark mode that keeps photographs | `\T`: try the themes live |
+
+### The themes
+
+Each theme has a light and a dark side (`i` switches while reading):
+
+![The fifteen themes, light and dark](docs/themes.png)
 
 ## Install
 
@@ -141,6 +162,29 @@ font = JetBrains Mono
 font_size = 11
 pdf_dirs = ~/Papers, ~/Books  # where \f and \/ look
 ```
+
+## Little things that add up
+
+- **Reopens where you left off**: each file keeps its page, zoom and dark
+  mode; `npdf` alone brings back your last session
+- **Never lose your place**: `Ctrl-o` jumps back after any jump, `F`
+  previews a reference without leaving the page
+- **Every link by its letters**: `f` then the letters shown on the link
+- **Find any paper**: `\f` by name, `\/` by its text, `\o` the recent ones
+- **Notes that travel**: highlights and comments saved in the PDF, shown by
+  every other reader
+- **Undo anything**: highlights, comments, images, deleted pages
+- **Easy on the eyes**: a dark mode that keeps photographs, fifteen themes,
+  any system font
+- **No learning wall**: `\c` shows every key of the mode you are in, and
+  messages say what the next key does
+
+## Support
+
+Nomadys-PDF has no ads, no accounts and no paid version: I build it in my
+free time and share it with everyone. A star helps others find it, and every
+bug report or idea in the
+[issues](https://github.com/hdsoliveira/Nomadys-PDF/issues) makes it better.
 
 ## Development
 

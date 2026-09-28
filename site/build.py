@@ -208,7 +208,7 @@ def href(page):
 
 HEADER = """<header class="top"><div class="wrap">
 <a class="brand" href="{root}index.html"><img src="{root}assets/icon.svg" alt="">Nomadys-PDF</a>
-<nav><a href="{root}index.html#features">Features</a><a href="{root}index.html#research">For research</a>
+<nav><a href="{root}index.html#features">Features</a><a href="{root}index.html#themes">Themes</a><a href="{root}index.html#research">For research</a>
 <a class="docs-link" href="{root}docs/index.html">Documentation</a><a href="{root}index.html#install">Install</a>
 <a class="gh" href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a></nav>
 </div></header>"""

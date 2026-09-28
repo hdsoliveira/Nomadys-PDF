@@ -282,8 +282,14 @@ def demos():
     out.append(d)
 
     d = Demo("pages", [WORK / "collection.pdf"], "Changing pages")
-    d.pause(500).key("\\g", 1500, label="\\g", wait=800).key("l", 350).key("l", 350).key("v", 500).key("l", 700)
-    d.key(">", 1300, wait=300).key(">", 1300, wait=300).key("x", 1500, wait=300).key("u", 1600, wait=300)
+    d.pause(500).key("\\g", 1500, label="\\g", wait=800)
+    # pages apart: Space on each, then turn them together
+    d.key(" ", 700, label="Space").key("l", 300).key("l", 300).key("l", 400).key(" ", 900, label="Space")
+    d.key("r", 1500, wait=300).key("u", 1300, wait=300)
+    # a run of pages, walked along with the arrows
+    d.key("h", 300).key("h", 350).key("v", 500).key("l", 700)
+    d.key("<Right>", 1100, label="\u2192", wait=300).key("<Right>", 1100, label="\u2192", wait=300)
+    d.key("<Right>", 1300, label="\u2192", wait=300).key("x", 1500, wait=300).key("u", 1600, wait=300)
     d.key("<Esc>", 900)
     out.append(d)
 
