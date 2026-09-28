@@ -62,7 +62,7 @@ also be changed in the [configuration](Configuration.md#colours), in
 | `shadow` | the soft shadow around pages |
 | `tab_bg`, `tab_fg` | the tab bar |
 | `tab_active_bg`, `tab_active_fg` | the current tab |
-| `tab_accent` | accents: the current tab, the focused pane, selected rows, highlights of matches in lists |
+| `tab_accent` | accents: the current tab, the frame of the focused pane, selected rows, matches in lists, the link letters |
 | `bar_bg`, `bar_fg`, `bar_cursor` | the `:` and `/` line, and its cursor |
 | `message_bg`, `message_fg` | messages in the corner |
 | `panel_bg`, `panel_fg`, `panel_header` | the panel, help, lists; its dim text |
@@ -70,7 +70,8 @@ also be changed in the [configuration](Configuration.md#colours), in
 | `comment_bg`, `comment_fg` | the comment box |
 | `comment_marker` | the dot on highlights that have a comment |
 | `selection` | text being selected |
-| `search_match` | search matches, link letters (`f`), the crop frame |
+| `search_match` | search matches, the crop frame, the preview marks |
+| `hint_bg`, `hint_fg` | the link letters (`f`, `F`): their badge and their letters. Left out, the badge takes `tab_accent` and the letters the theme's light ink (or its dark ink on a light accent) |
 | `caret` | the text cursor and the free cursor |
 | `form_focus` | the form field being filled |
 | `mode_normal`, `mode_cursor`, `mode_visual`, `mode_area`, `mode_insert`, `mode_command` | the mode badge |

@@ -345,19 +345,19 @@ void hints_key(Window *w, const char *tok)
         follow(w, v, &l);
 }
 
+/* The letters: rounded badges in the theme's accent (hint_bg), with a soft
+ * shadow and a thin darker rim, letters in the ink that reads best on them
+ * (hint_fg), drawn a little bold; the part already typed fades. The link
+ * itself gets a light tint of the same colour. */
 void hints_draw(Window *w)
 {
     View *v = cur_view(w);
     const Theme *t = wtheme(w);
-    int top = top_of(w), p = (int)(3 * w->density), n = (int)strlen(w->hint_typed);
-    /* letters in black or white, whichever reads better on the badge */
-    uint32_t bg = t->search_match;
-    int lum = (int)(((bg >> 16) & 0xFF) * 299 + ((bg >> 8) & 0xFF) * 587 + (bg & 0xFF) * 114) / 1000;
-    uint32_t ink = lum > 140 ? 0x101010 : 0xFFFFFF;
-    if (lum <= 140) /* mid-tone badges (gruvbox light): darken so white reads well */
-        bg = rgb_mix(bg, 0x000000, 0.4f);
-    uint32_t typed = rgb_mix(ink, bg, 0.55f);
+    int top = top_of(w), n = (int)strlen(w->hint_typed);
+    float d = w->density, padx = 5 * d, rad = 4 * d, bold = SDL_max(1.0f, SDL_roundf(0.6f * d));
+    uint32_t bg = hint_bg(t), ink = hint_fg(t), rim = rgb_mix(bg, 0x000000, 0.28f), typed = rgb_mix(ink, bg, 0.6f);
     int fh = font_height(w->font);
+    float bh = fh + 2 * d;
     for (int i = 0; i < w->nlinks; i++) {
         Link *l = &w->links[i];
         if (strncmp(l->label, w->hint_typed, n))
@@ -365,15 +365,20 @@ void hints_draw(Window *w)
         float x0, y0, x1, y1;
         page_to_screen(v, l->page, l->r.l, l->r.t, &x0, &y0, top);
         page_to_screen(v, l->page, l->r.r, l->r.b, &x1, &y1, top);
-        float x = SDL_min(x0, x1), y = SDL_min(y0, y1), by = y - fh * 0.6f;
-        ui_fill(w, x, y, SDL_fabsf(x1 - x0), SDL_fabsf(y1 - y0), bg, 45);
-        int tw = font_width(w->font, l->label);
-        ui_fill(w, x - p - 1, by - 1, (float)(tw + 2 * p + 2), (float)fh + 2, ink, 255); /* thin outline */
-        ui_fill(w, x - p, by, (float)(tw + 2 * p), (float)fh, bg, 255);
+        float x = SDL_min(x0, x1), y = SDL_min(y0, y1);
+        ui_round(w, x - d, y, SDL_fabsf(x1 - x0) + 2 * d, SDL_fabsf(y1 - y0), 2 * d, bg, 40); /* the link */
+        int tw = font_width(w->font, l->label) + (int)bold;
+        float bw = tw + 2 * padx, bx = SDL_floorf(x - padx * 0.6f), by = SDL_floorf(y - bh * 0.62f);
+        ui_round(w, bx, by + 1.5f * d, bw, bh, rad, 0x000000, 60);     /* shadow */
+        ui_round(w, bx - d * 0.5f, by - d * 0.5f, bw + d, bh + d, rad + d * 0.5f, rim, 255);
+        ui_round(w, bx, by, bw, bh, rad, bg, 255);
         char done[4];
         snprintf(done, sizeof done, "%.*s", n, l->label);
-        font_draw(w->font, x, by, done, typed); /* typed part, dimmed */
-        font_draw(w->font, x + font_width(w->font, done), by, l->label + n, ink);
+        float tx = bx + padx, ty = by + d;
+        font_draw(w->font, tx, ty, done, typed);
+        float rx = tx + font_width(w->font, done);
+        font_draw(w->font, rx, ty, l->label + n, ink);
+        font_draw(w->font, rx + bold, ty, l->label + n, ink); /* a little bold */
     }
 }
 

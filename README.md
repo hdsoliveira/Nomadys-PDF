@@ -332,7 +332,8 @@ A number before a command repeats it (`5j`, `3n`).
 
 Two panes, each with its own place, zoom, dark mode and search: a figure
 and the text about it, or two papers side by side. Keys, the mouse wheel
-and clicks go to the pane with the thin accent line on top.
+and clicks go to the focused pane, framed in the theme's accent (the other
+one is slightly dimmed); each pane names its file at the top right.
 
 | Key | Action |
 |---|---|

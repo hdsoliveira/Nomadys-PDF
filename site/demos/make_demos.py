@@ -162,7 +162,7 @@ def overlay(img, label, title):
         sizes = [d.textbbox((0, 0), k, font=font) for k in keys]
         widths = [max(34, b[2] - b[0] + 2 * pad) for b in sizes]
         total = sum(widths) + gap * (len(keys) - 1)
-        x = W - total - 28
+        x = (W - total) / 2  # top centre: clear of messages and pane labels
         y = 26
         d.rounded_rectangle((x - 14, y - 12, x + total + 14, y + 52), 14, fill=(20, 22, 30, 200))
         for k, wdt in zip(keys, widths):

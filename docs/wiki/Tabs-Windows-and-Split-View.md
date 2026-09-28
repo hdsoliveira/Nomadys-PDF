@@ -41,8 +41,10 @@ supplementary material, or two papers side by side.
 | `Ctrl-w q`, `Ctrl-w c`, `:close` | close this pane |
 | `Ctrl-w o`, `:only` | keep only this pane |
 
-Keys act on the **focused** pane, marked by a thin accent line along its
-top. A click or the mouse wheel over a pane focuses it. Search, marks,
+Keys act on the **focused** pane: it is framed in the theme's accent colour
+and its name has a dot, while the other pane is slightly dimmed. Each pane
+shows its file name in a small label at the top right. A click or the mouse
+wheel over a pane focuses it. Search, marks,
 highlighting, zoom: everything works in each pane as in a whole window.
 
 The first pane shows the current tab; switching tabs changes it, and the

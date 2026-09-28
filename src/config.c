@@ -43,6 +43,7 @@ Config cfg = {
         .mode_normal = 0x7A7A7A, .mode_cursor = 0x3C8CE7, .mode_visual = 0x8E5CC7, .mode_area = 0xE07A2E,
         .mode_insert = 0x3E9E4F, .mode_command = 0xC9A227,
         .page_bg = 0xFFFFFF, .page_fg = 0x000000, .shadow = 0x000000,
+        .hint_bg = THEME_AUTO, .hint_fg = THEME_AUTO,
     },
     .dark_theme = {
         .background = 0x101010,
@@ -57,6 +58,7 @@ Config cfg = {
         .mode_normal = 0x6A6A6A, .mode_cursor = 0x5AA2F0, .mode_visual = 0xB08AE0, .mode_area = 0xF39B5F,
         .mode_insert = 0x6CC47E, .mode_command = 0xE3C25A,
         .page_bg = 0x1C1C1C, .page_fg = 0xE4E4E4, .shadow = 0x000000,
+        .hint_bg = THEME_AUTO, .hint_fg = THEME_AUTO,
     },
 };
 
@@ -80,7 +82,7 @@ static const struct { const char *name; size_t off; } theme_keys[] = {
     COLOR(selection), COLOR(search_match), COLOR(caret), COLOR(form_focus),
     COLOR(mode_normal), COLOR(mode_cursor), COLOR(mode_visual), COLOR(mode_area), COLOR(mode_insert),
     COLOR(mode_command),
-    COLOR(page_bg), COLOR(page_fg), COLOR(shadow),
+    COLOR(page_bg), COLOR(page_fg), COLOR(shadow), COLOR(hint_bg), COLOR(hint_fg),
 };
 
 static char *trim(char *s)

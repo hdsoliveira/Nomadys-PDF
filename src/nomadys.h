@@ -64,7 +64,9 @@ typedef struct {
     uint32_t mode_normal, mode_cursor, mode_visual, mode_area, mode_insert, mode_command; /* mode badge */
     uint32_t page_bg, page_fg;           /* dark mode: page paper and ink colours */
     uint32_t shadow;                     /* soft shadow around pages */
+    uint32_t hint_bg, hint_fg;           /* link letters (f, F); THEME_AUTO: from the accent */
 } Theme;
+#define THEME_AUTO 0x01000000u             /* a colour a theme leaves to be derived */
 
 typedef struct {
     bool dark;               /* start in dark mode */
@@ -635,6 +637,10 @@ void font_draw(Font *f, float x, float y, const char *s, uint32_t rgb);   /* y =
 /* ---------- drawing helpers and overlays (ui.c) ---------- */
 void ui_ring(Window *w, float cx, float cy, float r, float th, uint32_t rgb, uint8_t a);
 uint32_t rgb_mix(uint32_t a, uint32_t b, float f);       /* f = 0: a, 1: b */
+void ui_round(Window *w, float x, float y, float wd, float ht, float r, uint32_t rgb, uint8_t a); /* rounded rectangle */
+uint32_t ink_on(uint32_t bg, uint32_t a, uint32_t b);      /* of two inks, the one that reads better on bg */
+uint32_t hint_bg(const Theme *t);
+uint32_t hint_fg(const Theme *t);
 void ui_fill(Window *w, float x, float y, float wd, float ht, uint32_t rgb, uint8_t a);
 void ui_frame(Window *w, float x, float y, float wd, float ht, float t, uint32_t rgb);
 void ui_message(Window *w, const char *fmt, ...);

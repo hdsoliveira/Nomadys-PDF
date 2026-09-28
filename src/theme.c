@@ -35,7 +35,9 @@ static const struct { const char *group, *key, *what; } theme_docs[] = {
     {NULL, "comment_fg", "its text and equations"},
     {NULL, "comment_marker", "its frame, and the dot on highlights that have a comment"},
     {"On the page", "selection", "text being selected"},
-    {NULL, "search_match", "search matches, link letters (f), the crop frame, the preview marks"},
+    {NULL, "search_match", "search matches, the crop frame, the preview marks"},
+    {NULL, "hint_bg", "the badges of the link letters (f, F); by default the accent"},
+    {NULL, "hint_fg", "their letters; by default the ink that reads best on them"},
     {NULL, "caret", "text cursor, free-cursor cross, the object frame, LaTeX errors"},
     {NULL, "form_focus", "the form field being filled"},
     {"Mode badge (bottom left)", "mode_normal", "reading"},
@@ -57,6 +59,10 @@ static uint32_t color_of(const Theme *t, const char *key)
     K(comment_marker); K(selection); K(search_match); K(caret); K(form_focus); K(mode_normal);
     K(mode_cursor); K(mode_visual); K(mode_area); K(mode_insert); K(mode_command); K(shadow);
 #undef K
+    if (!strcmp(key, "hint_bg"))
+        return hint_bg(t);
+    if (!strcmp(key, "hint_fg"))
+        return hint_fg(t);
     return 0;
 }
 

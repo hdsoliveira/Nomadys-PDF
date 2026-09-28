@@ -264,6 +264,77 @@ void ui_ring(Window *w, float cx, float cy, float r, float th, uint32_t rgb, uin
     SDL_RenderGeometry(w->ren, NULL, v, 2 * (SEG + 1), idx, 6 * SEG);
 }
 
+/* A rectangle with rounded corners (radius r), filled. */
+void ui_round(Window *w, float x, float y, float wd, float ht, float r, uint32_t rgb, uint8_t a)
+{
+    enum { ARC = 6 };                    /* segments per corner */
+    r = SDL_min(r, SDL_min(wd, ht) / 2);
+    if (r < 0.5f) {
+        ui_fill(w, x, y, wd, ht, rgb, a);
+        return;
+    }
+    SDL_FColor c = {((rgb >> 16) & 0xFF) / 255.0f, ((rgb >> 8) & 0xFF) / 255.0f, (rgb & 0xFF) / 255.0f, a / 255.0f};
+    SDL_Vertex v[1 + 4 * (ARC + 1)];
+    int idx[3 * 4 * (ARC + 1)], n = 1, k = 0;
+    v[0] = (SDL_Vertex){{x + wd / 2, y + ht / 2}, c, {0, 0}};
+    float cx[4] = {x + wd - r, x + r, x + r, x + wd - r}, cy[4] = {y + r, y + r, y + ht - r, y + ht - r};
+    for (int q = 0; q < 4; q++) /* corners counter-clockwise from the top right */
+        for (int i = 0; i <= ARC; i++) {
+            float ang = (q * 90.0f + i * 90.0f / ARC) * SDL_PI_F / 180.0f;
+            v[n++] = (SDL_Vertex){{cx[q] + r * SDL_cosf(ang), cy[q] - r * SDL_sinf(ang)}, c, {0, 0}};
+        }
+    for (int i = 1; i < n; i++) {
+        idx[k++] = 0;
+        idx[k++] = i;
+        idx[k++] = i + 1 < n ? i + 1 : 1;
+    }
+    SDL_SetRenderDrawBlendMode(w->ren, SDL_BLENDMODE_BLEND);
+    SDL_RenderGeometry(w->ren, NULL, v, n, idx, k);
+}
+
+/* WCAG contrast of two colours (1 to 21). */
+static float lum(uint32_t c)
+{
+    float ch[3];
+    for (int i = 0; i < 3; i++) {
+        float x = ((c >> (16 - 8 * i)) & 0xFF) / 255.0f;
+        ch[i] = x <= 0.03928f ? x / 12.92f : SDL_powf((x + 0.055f) / 1.055f, 2.4f);
+    }
+    return 0.2126f * ch[0] + 0.7152f * ch[1] + 0.0722f * ch[2];
+}
+
+static float contrast(uint32_t a, uint32_t b)
+{
+    float la = lum(a), lb = lum(b);
+    return (SDL_max(la, lb) + 0.05f) / (SDL_min(la, lb) + 0.05f);
+}
+
+/* Of two inks (the theme's light and dark), the one that reads better on
+ * bg; white or black when neither reads well. */
+uint32_t ink_on(uint32_t bg, uint32_t a, uint32_t b)
+{
+    uint32_t best = contrast(a, bg) >= contrast(b, bg) ? a : b;
+    if (contrast(best, bg) >= 4.5f)
+        return best;
+    return contrast(0xFFFFFF, bg) >= contrast(0x000000, bg) ? 0xFFFFFF : 0x111111;
+}
+
+/* The link letters: the theme's own colours, or its accent. */
+uint32_t hint_bg(const Theme *t) { return t->hint_bg & THEME_AUTO ? t->tab_accent : t->hint_bg; }
+
+/* Letters on the badge: the theme's light ink when it reads (short bold
+ * letters need 3:1), which looks best on an accent; else its dark ink. */
+uint32_t hint_fg(const Theme *t)
+{
+    if (!(t->hint_fg & THEME_AUTO))
+        return t->hint_fg;
+    uint32_t bg = hint_bg(t), light = lum(t->panel_bg) > lum(t->panel_fg) ? t->panel_bg : t->panel_fg;
+    uint32_t dark = light == t->panel_bg ? t->panel_fg : t->panel_bg;
+    if (contrast(light, bg) >= 3.0f)
+        return light;
+    return ink_on(bg, dark, light);
+}
+
 /* Mixes two 0xRRGGBB colours: f = 0 gives a, 1 gives b. */
 uint32_t rgb_mix(uint32_t a, uint32_t b, float f)
 {
