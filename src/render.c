@@ -181,6 +181,7 @@ void view_layout(View *v, int W, int H, int top)
         return;
     double old_h = v->content_h;
     v->lay_w = W;
+    v->lay_n = v->doc->npages;
     v->lay_zoom = v->zoom;
     v->lay_dual = v->dual;
     int y = GAP, maxw = 0;
@@ -220,6 +221,8 @@ void view_layout(View *v, int W, int H, int top)
     }
 }
 
+static int laid_pages(View *v);
+
 Pos view_pos(View *v)
 {
     int page = view_top_page(v);
@@ -234,7 +237,7 @@ void view_set_pos(View *v, Pos p)
         v->pending_pos = p;
         return;
     }
-    p.page = SDL_clamp(p.page, 0, v->doc->npages - 1);
+    p.page = SDL_clamp(p.page, 0, SDL_max(0, laid_pages(v) - 1));
     v->sy = v->py[p.page] + (double)p.y * v->phpx[p.page];
 }
 
@@ -251,12 +254,17 @@ static double offset_x(View *v, int W)
     return v->content_w < W ? (W - v->content_w) / 2.0 : -v->sx;
 }
 
+/* Only the pages the layout knows: when a reload or an undo changed the
+ * page count, the arrays are the old ones until the next layout. */
+static int laid_pages(View *v) { return v->lay_w ? SDL_min(v->doc->npages, v->lay_n) : 0; }
+
 int view_top_page(View *v)
 {
-    for (int i = 0; i < v->doc->npages; i++)
+    int n = laid_pages(v);
+    for (int i = 0; i < n; i++)
         if (v->py[i] + v->phpx[i] > v->sy + 1)
             return i;
-    return v->doc->npages - 1;
+    return SDL_max(0, n - 1);
 }
 
 void view_goto_page(View *v, int page)

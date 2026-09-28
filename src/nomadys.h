@@ -317,6 +317,7 @@ typedef struct {
     Pos pending_pos;         /* applied at the first layout, page -1 = none */
     /* layout */
     int lay_w;
+    int lay_n;               /* pages the layout was made for (the document may have changed since) */
     double lay_zoom;
     bool lay_dual;
     int *px, *py;            /* page position in content space */
