@@ -74,6 +74,8 @@ static void init_zoom(Window *w, View *v)
     v->density = w->density;
 }
 
+static int test_w, test_h; /* --test-size: the window's size in test mode */
+
 static Window *window_new(View *v)
 {
     if (nwindows == MAX_WINDOWS) {
@@ -81,7 +83,7 @@ static Window *window_new(View *v)
         return NULL;
     }
     Window *w = xcalloc(1, sizeof *w);
-    w->win = SDL_CreateWindow("Nomadys-PDF", 900, 1100, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+    w->win = SDL_CreateWindow("Nomadys-PDF", test_w > 0 ? test_w : 900, test_h > 0 ? test_h : 1100, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     SDL_Surface *icon = w->win ? about_icon() : NULL; /* X11 shows it; Wayland uses the app id (npdf.desktop) */
     if (icon) {
         SDL_SetWindowIcon(w->win, icon);
@@ -825,6 +827,8 @@ int main(int argc, char **argv)
             script = argv[2];
         else if (!strcmp(argv[1], "--test-out"))
             script_dir = argv[2];
+        else if (!strcmp(argv[1], "--test-size"))
+            sscanf(argv[2], "%dx%d", &test_w, &test_h);
         else if (!strcmp(argv[1], "--synctex-forward"))
             forward = argv[2];
         else if (!strcmp(argv[1], "--synctex-editor-command") || !strcmp(argv[1], "-x"))

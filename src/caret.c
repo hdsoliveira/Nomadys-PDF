@@ -94,13 +94,27 @@ static void line_edge(View *v, int dir)
         v->caret = q;
 }
 
+/* A word boundary between two neighbouring characters (a before b). PDFs
+ * made by LaTeX have no space characters: PDFium generates them, and the
+ * caret leaves generated characters out, so a skipped index or a visible
+ * gap between the letters also separates words. */
+static bool word_gap(View *v, TextPos a, TextPos b)
+{
+    if (!same_line(v, a, b) || is_space(uni(v, a)) || is_space(uni(v, b)))
+        return true;
+    if (a.page == b.page && b.ch > a.ch + 1)
+        return true;
+    PRect ra = box(v, a), rb = box(v, b);
+    return rb.l - ra.r > 0.2f * (ra.t - ra.b);
+}
+
 static void word(View *v, int dir)
 {
     TextPos q = v->caret;
     if (dir > 0) {
         TextPos prev = q;
         while (step(v, &q, 1)) {
-            if (!is_space(uni(v, q)) && (is_space(uni(v, prev)) || !same_line(v, q, prev)))
+            if (!is_space(uni(v, q)) && word_gap(v, prev, q))
                 break;
             prev = q;
         }
@@ -109,9 +123,23 @@ static void word(View *v, int dir)
         while (is_space(uni(v, q)) && step(v, &q, -1))
             ;
         TextPos r = q;
-        while (step(v, &r, -1) && !is_space(uni(v, r)) && same_line(v, r, q))
+        while (step(v, &r, -1) && !word_gap(v, r, q))
             q = r;
     }
+    v->caret = q;
+}
+
+/* e: the last letter of this word, or of the next one (vim's e). */
+static void word_end(View *v)
+{
+    TextPos q = v->caret, r;
+    if (!step(v, &q, 1))
+        return;
+    while (is_space(uni(v, q)) && step(v, &q, 1))
+        ;
+    r = q;
+    while (step(v, &r, 1) && !word_gap(v, q, r))
+        q = r;
     v->caret = q;
 }
 
@@ -161,6 +189,7 @@ void caret_move(Window *w, View *v, char motion, int count)
         case 'j': move_line(v, 1); break;
         case 'k': move_line(v, -1); break;
         case 'w': word(v, 1); break;
+        case 'e': word_end(v); break;
         case 'b': word(v, -1); break;
         case '0': line_edge(v, -1); break;
         case '$': line_edge(v, 1); break;

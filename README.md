@@ -148,7 +148,7 @@ Everything by keyboard. Highlights are standard PDF annotations: other readers
 
 | Key | Action |
 |---|---|
-| `v` | text cursor (a steady block; rings close in on it when it appears): `h j k l w b 0 $` move |
+| `v` | text cursor (a steady block; rings close in on it when it appears): `h j k l w b e 0 $` move |
 | then `v` | start/stop selecting text |
 | then `C` `V` `B` `N` `M` | highlight in pastel yellow / red / green / pink / blue (`highlight_colors` in the config) |
 | then `c` | highlight (yellow) and write a comment in a box next to it (see below) |

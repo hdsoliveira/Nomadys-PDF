@@ -139,6 +139,10 @@ static void page_words(FPDF_PAGE p, FPDF_TEXTPAGE tp, int page, Words *ws)
             continue;
         }
         bool word = is_word_char(c) && !is_space(c);
+        if ((c == '.' || c == ',') && start >= 0 && i + 1 < n) { /* 3.2, 1,000: one number */
+            unsigned before = FPDFText_GetUnicode(tp, i - 1), after = FPDFText_GetUnicode(tp, i + 1);
+            word = before >= '0' && before <= '9' && after >= '0' && after <= '9';
+        }
         if (word && start >= 0) {
             put_char(ws, c);
             continue;

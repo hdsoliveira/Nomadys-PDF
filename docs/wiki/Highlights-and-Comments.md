@@ -9,7 +9,8 @@ automatically about a second after each change.
 
 1. `v` shows the **text cursor**, a steady block (rings close in on it for a
    moment so you can find it). Move it with `h` `j` `k` `l`, word by word
-   with `w` `b`, to the start / end of the line with `0` `$`.
+   with `w` `b`, to the end of a word with `e`, to the start / end of the
+   line with `0` `$`. A number repeats a move: `8j`, `5e`.
 2. `v` again starts **selecting**; move to the end of what you want.
 3. Choose a colour:
 

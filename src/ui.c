@@ -357,6 +357,14 @@ void text_join_hyphens(char *s)
                 i++;
             continue;
         }
+        if ((unsigned char)i[0] == 0xEF && (unsigned char)i[1] == 0xBF && (unsigned char)i[2] == 0xBE) {
+            /* U+FFFE: a real hyphen at the end of a line ("high-|speed"): kept, the line joined */
+            *o++ = '-';
+            i += 3;
+            while (*i == '\r' || *i == '\n' || *i == ' ')
+                i++;
+            continue;
+        }
         *o++ = *i++;
     }
     *o = 0;

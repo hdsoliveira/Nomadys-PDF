@@ -101,6 +101,7 @@ always one key away in the program: `\c`.
 |---|---|
 | `h` `j` `k` `l` | move |
 | `w` / `b` | next / previous word |
+| `e` | end of the word |
 | `0` / `$` | start / end of the line |
 | `v` | start / stop selecting |
 | `C` `V` `B` `N` `M` | highlight: yellow, red, green, pink, blue |
