@@ -112,6 +112,7 @@ void view_doc_reloaded(View *v)
     v->pending_pos = p;
     v->selecting = v->area_selecting = false;
     v->caret.page = -1;
+    v->area_page = SDL_clamp(v->area_page, 0, n - 1); /* the free cursor stays on a page that exists */
     v->match_page = -1;
     v->query_absent = false; /* the text may have changed */
     v->flash_until = 0;

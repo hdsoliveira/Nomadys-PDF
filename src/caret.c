@@ -26,8 +26,10 @@ static bool valid(View *v, TextPos p)
     return p.ch >= 0 && p.ch < s->nchars && s->line[p.ch] >= 0;
 }
 
-static PRect box(View *v, TextPos p) { return chars(v, p.page)->boxes[p.ch]; }
-static int line_of(View *v, TextPos p) { return chars(v, p.page)->line[p.ch]; }
+/* A position left over from before the pages changed (a reload, a page
+ * deleted or undone) has no box and no line. */
+static PRect box(View *v, TextPos p) { return valid(v, p) ? chars(v, p.page)->boxes[p.ch] : (PRect){0}; }
+static int line_of(View *v, TextPos p) { return valid(v, p) ? chars(v, p.page)->line[p.ch] : -1; }
 
 static unsigned uni(View *v, TextPos p)
 {
@@ -182,6 +184,13 @@ bool caret_enter(Window *w, View *v)
 
 void caret_move(Window *w, View *v, char motion, int count)
 {
+    if (!valid(v, v->caret)) { /* the pages changed under the cursor */
+        w->mode = MODE_NORMAL;
+        v->selecting = false;
+        ui_message(w, "the pages changed: v shows the cursor again");
+        w->redraw = true;
+        return;
+    }
     for (int i = 0; i < SDL_max(1, count); i++) {
         switch (motion) {
         case 'h': step(v, &v->caret, -1); break;
