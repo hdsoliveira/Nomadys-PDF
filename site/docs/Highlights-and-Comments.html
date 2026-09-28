@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Highlights and comments · Nomadys-PDF documentation</title>
+<meta name="description" content="Everything is done by keyboard, and everything is stored in the PDF as standard annotations: Acrobat, Okular, Evince, Zotero, Preview and every other reader sho">
+<link rel="icon" href="../assets/icon.svg"><link rel="stylesheet" href="../assets/style.css">
+</head><body>
+<header class="top"><div class="wrap">
+<a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="">Nomadys-PDF</a>
+<nav><a href="../index.html#features">Features</a><a href="../index.html#research">For research</a>
+<a class="docs-link" href="../docs/index.html">Documentation</a><a href="../index.html#install">Install</a>
+<a class="gh" href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a></nav>
+</div></header>
+<div class="wrap docs">
+<aside class="side"><ul><li><a href="index.html">Home</a></li></ul><p>Start</p><ul><li><a href="Installation.html">Installation</a></li><li><a href="Getting-Started.html">Getting started</a></li></ul><p>Using it</p><ul><li><a href="Reading-and-Navigation.html">Reading and navigation</a></li><li><a href="Searching.html">Searching</a></li><li><a href="Highlights-and-Comments.html" class=on>Highlights and comments</a></li><li><a href="Quoting-and-Citing.html">Quoting and citing</a></li><li><a href="Images-and-Regions.html">Images and regions</a></li><li><a href="Changing-Pages.html">Changing pages</a></li><li><a href="Tabs-Windows-and-Split-View.html">Tabs, windows and split view</a></li><li><a href="LaTeX-and-VimTeX.html">LaTeX and VimTeX</a></li><li><a href="Forms-Printing-and-Passwords.html">Forms, printing and passwords</a></li></ul><p>Making it yours</p><ul><li><a href="Configuration.html">Configuration</a></li><li><a href="Themes-and-Dark-Mode.html">Themes and dark mode</a></li></ul><p>Reference</p><ul><li><a href="Keyboard-Reference.html">Keyboard reference</a></li><li><a href="Commands.html">Commands</a></li><li><a href="Files-Memory-and-Speed.html">Files, memory and speed</a></li><li><a href="FAQ.html">FAQ</a></li></ul></aside>
+<main class="doc">
+<h1 id="highlights-and-comments">Highlights and comments</h1>
+<p>Everything is done by keyboard, and everything is stored <strong>in the PDF</strong> as standard annotations: Acrobat, Okular, Evince, Zotero, Preview and every other reader show your highlights and comments. They are saved automatically about a second after each change.</p>
+<figure class="demo"><div class="window"><div class="bar"><i></i><i></i><i></i><span>Highlighting, and a comment with an equation</span></div><video autoplay muted loop playsinline preload="metadata" poster="../assets/demos/highlight.jpg"><source src="../assets/demos/highlight.mp4" type="video/mp4"></video></div></figure>
+<h2 id="highlighting-text">Highlighting text<a class="anchor" href="#highlighting-text">#</a></h2>
+<ol><li><code>v</code> shows the <strong>text cursor</strong>, a steady block (rings close in on it for a moment so you can find it). Move it with <code>h</code> <code>j</code> <code>k</code> <code>l</code>, word by word with <code>w</code> <code>b</code>, to the end of a word with <code>e</code>, to the start / end of the line with <code>0</code> <code>$</code>. A number repeats a move: <code>8j</code>, <code>5e</code>.</li><li><code>v</code> again starts <strong>selecting</strong>; move to the end of what you want.</li><li>Choose a colour:</li></ol>
+<table><thead><tr><th>Key</th><th>Colour (default)</th></tr></thead><tbody><tr><td><code>C</code></td><td>pastel yellow</td></tr><tr><td><code>V</code></td><td>pastel red</td></tr><tr><td><code>B</code></td><td>pastel green</td></tr><tr><td><code>N</code></td><td>pastel pink</td></tr><tr><td><code>M</code></td><td>pastel blue</td></tr><tr><td><code>c</code></td><td>yellow, and write a comment</td></tr></tbody></table>
+<p>The keys are next to each other on the keyboard, under your left hand. The colours can be changed with <code>highlight_colors</code> in the <a href="Configuration.html">configuration</a>.</p>
+<p><code>Esc</code> cancels the selection; <code>Esc</code> again leaves the cursor.</p>
+<h2 id="highlighting-a-figure-a-table-an-equation">Highlighting a figure, a table, an equation<a class="anchor" href="#highlighting-a-figure-a-table-an-equation">#</a></h2>
+<p>Figures and equations are not text, so they have their own cursor:</p>
+<ol><li><code>Ctrl-v</code> shows the <strong>free cursor</strong>, a thin cross that can go anywhere. <code>h</code> <code>j</code> <code>k</code> <code>l</code> move it; <code>w</code> <code>b</code> <code>J</code> <code>K</code> (or <code>Ctrl-h</code> <code>Ctrl-j</code> <code>Ctrl-k</code> <code>Ctrl-l</code>) move it faster.</li><li><code>v</code> starts a rectangle; move to the opposite corner.</li><li><code>C</code> <code>V</code> <code>B</code> <code>N</code> <code>M</code> highlights the area in that colour, <code>c</code> with a comment.</li></ol>
+<p>With <code>area_style = frame</code> in the configuration, areas get a coloured frame instead of a transparent highlight. The free cursor can also copy a region as an image, or place a picture: see <a href="Images-and-Regions.html">Images and regions</a>.</p>
+<p><code>Ctrl-v</code> in the text cursor switches to the free cursor.</p>
+<h2 id="editing-and-deleting">Editing and deleting<a class="anchor" href="#editing-and-deleting">#</a></h2>
+<p>Put either cursor on a highlight:</p>
+<table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>c</code></td><td>write or edit its comment</td></tr><tr><td><code>x</code></td><td>delete the highlight (and its comment)</td></tr><tr><td><code>e</code> (free cursor)</td><td>move or resize a highlighted area (see <a href="Images-and-Regions.html">Images and regions</a>)</td></tr></tbody></table>
+<p>While a cursor is on a highlight that has a comment, the comment is shown in a box next to it. Highlights with a comment have a small dot in a corner.</p>
+<p>The panel (<code>\l</code>, Highlights tab) lists every highlight with its comment and text; there <code>r</code> edits a comment, <code>d</code> deletes only the comment and <code>x</code> the whole highlight.</p>
+<h2 id="undo-and-redo">Undo and redo<a class="anchor" href="#undo-and-redo">#</a></h2>
+<table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>u</code></td><td>undo the last change</td></tr><tr><td><code>Ctrl-r</code></td><td>redo it</td></tr></tbody></table>
+<p>Undo covers new highlights, comments, deletions, images, moves, resizes, crops, merges and <a href="Changing-Pages.html">page changes</a>, up to 200 steps per document, until the file is closed. <code>5u</code> undoes five steps. The message says what was undone and where ("undone: deletion (p. 4)"), and the view goes there if it is out of sight.</p>
+<p>A deleted highlight is only hidden until you close the file (so it can come back); then it is removed from the PDF for good.</p>
+<h2 id="comments-with-equations">Comments, with equations<a class="anchor" href="#comments-with-equations">#</a></h2>
+<p><code>c</code> opens a box right next to the highlight. Write plain text; anything between <code>$…$</code> is an <strong>equation</strong>, typeset by LaTeX as you type, and <code>$$…$$</code> is an equation on its own line:</p>
+<pre><code>Neo-Hookean: $W = \frac{\mu}{2}(I_1 - 3)$ with $\mu = G$
+$$\sigma = E\,\varepsilon$$</code></pre>
+<table><thead><tr><th>Key in the comment box</th><th>Action</th></tr></thead><tbody><tr><td><code>Enter</code></td><td>save</td></tr><tr><td><code>Shift-Enter</code></td><td>new line</td></tr><tr><td><code>Esc</code></td><td>cancel (the comment stays as it was)</td></tr><tr><td>arrows, <code>Home</code>, <code>End</code></td><td>move; an equation shows its LaTeX while the cursor is inside it</td></tr><tr><td><code>Backspace</code>, <code>Del</code></td><td>delete a character</td></tr><tr><td><code>Ctrl-w</code> / <code>Ctrl-u</code></td><td>delete the word before / everything</td></tr><tr><td><code>Ctrl-v</code></td><td>paste</td></tr></tbody></table>
+<ul><li><code>\$</code> writes a literal dollar sign.</li><li>Errors appear under the text ("LaTeX: Undefined control sequence.").</li><li>Equations are typeset by <code>pdflatex</code> with <code>amsmath</code> and <code>amssymb</code>, in the background, and cached in <code>~/.cache/nomadys-pdf/math/</code>, so each is typeset only once.</li><li>Your own macros go in <code>~/.config/nomadys-pdf/math.tex</code>, for example <code>\newcommand{\R}{\mathbb{R}}</code>.</li><li>Without TeX Live, comments still work and equations stay as written.</li></ul>
+<p>The comment is stored as the text you typed, so other readers show <code>$\sigma = E\varepsilon$</code> as it is, and exported Markdown shows the equations in Obsidian and similar apps.</p>
+<h2 id="filtering-by-colour">Filtering by colour<a class="anchor" href="#filtering-by-colour">#</a></h2>
+<p>Give each colour a meaning, for example green = to cite, red = problems, blue = methods. Then, in the panel's <strong>Highlights</strong> tab (<code>\l</code>, then <code>4</code>):</p>
+<table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>C</code> <code>V</code> <code>B</code> <code>N</code> <code>M</code></td><td>show / hide that colour (several can be combined)</td></tr><tr><td><code>c</code></td><td>only highlights with a comment</td></tr><tr><td><code>a</code></td><td>all again</td></tr><tr><td><code>e</code></td><td>export what is shown to Markdown</td></tr></tbody></table>
+<p>The tab title says how many are shown ("Highlights 3 of 12").</p>
+<h2 id="exporting-to-markdown">Exporting to Markdown<a class="anchor" href="#exporting-to-markdown">#</a></h2>
+<p><code>:export</code> writes every highlight and comment, plus your marks, to <code>paper-notes.md</code> next to <code>paper.pdf</code>, page by page, in reading order, with the full highlighted text (words broken across lines joined again), its colour and the comment:</p>
+<pre><code>## Page 3
+
+- *(yellow)* “stiffness amplification through successive instabilities, ...”
+
+  **Comment:** check this claim against [43]
+
+- *(blue, area)* highlighted region — figure, table or equation</code></pre>
+<table><thead><tr><th>Command</th><th>Writes</th></tr></thead><tbody><tr><td><code>:export</code></td><td>everything, to <code>paper-notes.md</code></td></tr><tr><td><code>:export review.md</code></td><td>to another file (a relative name goes next to the PDF)</td></tr><tr><td><code>:export green</code></td><td>only the green highlights</td></tr><tr><td><code>:export red commented</code></td><td>only red highlights that have a comment</td></tr><tr><td><code>:export review.md red green</code></td><td>red and green, to <code>review.md</code></td></tr><tr><td><code>:export!</code></td><td>the same, allowed to overwrite a file that <code>:export</code> did not write</td></tr></tbody></table>
+<p>Colour words: <code>yellow</code>, <code>red</code>, <code>green</code>, <code>pink</code>, <code>blue</code> (the five keys, in order) and <code>other</code>; <code>commented</code> keeps only those with a comment.</p>
+<p>Running <code>:export</code> again replaces the file it wrote before, but a Markdown file written by someone else is never overwritten without <code>!</code>. From a terminal, <code>npdf --export paper.pdf</code> prints the same to standard output.</p>
+<p>To search your comments across <strong>all</strong> your PDFs, use <code>\n</code> (<a href="Searching.html">Searching</a>).</p>
+<h2 id="merging-a-co-authors-notes">Merging a co-author's notes<a class="anchor" href="#merging-a-co-authors-notes">#</a></h2>
+<p>A colleague highlighted and commented a copy of the same paper, in any reader? <code>:merge their-copy.pdf</code> brings their highlights, comments, frames, drawings, sticky notes and images into your copy, keeping their author name and colours.</p>
+<ul><li>Notes you already have are left out, so merging twice changes nothing.</li><li>Free text boxes are not brought in.</li><li>One <code>u</code> takes the whole merge back.</li><li>The message says how many were merged, already present or left out.</li></ul>
+<nav class="pager"><a href="Searching.html"><small>Previous</small>Searching</a><a class="next" href="Quoting-and-Citing.html"><small>Next</small>Quoting and citing</a></nav>
+</main>
+</div>
+<footer><div class="wrap">
+<span>Nomadys-PDF 0.4.0 · MIT licence · made by Hugo Oliveira</span>
+<span class="right"><a href="../docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:hs.oliveira@mailbox.org">Contact</a></span>
+</div></footer>
+</body></html>

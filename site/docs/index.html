@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nomadys-PDF · Nomadys-PDF documentation</title>
+<meta name="description" content="Nomadys-PDF is a fast, minimal PDF reader for Linux, driven entirely by the keyboard with vim-style keys. When it opens, it shows your PDF and nothing else: no ">
+<link rel="icon" href="../assets/icon.svg"><link rel="stylesheet" href="../assets/style.css">
+</head><body>
+<header class="top"><div class="wrap">
+<a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="">Nomadys-PDF</a>
+<nav><a href="../index.html#features">Features</a><a href="../index.html#research">For research</a>
+<a class="docs-link" href="../docs/index.html">Documentation</a><a href="../index.html#install">Install</a>
+<a class="gh" href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a></nav>
+</div></header>
+<div class="wrap docs">
+<aside class="side"><ul><li><a href="index.html" class=on>Home</a></li></ul><p>Start</p><ul><li><a href="Installation.html">Installation</a></li><li><a href="Getting-Started.html">Getting started</a></li></ul><p>Using it</p><ul><li><a href="Reading-and-Navigation.html">Reading and navigation</a></li><li><a href="Searching.html">Searching</a></li><li><a href="Highlights-and-Comments.html">Highlights and comments</a></li><li><a href="Quoting-and-Citing.html">Quoting and citing</a></li><li><a href="Images-and-Regions.html">Images and regions</a></li><li><a href="Changing-Pages.html">Changing pages</a></li><li><a href="Tabs-Windows-and-Split-View.html">Tabs, windows and split view</a></li><li><a href="LaTeX-and-VimTeX.html">LaTeX and VimTeX</a></li><li><a href="Forms-Printing-and-Passwords.html">Forms, printing and passwords</a></li></ul><p>Making it yours</p><ul><li><a href="Configuration.html">Configuration</a></li><li><a href="Themes-and-Dark-Mode.html">Themes and dark mode</a></li></ul><p>Reference</p><ul><li><a href="Keyboard-Reference.html">Keyboard reference</a></li><li><a href="Commands.html">Commands</a></li><li><a href="Files-Memory-and-Speed.html">Files, memory and speed</a></li><li><a href="FAQ.html">FAQ</a></li></ul></aside>
+<main class="doc">
+<h1 id="nomadys-pdf">Nomadys-PDF</h1>
+<img src="../assets/icon.svg" width="120" align="right" alt="the Nomadys-PDF icon">
+<p><strong>Nomadys-PDF</strong> is a fast, minimal PDF reader for Linux, driven entirely by the keyboard with vim-style keys. When it opens, it shows your PDF and nothing else: no toolbars, no menus, no sidebars. Everything is one or two keys away, and <code>\c</code> shows every key at any moment.</p>
+<p>It is made for people who read, annotate and write papers: highlights and comments that every other reader can see, comments with LaTeX equations, a search over the text of every PDF you own, SyncTeX with Vim/Neovim, citations and BibTeX in one key, and a comparison of two versions of a paper word by word.</p>
+<p><em>Nomadys</em>: a nomad, with no fixed place, always looking for something better. The icon is a tent at home anywhere, a trail towards the mountain and the rising sun, and a page lit in the doorway: reading goes wherever you go.</p>
+<h2 id="at-a-glance">At a glance<a class="anchor" href="#at-a-glance">#</a></h2>
+<table><thead><tr><th>You want to…</th><th>Press</th></tr></thead><tbody><tr><td>See every key</td><td><code>\c</code></td></tr><tr><td>Scroll, change page</td><td><code>j</code> <code>k</code>, <code>J</code> <code>K</code>, <code>gg</code> <code>G</code>, <code>42G</code></td></tr><tr><td>Zoom, fit width, fit page</td><td><code>+</code> <code>-</code>, <code>=</code>, <code>z</code></td></tr><tr><td>Dark mode</td><td><code>i</code></td></tr><tr><td>Search this PDF</td><td><code>/</code>, then <code>n</code> <code>N</code></td></tr><tr><td>Search <strong>all</strong> your PDFs</td><td><code>\/</code></td></tr><tr><td>Search all your comments and highlights</td><td><code>\n</code></td></tr><tr><td>Open any PDF on your computer</td><td><code>\f</code> (recent ones: <code>\o</code>)</td></tr><tr><td>Highlight text</td><td><code>v</code> (cursor), <code>v</code> (select), then <code>C</code> <code>V</code> <code>B</code> <code>N</code> <code>M</code></td></tr><tr><td>Comment (with <code>$equations$</code>)</td><td><code>c</code> on a selection or a highlight</td></tr><tr><td>Undo / redo</td><td><code>u</code> / <code>Ctrl-r</code></td></tr><tr><td>Follow / preview a link, figure or citation</td><td><code>f</code> / <code>F</code></td></tr><tr><td>See all pages, reorder or delete them</td><td><code>\g</code></td></tr><tr><td>Two panes side by side</td><td><code>Ctrl-w v</code></td></tr><tr><td>Present fullscreen</td><td><code>F5</code></td></tr><tr><td>Export your notes to Markdown</td><td><code>:export</code></td></tr></tbody></table>
+<h2 id="the-wiki">The wiki<a class="anchor" href="#the-wiki">#</a></h2>
+<p><strong>Start here</strong></p>
+<ul><li><a href="Installation.html">Installation</a>: building, installing, updating</li><li><a href="Getting-Started.html">Getting started</a>: the first five minutes, modes, the help screen</li></ul>
+<p><strong>Using it</strong></p>
+<ul><li><a href="Reading-and-Navigation.html">Reading and navigation</a>: scrolling, zoom, dark mode, marks, jumps, the panel, links, presenting</li><li><a href="Searching.html">Searching</a>: in a PDF, across all your PDFs, finding files, comparing versions</li><li><a href="Highlights-and-Comments.html">Highlights and comments</a>: cursors, colours, comments with equations, undo, filters, export, merging a co-author's notes</li><li><a href="Quoting-and-Citing.html">Quoting and citing</a>: copying text, quotations with the page, BibTeX</li><li><a href="Images-and-Regions.html">Images and regions</a>: putting pictures on pages, moving, resizing, cropping, copying a region for slides</li><li><a href="Changing-Pages.html">Changing pages</a>: delete, turn, move, extract and insert pages</li><li><a href="Tabs-Windows-and-Split-View.html">Tabs, windows and split view</a>: several PDFs at once, sessions</li><li><a href="LaTeX-and-VimTeX.html">LaTeX and VimTeX</a>: auto-reload, forward and inverse search</li><li><a href="Forms-Printing-and-Passwords.html">Forms, printing and passwords</a></li></ul>
+<p><strong>Making it yours</strong></p>
+<ul><li><a href="Configuration.html">Configuration</a>: every setting</li><li><a href="Themes-and-Dark-Mode.html">Themes and dark mode</a>: nine themes, your own themes, fonts</li></ul>
+<p><strong>Reference</strong></p>
+<ul><li><a href="Keyboard-Reference.html">Keyboard reference</a>: every key, by mode</li><li><a href="Commands.html">Commands</a>: every <code>:</code> command</li><li><a href="Files-Memory-and-Speed.html">Files, memory and speed</a>: where things are kept, saving, performance</li><li><a href="FAQ.html">FAQ and troubleshooting</a></li></ul>
+<h2 id="about">About<a class="anchor" href="#about">#</a></h2>
+<p>Version 0.4.0. Made by Hugo Oliveira (hs.oliveira@mailbox.org), MIT licence. Source: <a href="https://github.com/hdsoliveira/Nomadys-PDF">github.com/hdsoliveira/Nomadys-PDF</a>. Built on <a href="https://pdfium.googlesource.com/pdfium/">PDFium</a> (the PDF engine of Chrome), SDL3, FreeType, fontconfig and stb. <code>\a</code> in the program shows the version and how to reach the author.</p>
+<nav class="pager"><span></span><a class="next" href="Installation.html"><small>Next</small>Installation</a></nav>
+</main>
+</div>
+<footer><div class="wrap">
+<span>Nomadys-PDF 0.4.0 · MIT licence · made by Hugo Oliveira</span>
+<span class="right"><a href="../docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:hs.oliveira@mailbox.org">Contact</a></span>
+</div></footer>
+</body></html>

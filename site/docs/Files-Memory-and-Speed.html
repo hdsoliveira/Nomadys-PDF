@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Files, memory and speed · Nomadys-PDF documentation</title>
+<meta name="description" content="Inside the PDF: your highlights, comments, pictures and form entries, as standard PDF annotations. Any reader shows them; nothing is lost if you stop using Noma">
+<link rel="icon" href="../assets/icon.svg"><link rel="stylesheet" href="../assets/style.css">
+</head><body>
+<header class="top"><div class="wrap">
+<a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="">Nomadys-PDF</a>
+<nav><a href="../index.html#features">Features</a><a href="../index.html#research">For research</a>
+<a class="docs-link" href="../docs/index.html">Documentation</a><a href="../index.html#install">Install</a>
+<a class="gh" href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a></nav>
+</div></header>
+<div class="wrap docs">
+<aside class="side"><ul><li><a href="index.html">Home</a></li></ul><p>Start</p><ul><li><a href="Installation.html">Installation</a></li><li><a href="Getting-Started.html">Getting started</a></li></ul><p>Using it</p><ul><li><a href="Reading-and-Navigation.html">Reading and navigation</a></li><li><a href="Searching.html">Searching</a></li><li><a href="Highlights-and-Comments.html">Highlights and comments</a></li><li><a href="Quoting-and-Citing.html">Quoting and citing</a></li><li><a href="Images-and-Regions.html">Images and regions</a></li><li><a href="Changing-Pages.html">Changing pages</a></li><li><a href="Tabs-Windows-and-Split-View.html">Tabs, windows and split view</a></li><li><a href="LaTeX-and-VimTeX.html">LaTeX and VimTeX</a></li><li><a href="Forms-Printing-and-Passwords.html">Forms, printing and passwords</a></li></ul><p>Making it yours</p><ul><li><a href="Configuration.html">Configuration</a></li><li><a href="Themes-and-Dark-Mode.html">Themes and dark mode</a></li></ul><p>Reference</p><ul><li><a href="Keyboard-Reference.html">Keyboard reference</a></li><li><a href="Commands.html">Commands</a></li><li><a href="Files-Memory-and-Speed.html" class=on>Files, memory and speed</a></li><li><a href="FAQ.html">FAQ</a></li></ul></aside>
+<main class="doc">
+<h1 id="files-memory-and-speed">Files, memory and speed</h1>
+<h2 id="what-goes-where">What goes where<a class="anchor" href="#what-goes-where">#</a></h2>
+<p><strong>Inside the PDF</strong>: your highlights, comments, pictures and form entries, as standard PDF annotations. Any reader shows them; nothing is lost if you stop using Nomadys-PDF.</p>
+<p><strong>Outside the PDF</strong>:</p>
+<table><thead><tr><th>Path</th><th>Contents</th></tr></thead><tbody><tr><td><code>~/.config/nomadys-pdf/config</code></td><td>your <a href="Configuration.html">configuration</a></td></tr><tr><td><code>~/.config/nomadys-pdf/themes/</code></td><td>your own themes (<code>:theme new</code>)</td></tr><tr><td><code>~/.config/nomadys-pdf/math.tex</code></td><td>your LaTeX macros for equations in comments</td></tr><tr><td><code>~/.local/share/nomadys-pdf/marks/</code></td><td>marks, last page and view of each file (one small file per PDF, keyed by its path)</td></tr><tr><td><code>~/.local/share/nomadys-pdf/recent</code></td><td>recent files (<code>\o</code>)</td></tr><tr><td><code>~/.local/share/nomadys-pdf/session</code></td><td>the tabs open now (<code>npdf</code> alone reopens them)</td></tr><tr><td><code>~/.local/share/nomadys-pdf/files</code></td><td>the list of PDFs found by <code>\f</code></td></tr><tr><td><code>~/.cache/nomadys-pdf/index/</code></td><td>the text index for <code>\/</code> and <code>\n</code></td></tr><tr><td><code>~/.cache/nomadys-pdf/math/</code></td><td>typeset equations</td></tr><tr><td><code>~/.cache/nomadys-pdf/undo/</code></td><td>copies kept for undoing page changes, deleted when the PDF closes</td></tr></tbody></table>
+<p>The folders follow <code>XDG_CONFIG_HOME</code>, <code>XDG_DATA_HOME</code> and <code>XDG_CACHE_HOME</code> when they are set. Everything under <code>~/.cache/nomadys-pdf</code> can be deleted at any time; it is made again when needed. To remove every trace:</p>
+<pre><code>make uninstall
+rm -rf ~/.config/nomadys-pdf ~/.local/share/nomadys-pdf ~/.cache/nomadys-pdf</code></pre>
+<h2 id="saving">Saving<a class="anchor" href="#saving">#</a></h2>
+<ul><li>Changes are saved <strong>automatically</strong> about a second after the last change, when you leave a form field and when you close the file. With <code>autosave = false</code>, save with <code>Ctrl-s</code> or <code>:w</code>; closing with unsaved changes then asks first.</li><li>The file is written to a temporary file and then renamed over the original, so a crash or a full disk never leaves half a PDF.</li><li>The file is <strong>rewritten compactly</strong>: saving never makes a PDF grow beyond what was added (0.1 s for a 255 MB paper). A big file waits a little longer after a change, so saving never gets in the way of reading.</li><li>Digitally signed PDFs are saved incrementally instead, which keeps the signature valid.</li><li>When another program rewrites the PDF (LaTeX, a sync client), it is reloaded in place.</li></ul>
+<h2 id="memory">Memory<a class="anchor" href="#memory">#</a></h2>
+<p>Made to stay light with big PDFs and many tabs:</p>
+<ul><li><strong>Page images</strong>: one budget of 128 MB for all tabs and windows; what is out of sight is dropped first, never what is on screen. Neighbouring pages are prepared ahead only while there is room.</li><li><strong>Open pages</strong>: at most 8 pages are kept loaded, over all documents (a page holds its decoded pictures: a 24-megapixel photo takes about 70 MB).</li><li><strong>Document caches</strong>: the PDF engine keeps what it parsed until a document is closed; Nomadys-PDF quietly reopens documents to free that (a tab out of sight after 3 s, the one you read after 15 s without input, only when it has no unsaved changes). Nothing changes on screen.</li><li>Freed memory is given back to the system while idle.</li></ul>
+<p>Measured with a 255 MB, 26-page paper full of 24-megapixel photos: 93 MB for the program, about 100–130 MB with eight such papers open in tabs.</p>
+<h2 id="speed">Speed<a class="anchor" href="#speed">#</a></h2>
+<ul><li><strong>Idle means idle</strong>: no timers, no polling; the program sleeps until you press a key or something changes.</li><li><strong>Heavy pages</strong> (thousands of vector strokes, dense plots) are drawn a slice at a time, about 30 ms per frame and the rest while idle, showing the previous zoom meanwhile, so scrolling and zooming never freeze. Zooming ten steps on such a page draws only the last one (5 s instead of 38 s in a test with 120 000 strokes).</li><li><strong>The page grid</strong> draws its thumbnails while idle, a few at a time, so it opens at once even for long books.</li><li><strong>Presentations</strong> prepare the next slide while you talk.</li><li><strong>The library index</strong> is built by background processes at low priority: about 16 ms per PDF the first time, and only changed files afterwards. Searching 2 700 PDFs answers in under 0.2 s.</li><li><strong>Finding PDFs</strong> (<code>\f</code>): the whole home folder (14 000 PDFs) is scanned in under a second.</li></ul>
+<h2 id="robustness">Robustness<a class="anchor" href="#robustness">#</a></h2>
+<p>Every release is tested with AddressSanitizer and UndefinedBehaviorSanitizer on a collection of broken PDFs (truncated, garbage, empty, without pages, with cyclic outlines, huge and tiny pages, 3000 pages, many form fields) and on long random key sequences through every mode. The library index runs in separate processes, so a PDF that crashes the PDF engine only skips that file.</p>
+<nav class="pager"><a href="Commands.html"><small>Previous</small>Commands</a><a class="next" href="FAQ.html"><small>Next</small>FAQ</a></nav>
+</main>
+</div>
+<footer><div class="wrap">
+<span>Nomadys-PDF 0.4.0 · MIT licence · made by Hugo Oliveira</span>
+<span class="right"><a href="../docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:hs.oliveira@mailbox.org">Contact</a></span>
+</div></footer>
+</body></html>

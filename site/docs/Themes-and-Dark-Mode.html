@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Themes and dark mode · Nomadys-PDF documentation</title>
+<meta name="description" content="Built from the official palettes, each with a light and a dark mode (i switches between them while reading):">
+<link rel="icon" href="../assets/icon.svg"><link rel="stylesheet" href="../assets/style.css">
+</head><body>
+<header class="top"><div class="wrap">
+<a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="">Nomadys-PDF</a>
+<nav><a href="../index.html#features">Features</a><a href="../index.html#research">For research</a>
+<a class="docs-link" href="../docs/index.html">Documentation</a><a href="../index.html#install">Install</a>
+<a class="gh" href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a></nav>
+</div></header>
+<div class="wrap docs">
+<aside class="side"><ul><li><a href="index.html">Home</a></li></ul><p>Start</p><ul><li><a href="Installation.html">Installation</a></li><li><a href="Getting-Started.html">Getting started</a></li></ul><p>Using it</p><ul><li><a href="Reading-and-Navigation.html">Reading and navigation</a></li><li><a href="Searching.html">Searching</a></li><li><a href="Highlights-and-Comments.html">Highlights and comments</a></li><li><a href="Quoting-and-Citing.html">Quoting and citing</a></li><li><a href="Images-and-Regions.html">Images and regions</a></li><li><a href="Changing-Pages.html">Changing pages</a></li><li><a href="Tabs-Windows-and-Split-View.html">Tabs, windows and split view</a></li><li><a href="LaTeX-and-VimTeX.html">LaTeX and VimTeX</a></li><li><a href="Forms-Printing-and-Passwords.html">Forms, printing and passwords</a></li></ul><p>Making it yours</p><ul><li><a href="Configuration.html">Configuration</a></li><li><a href="Themes-and-Dark-Mode.html" class=on>Themes and dark mode</a></li></ul><p>Reference</p><ul><li><a href="Keyboard-Reference.html">Keyboard reference</a></li><li><a href="Commands.html">Commands</a></li><li><a href="Files-Memory-and-Speed.html">Files, memory and speed</a></li><li><a href="FAQ.html">FAQ</a></li></ul></aside>
+<main class="doc">
+<h1 id="themes-and-dark-mode">Themes and dark mode</h1>
+<h2 id="nine-themes-each-light-and-dark">Nine themes, each light and dark<a class="anchor" href="#nine-themes-each-light-and-dark">#</a></h2>
+<p>Built from the official palettes, each with a light and a dark mode (<code>i</code> switches between them while reading):</p>
+<table><thead><tr><th>Theme</th><th>Light / dark</th></tr></thead><tbody><tr><td><strong>gruvbox</strong></td><td>light / dark</td></tr><tr><td><strong>tokyonight</strong></td><td>Day / Night</td></tr><tr><td><strong>catppuccin</strong></td><td>Latte / Mocha</td></tr><tr><td><strong>rosepine</strong></td><td>Dawn / Main</td></tr><tr><td><strong>kanagawa</strong></td><td>Lotus / Wave</td></tr><tr><td><strong>everforest</strong></td><td>light / dark</td></tr><tr><td><strong>dracula</strong></td><td>Alucard / Dracula</td></tr><tr><td><strong>nord</strong></td><td>light / dark</td></tr><tr><td><strong>solarized</strong></td><td>light / dark</td></tr></tbody></table>
+<p><img alt="the themes" src="../assets/themes.png"></p>
+<h2 id="choosing-one">Choosing one<a class="anchor" href="#choosing-one">#</a></h2>
+<figure class="demo"><div class="window"><div class="bar"><i></i><i></i><i></i><span>Trying themes live</span></div><video autoplay muted loop playsinline preload="metadata" poster="../assets/demos/themes.jpg"><source src="../assets/demos/themes.mp4" type="video/mp4"></video></div></figure>
+<p><code>\T</code> (or <code>:theme</code>) lists the themes with small samples of both modes.</p>
+<table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>j</code> <code>k</code> (<code>↓</code> <code>↑</code>, <code>Tab</code>)</td><td>move; each theme is <strong>applied at once</strong>, so you see it on your PDF</td></tr><tr><td><code>i</code></td><td>show the other mode (light / dark)</td></tr><tr><td><code>Enter</code></td><td>keep it: writes <code>include = NAME</code> in your configuration (the rest of the file is left as it is)</td></tr><tr><td><code>Esc</code>, <code>q</code></td><td>go back to the theme you had</td></tr></tbody></table>
+<p><code>:theme NAME</code> switches directly (<code>Tab</code> completes the names).</p>
+<h2 id="your-own-theme">Your own theme<a class="anchor" href="#your-own-theme">#</a></h2>
+<p><code>:theme new NAME</code> writes <code>~/.config/nomadys-pdf/themes/NAME.conf</code>, started from the theme in use, with every colour explained on its line:</p>
+<pre><code># Around the pages
+background = #282828         # the window behind and between the pages
+page_bg = #282828            # dark mode: the paper of the pages
+...
+search_match = #fabd2f       # search matches, link letters (f), the crop frame</code></pre>
+<p>Change any <code>#rrggbb</code> and save: the open window shows it <strong>immediately</strong>. A wrong value is reported with its line, and the rest still works. Your themes appear in the <code>\T</code> list marked "yours".</p>
+<p>A theme file has a <code>[light]</code> and a <code>[dark]</code> section. Single colours can also be changed in the <a href="Configuration.html#colours">configuration</a>, in <code>[light]</code> / <code>[dark]</code> sections after the <code>include</code> line.</p>
+<h2 id="every-colour">Every colour<a class="anchor" href="#every-colour">#</a></h2>
+<table><thead><tr><th>Name</th><th>Paints</th></tr></thead><tbody><tr><td><code>background</code></td><td>the window behind and between the pages</td></tr><tr><td><code>page_bg</code>, <code>page_fg</code></td><td>dark mode: the paper and the ink of the pages</td></tr><tr><td><code>shadow</code></td><td>the soft shadow around pages</td></tr><tr><td><code>tab_bg</code>, <code>tab_fg</code></td><td>the tab bar</td></tr><tr><td><code>tab_active_bg</code>, <code>tab_active_fg</code></td><td>the current tab</td></tr><tr><td><code>tab_accent</code></td><td>accents: the current tab, the focused pane, selected rows, highlights of matches in lists</td></tr><tr><td><code>bar_bg</code>, <code>bar_fg</code>, <code>bar_cursor</code></td><td>the <code>:</code> and <code>/</code> line, and its cursor</td></tr><tr><td><code>message_bg</code>, <code>message_fg</code></td><td>messages in the corner</td></tr><tr><td><code>panel_bg</code>, <code>panel_fg</code>, <code>panel_header</code></td><td>the panel, help, lists; its dim text</td></tr><tr><td><code>panel_selected_bg</code>, <code>panel_selected_fg</code></td><td>the selected row</td></tr><tr><td><code>comment_bg</code>, <code>comment_fg</code></td><td>the comment box</td></tr><tr><td><code>comment_marker</code></td><td>the dot on highlights that have a comment</td></tr><tr><td><code>selection</code></td><td>text being selected</td></tr><tr><td><code>search_match</code></td><td>search matches, link letters (<code>f</code>), the crop frame</td></tr><tr><td><code>caret</code></td><td>the text cursor and the free cursor</td></tr><tr><td><code>form_focus</code></td><td>the form field being filled</td></tr><tr><td><code>mode_normal</code>, <code>mode_cursor</code>, <code>mode_visual</code>, <code>mode_area</code>, <code>mode_insert</code>, <code>mode_command</code></td><td>the mode badge</td></tr></tbody></table>
+<h2 id="dark-mode">Dark mode<a class="anchor" href="#dark-mode">#</a></h2>
+<p>Dark mode recolours the pages: lightness is inverted but hue is kept (red stays red), with the theme's <code>page_bg</code> and <code>page_fg</code> as paper and ink. Images are judged one by one (<code>dark_images = smart</code>, the default):</p>
+<ul><li><strong>photos</strong> keep their colours;</li><li><strong>figures drawn on white</strong> (plots, diagrams, schematics: most scientific figures) are recoloured with the page, so no white blocks glare.</li></ul>
+<p><code>dark_images = keep</code> leaves every image as it is; <code>invert</code> recolours all of them. Copying a region as an image and printing always use the page's own colours.</p>
+<p>Dark mode is remembered per file.</p>
+<h2 id="fonts">Fonts<a class="anchor" href="#fonts">#</a></h2>
+<p>The interface font is any font installed on your system, Nerd Fonts included (<code>fc-list : family</code> lists them):</p>
+<pre><code>font = CaskaydiaCove NF
+font_size = 10.5</code></pre>
+<p>Pages always use the fonts of the PDF itself.</p>
+<nav class="pager"><a href="Configuration.html"><small>Previous</small>Configuration</a><a class="next" href="Keyboard-Reference.html"><small>Next</small>Keyboard reference</a></nav>
+</main>
+</div>
+<footer><div class="wrap">
+<span>Nomadys-PDF 0.4.0 · MIT licence · made by Hugo Oliveira</span>
+<span class="right"><a href="../docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:hs.oliveira@mailbox.org">Contact</a></span>
+</div></footer>
+</body></html>

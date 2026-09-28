@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nomadys-PDF · the keyboard-driven PDF reader for research</title>
+<meta name="description" content="A fast, minimal PDF reader for Linux, driven by vim-style keys: highlights and comments with LaTeX equations, search across every PDF you own, reference previews, version comparison, SyncTeX. Open source.">
+<meta property="og:title" content="Nomadys-PDF">
+<meta property="og:description" content="The keyboard-driven PDF reader for research.">
+<meta property="og:image" content="assets/demos/highlight.jpg">
+<link rel="icon" href="assets/icon.svg">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <a class="brand" href="index.html"><img src="assets/icon.svg" alt="">Nomadys-PDF</a>
+  <nav>
+    <a href="#features">Features</a>
+    <a href="#research">For research</a>
+    <a class="docs-link" href="docs/index.html">Documentation</a>
+    <a href="#install">Install</a>
+    <a class="gh" href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a>
+  </nav>
+</div></header>
+
+<main>
+<div class="hero"><div class="wrap">
+  <img class="icon" src="assets/icon.svg" alt="The Nomadys-PDF icon: a tent at dawn, a trail towards the mountain, a page lit in the doorway">
+  <h1>Read papers at the<br><span>speed of thought.</span></h1>
+  <p class="lead">Nomadys-PDF is a fast, minimal PDF reader for Linux, driven entirely by the
+    keyboard. Highlight, comment with LaTeX, search every paper you own and follow every
+    reference, without touching the mouse.</p>
+  <div class="buttons">
+    <a class="btn primary" href="#install">Install</a>
+    <a class="btn" href="docs/index.html">Read the documentation</a>
+    <a class="btn" href="https://github.com/hdsoliveira/Nomadys-PDF">Source code</a>
+  </div>
+  <p class="meta">Version 0.4.0 · Linux (Wayland and X11) · free and open source, MIT licence</p>
+
+  <div class="window">
+    <div class="bar"><i></i><i></i><i></i><span>Highlighting, and a comment with an equation</span></div>
+    <video autoplay muted loop playsinline preload="auto" poster="assets/demos/highlight.jpg">
+      <source src="assets/demos/highlight.mp4" type="video/mp4">
+    </video>
+  </div>
+
+  <div class="facts">
+    <div><b>0 buttons</b><span>the page gets the whole window; <kbd>\c</kbd> shows every key</span></div>
+    <div><b>14 000 PDFs</b><span>searched by their text in about a second</span></div>
+    <div><b>Standard notes</b><span>highlights and comments that every other reader shows</span></div>
+    <div><b>93 MB</b><span>for a 255 MB paper full of photos; idle means idle</span></div>
+  </div>
+</div></div>
+
+<section id="features"><div class="wrap">
+  <p class="eyebrow">What it does</p>
+  <h2>Everything you do with a paper, one or two keys away</h2>
+  <p class="intro">No toolbars, no menus, no sidebars. If you know vim, you already know how
+    to move; if you do not, the help screen (<kbd>\c</kbd>) shows every key, and
+    <kbd>Esc</kbd> always brings you back.</p>
+
+  <div class="feature">
+    <div class="media window">
+      <div class="bar"><i></i><i></i><i></i><span>v · 8j · e e e · B · c</span></div>
+      <video autoplay muted loop playsinline preload="metadata" poster="assets/demos/highlight.jpg"><source src="assets/demos/highlight.mp4" type="video/mp4"></video>
+    </div>
+    <div>
+      <h3>Highlights and comments, with real equations</h3>
+      <p>A text cursor moves word by word; five colours sit under your left hand. Comments
+        open next to the highlight, and anything between <code>$…$</code> is typeset by LaTeX as
+        you write.</p>
+      <ul>
+        <li>Stored in the PDF as standard annotations: Acrobat, Okular, Zotero show them</li>
+        <li>Undo and redo everything, 200 steps deep</li>
+        <li>Filter by colour, export to Markdown for Obsidian</li>
+        <li>Merge a co-author's notes without duplicates</li>
+      </ul>
+      <p class="keys"><a href="docs/Highlights-and-Comments.html">How it works →</a> · <a class="gif" href="assets/demos/highlight.gif">GIF</a></p>
+    </div>
+  </div>
+
+  <div class="feature flip">
+    <div class="media window">
+      <div class="bar"><i></i><i></i><i></i><span>F · d · Enter · Ctrl-o</span></div>
+      <video autoplay muted loop playsinline preload="metadata" poster="assets/demos/preview.jpg"><source src="assets/demos/preview.mp4" type="video/mp4"></video>
+    </div>
+    <div>
+      <h3>See a reference without losing your place</h3>
+      <p>Press <kbd>F</kbd>: every citation, figure, equation and section reference on screen
+        gets a letter. Type it, and the target opens in a window right there: the bibliography
+        entry, the figure on page 7, the equation from the appendix.</p>
+      <ul>
+        <li><kbd>f</kbd> follows the link instead; <kbd>Ctrl-o</kbd> always comes back</li>
+        <li>Marks and a jump history, like in vim</li>
+        <li>Web links and DOIs open in your browser</li>
+      </ul>
+      <p class="keys"><a href="docs/Reading-and-Navigation.html#links-references-and-previews">How it works →</a> · <a class="gif" href="assets/demos/preview.gif">GIF</a></p>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="media window">
+      <div class="bar"><i></i><i></i><i></i><span>\/ · snap-through stiffness · Enter · \n</span></div>
+      <video autoplay muted loop playsinline preload="metadata" poster="assets/demos/library.jpg"><source src="assets/demos/library.mp4" type="video/mp4"></video>
+    </div>
+    <div>
+      <h3>Search the text of every PDF you own</h3>
+      <p>"Where did I read about that?" <kbd>\/</kbd> searches the text of all the PDFs in your
+        folders as you type, and opens the right one at the right page, with the words
+        highlighted. <kbd>\n</kbd> does the same with every comment you ever wrote.</p>
+      <ul>
+        <li>An index built in the background, at low priority: about 16 ms per PDF, once</li>
+        <li>Afterwards only new and changed files are read again</li>
+        <li><kbd>\f</kbd> finds any PDF by its name, fuzzy</li>
+      </ul>
+      <p class="keys"><a href="docs/Searching.html">How it works →</a> · <a class="gif" href="assets/demos/library.gif">GIF</a></p>
+    </div>
+  </div>
+
+  <div class="feature flip">
+    <div class="media window">
+      <div class="bar"><i></i><i></i><i></i><span>:diff paper-v1.pdf · ]c ]c ]c</span></div>
+      <video autoplay muted loop playsinline preload="metadata" poster="assets/demos/diff.jpg"><source src="assets/demos/diff.mp4" type="video/mp4"></video>
+    </div>
+    <div>
+      <h3>What changed since the submitted version?</h3>
+      <p><code>:diff old.pdf</code> compares two versions word by word: new text in green,
+        changes in amber, deletions marked in red. <kbd>]c</kbd> goes to the next change and
+        tells you what it was: <em>changed, was "3.2"</em>.</p>
+      <ul>
+        <li>Ignores what is not a change: hyphenation, ligatures, page breaks</li>
+        <li>Updated every time LaTeX recompiles: answering reviewers becomes easy</li>
+      </ul>
+      <p class="keys"><a href="docs/Searching.html#comparing-two-versions-diff">How it works →</a> · <a class="gif" href="assets/demos/diff.gif">GIF</a></p>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="media window">
+      <div class="bar"><i></i><i></i><i></i><span>Ctrl-w v · J · :vsplit pop Tab</span></div>
+      <video autoplay muted loop playsinline preload="metadata" poster="assets/demos/split.jpg"><source src="assets/demos/split.mp4" type="video/mp4"></video>
+    </div>
+    <div>
+      <h3>The figure and the text, side by side</h3>
+      <p>Split the window and keep the figure on one side while you read the text that
+        discusses it, or open another paper next to it. Each pane has its own place, zoom and
+        search.</p>
+      <ul>
+        <li><kbd>Ctrl-w v</kbd>, <kbd>Ctrl-w s</kbd>, <kbd>Ctrl-w w</kbd>: the keys of vim</li>
+        <li>Tabs, several windows, and your session restored on the next start</li>
+      </ul>
+      <p class="keys"><a href="docs/Tabs-Windows-and-Split-View.html">How it works →</a> · <a class="gif" href="assets/demos/split.gif">GIF</a></p>
+    </div>
+  </div>
+
+  <div class="feature flip">
+    <div class="media window">
+      <div class="bar"><i></i><i></i><i></i><span>j · + · = · i · J</span></div>
+      <video autoplay muted loop playsinline preload="metadata" poster="assets/demos/reading.jpg"><source src="assets/demos/reading.mp4" type="video/mp4"></video>
+    </div>
+    <div>
+      <h3>A dark mode that understands figures</h3>
+      <p>Press <kbd>i</kbd>: text and plots are recoloured for the night, while photographs
+        keep their colours. Nine colour themes (gruvbox, catppuccin, tokyonight, nord…), each
+        with a light and a dark side, or your own.</p>
+      <ul>
+        <li>Each file remembers its zoom, dark mode and page</li>
+        <li>Heavy pages render in slices: scrolling never freezes</li>
+      </ul>
+      <p class="keys"><a href="docs/Themes-and-Dark-Mode.html">How it works →</a> · <a class="gif" href="assets/demos/reading.gif">GIF</a></p>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="media window">
+      <div class="bar"><i></i><i></i><i></i><span>\g · v l · &gt; &gt; · x · u</span></div>
+      <video autoplay muted loop playsinline preload="metadata" poster="assets/demos/pages.jpg"><source src="assets/demos/pages.mp4" type="video/mp4"></video>
+    </div>
+    <div>
+      <h3>Rearrange pages without another program</h3>
+      <p>All pages as thumbnails with <kbd>\g</kbd>. Choose some, then move, turn or delete
+        them, save them as a new PDF, or insert another PDF. Every change can be undone.</p>
+      <ul>
+        <li><code>:extract 3-7</code>, <code>:insert</code>, <code>:append</code>, <code>:delete</code></li>
+        <li>Your marks follow their pages</li>
+      </ul>
+      <p class="keys"><a href="docs/Changing-Pages.html">How it works →</a> · <a class="gif" href="assets/demos/pages.gif">GIF</a></p>
+    </div>
+  </div>
+</div></section>
+
+<section class="soft" id="research"><div class="wrap">
+  <p class="eyebrow">Made for research</p>
+  <h2>Built around how papers are read and written</h2>
+  <p class="intro">Nomadys-PDF was written by a researcher, for the daily work of reading
+    literature, writing with LaTeX and answering reviewers.</p>
+  <div class="grid">
+    <div class="card"><span class="k">\lv · double click</span><h4>LaTeX and VimTeX</h4>
+      <p>Forward and inverse search with SyncTeX, and automatic reload when LaTeX writes the PDF.</p></div>
+    <div class="card"><span class="k">Y</span><h4>Quotations with the page</h4>
+      <p>Copies <em>“…” (p. 215)</em>, with the page number printed on the paper, ready to paste.</p></div>
+    <div class="card"><span class="k">:bibtex</span><h4>BibTeX in one command</h4>
+      <p>Finds the paper's DOI or arXiv number and copies its BibTeX entry.</p></div>
+    <div class="card"><span class="k">:export green</span><h4>Your notes in Markdown</h4>
+      <p>Highlights and comments, page by page, with equations, filtered by colour. Great with Obsidian.</p></div>
+    <div class="card"><span class="k">:merge co-author.pdf</span><h4>Co-authors' notes</h4>
+      <p>Bring the highlights and comments of a colleague's copy into yours, without duplicates.</p></div>
+    <div class="card"><span class="k">Ctrl-v · y</span><h4>Figures for slides</h4>
+      <p>Mark a region and copy it as a 300 dpi image, or place a picture or a signature on a page.</p></div>
+    <div class="card"><span class="k">F5</span><h4>Presentations</h4>
+      <p>Fullscreen, one page at a time, the next slide prepared while you talk.</p></div>
+    <div class="card"><span class="k">Ctrl-j</span><h4>Forms and signatures</h4>
+      <p>Fill in forms from the keyboard; signed PDFs keep their signatures valid.</p></div>
+    <div class="card"><span class="k">local</span><h4>Private by design</h4>
+      <p>No accounts, no cloud, no telemetry. Your files and notes never leave your computer.</p></div>
+  </div>
+</div></section>
+
+<section id="install"><div class="wrap">
+  <p class="eyebrow">Install</p>
+  <h2>Up and running in a minute</h2>
+  <p class="intro">Nomadys-PDF builds from source on any recent Linux. The PDF engine
+    (PDFium, the engine of Chrome) is downloaded and verified automatically.</p>
+  <div class="install">
+    <div>
+      <h3>1. Build and install</h3>
+<pre><span class="c"># Debian / Ubuntu</span>
+sudo apt install build-essential pkg-config libsdl3-dev \
+     libfreetype-dev libfontconfig-dev zlib1g-dev
+
+git clone https://github.com/hdsoliveira/Nomadys-PDF.git
+cd Nomadys-PDF
+make && make install</pre>
+    </div>
+    <div>
+      <h3>2. Open a paper</h3>
+<pre>npdf paper.pdf          <span class="c"># or several: one tab each</span>
+npdf                    <span class="c"># your last session</span></pre>
+      <h3>3. Learn the keys as you go</h3>
+      <p><kbd>\c</kbd> shows every key of the mode you are in. The
+        <a href="docs/Getting-Started.html">getting started guide</a> takes five minutes, and the
+        <a href="docs/Keyboard-Reference.html">keyboard reference</a> lists everything.</p>
+      <p>Optional: TeX Live for equations in comments and SyncTeX, <code>curl</code> for BibTeX,
+        CUPS for printing.</p>
+    </div>
+  </div>
+</div></section>
+</main>
+
+<footer><div class="wrap">
+  <span>Nomadys-PDF 0.4.0 · MIT licence · made by Hugo Oliveira</span>
+  <span class="right"><a href="docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:hs.oliveira@mailbox.org">Contact</a></span>
+</div></footer>
+</body>
+</html>

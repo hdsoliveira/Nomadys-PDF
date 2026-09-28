@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quoting and citing · Nomadys-PDF documentation</title>
+<meta name="description" content="In the text cursor (v), select with v, then:">
+<link rel="icon" href="../assets/icon.svg"><link rel="stylesheet" href="../assets/style.css">
+</head><body>
+<header class="top"><div class="wrap">
+<a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="">Nomadys-PDF</a>
+<nav><a href="../index.html#features">Features</a><a href="../index.html#research">For research</a>
+<a class="docs-link" href="../docs/index.html">Documentation</a><a href="../index.html#install">Install</a>
+<a class="gh" href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a></nav>
+</div></header>
+<div class="wrap docs">
+<aside class="side"><ul><li><a href="index.html">Home</a></li></ul><p>Start</p><ul><li><a href="Installation.html">Installation</a></li><li><a href="Getting-Started.html">Getting started</a></li></ul><p>Using it</p><ul><li><a href="Reading-and-Navigation.html">Reading and navigation</a></li><li><a href="Searching.html">Searching</a></li><li><a href="Highlights-and-Comments.html">Highlights and comments</a></li><li><a href="Quoting-and-Citing.html" class=on>Quoting and citing</a></li><li><a href="Images-and-Regions.html">Images and regions</a></li><li><a href="Changing-Pages.html">Changing pages</a></li><li><a href="Tabs-Windows-and-Split-View.html">Tabs, windows and split view</a></li><li><a href="LaTeX-and-VimTeX.html">LaTeX and VimTeX</a></li><li><a href="Forms-Printing-and-Passwords.html">Forms, printing and passwords</a></li></ul><p>Making it yours</p><ul><li><a href="Configuration.html">Configuration</a></li><li><a href="Themes-and-Dark-Mode.html">Themes and dark mode</a></li></ul><p>Reference</p><ul><li><a href="Keyboard-Reference.html">Keyboard reference</a></li><li><a href="Commands.html">Commands</a></li><li><a href="Files-Memory-and-Speed.html">Files, memory and speed</a></li><li><a href="FAQ.html">FAQ</a></li></ul></aside>
+<main class="doc">
+<h1 id="quoting-and-citing">Quoting and citing</h1>
+<h2 id="copying-text">Copying text<a class="anchor" href="#copying-text">#</a></h2>
+<p>In the text cursor (<code>v</code>), select with <code>v</code>, then:</p>
+<figure class="demo"><div class="window"><div class="bar"><i></i><i></i><i></i><span>A quotation with its page, ready to paste</span></div><video autoplay muted loop playsinline preload="metadata" poster="../assets/demos/quote.jpg"><source src="../assets/demos/quote.mp4" type="video/mp4"></video></div></figure>
+<table><thead><tr><th>Key</th><th>Copies</th></tr></thead><tbody><tr><td><code>y</code></td><td>the text, as it is</td></tr><tr><td><code>Y</code></td><td>the text <strong>as a quotation with its page</strong>: <code>“the snap-through instability” (p. 5)</code></td></tr></tbody></table>
+<p>Quotations are made for pasting into your own writing:</p>
+<ul><li>line breaks and repeated spaces become single spaces, and words broken with a hyphen at the end of a line are joined again;</li><li>the page is the one <strong>printed</strong> on it (its page label, such as <code>iv</code> or <code>S3</code>, or <code>215</code> for page 215 of a journal volume), not the position in the file, whenever the PDF says so;</li><li>a selection over two pages gives <code>(pp. 5–6)</code>.</li></ul>
+<p>The format is <code>cite_format</code> in the <a href="Configuration.html">configuration</a>, with <code>%t</code> for the text and <code>%p</code> for the page(s). The default is <code>“%t” (p. %p)</code>; for example:</p>
+<pre><code>cite_format = &quot;%t&quot; [p. %p]
+cite_format = &gt; %t (p. %p)</code></pre>
+<h2 id="bibtex-for-the-paper-you-are-reading">BibTeX for the paper you are reading<a class="anchor" href="#bibtex-for-the-paper-you-are-reading">#</a></h2>
+<p><code>:bibtex</code> copies the paper's BibTeX entry to the clipboard, ready to paste into your <code>.bib</code> file:</p>
+<ol><li>it finds the paper's <strong>DOI</strong>: in the PDF's metadata first, then in the text of its first two pages (a DOI printed as <code>doi:</code>, <code>DOI:</code> or <code>doi.org/</code> is preferred over one that is only mentioned);</li><li>without a DOI, it looks for an <strong>arXiv</strong> number (<code>arXiv:1602.03837</code>);</li><li>it fetches the entry from <code>doi.org</code> (or <code>arxiv.org</code>) in the background, so you keep reading meanwhile;</li><li>the message shows the citation key: "BibTeX copied: Abbott_2016".</li></ol>
+<p>It needs <code>curl</code> and an internet connection. When nothing is found it says so: "no DOI or arXiv number found on the first pages", "no connection", "timed out" or "not found".</p>
+<h2 id="copying-a-figure">Copying a figure<a class="anchor" href="#copying-a-figure">#</a></h2>
+<p>To paste a figure into slides or a document as an image, see <a href="Images-and-Regions.html#copying-a-region-as-an-image">Images and regions</a>.</p>
+<nav class="pager"><a href="Highlights-and-Comments.html"><small>Previous</small>Highlights and comments</a><a class="next" href="Images-and-Regions.html"><small>Next</small>Images and regions</a></nav>
+</main>
+</div>
+<footer><div class="wrap">
+<span>Nomadys-PDF 0.4.0 · MIT licence · made by Hugo Oliveira</span>
+<span class="right"><a href="../docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:hs.oliveira@mailbox.org">Contact</a></span>
+</div></footer>
+</body></html>

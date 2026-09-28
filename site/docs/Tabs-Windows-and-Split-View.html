@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tabs, windows and split view · Nomadys-PDF documentation</title>
+<meta name="description" content="Each PDF opens in a tab of the same window: npdf a.pdf b.pdf c.pdf, or :e file.pdf, \o, \f from inside.">
+<link rel="icon" href="../assets/icon.svg"><link rel="stylesheet" href="../assets/style.css">
+</head><body>
+<header class="top"><div class="wrap">
+<a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="">Nomadys-PDF</a>
+<nav><a href="../index.html#features">Features</a><a href="../index.html#research">For research</a>
+<a class="docs-link" href="../docs/index.html">Documentation</a><a href="../index.html#install">Install</a>
+<a class="gh" href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a></nav>
+</div></header>
+<div class="wrap docs">
+<aside class="side"><ul><li><a href="index.html">Home</a></li></ul><p>Start</p><ul><li><a href="Installation.html">Installation</a></li><li><a href="Getting-Started.html">Getting started</a></li></ul><p>Using it</p><ul><li><a href="Reading-and-Navigation.html">Reading and navigation</a></li><li><a href="Searching.html">Searching</a></li><li><a href="Highlights-and-Comments.html">Highlights and comments</a></li><li><a href="Quoting-and-Citing.html">Quoting and citing</a></li><li><a href="Images-and-Regions.html">Images and regions</a></li><li><a href="Changing-Pages.html">Changing pages</a></li><li><a href="Tabs-Windows-and-Split-View.html" class=on>Tabs, windows and split view</a></li><li><a href="LaTeX-and-VimTeX.html">LaTeX and VimTeX</a></li><li><a href="Forms-Printing-and-Passwords.html">Forms, printing and passwords</a></li></ul><p>Making it yours</p><ul><li><a href="Configuration.html">Configuration</a></li><li><a href="Themes-and-Dark-Mode.html">Themes and dark mode</a></li></ul><p>Reference</p><ul><li><a href="Keyboard-Reference.html">Keyboard reference</a></li><li><a href="Commands.html">Commands</a></li><li><a href="Files-Memory-and-Speed.html">Files, memory and speed</a></li><li><a href="FAQ.html">FAQ</a></li></ul></aside>
+<main class="doc">
+<h1 id="tabs-windows-and-split-view">Tabs, windows and split view</h1>
+<h2 id="tabs">Tabs<a class="anchor" href="#tabs">#</a></h2>
+<p>Each PDF opens in a tab of the same window: <code>npdf a.pdf b.pdf c.pdf</code>, or <code>:e file.pdf</code>, <code>\o</code>, <code>\f</code> from inside.</p>
+<table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>Ctrl-,</code> / <code>Ctrl-.</code></td><td>previous / next tab</td></tr><tr><td><code>t</code></td><td>show / hide the tab bar</td></tr><tr><td><code>:e file.pdf</code></td><td>open in a new tab (<code>Tab</code> completes the path)</td></tr><tr><td><code>:q</code></td><td>close the tab (<code>:q!</code> discarding unsaved changes; <code>:wq</code>, <code>:x</code> save first)</td></tr><tr><td><code>\l</code>, then the <strong>Tabs</strong> tab</td><td>all open files: <code>Enter</code> switches, <code>x</code> closes</td></tr></tbody></table>
+<p>The tab bar is hidden by default, to leave the whole window to the page; it shows for a moment when you switch tabs. <code>show_tabs = true</code> in the <a href="Configuration.html">configuration</a> keeps it visible.</p>
+<h2 id="windows">Windows<a class="anchor" href="#windows">#</a></h2>
+<table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>Ctrl-n</code></td><td>a new window on the same PDF (edits are shared)</td></tr><tr><td><code>q</code></td><td>close the window</td></tr></tbody></table>
+<h2 id="split-view">Split view<a class="anchor" href="#split-view">#</a></h2>
+<figure class="demo"><div class="window"><div class="bar"><i></i><i></i><i></i><span>Two panes, then another paper</span></div><video autoplay muted loop playsinline preload="metadata" poster="../assets/demos/split.jpg"><source src="../assets/demos/split.mp4" type="video/mp4"></video></div></figure>
+<p>Two panes in one window, each with its own place, zoom, dark mode and search: the figure and the text that discusses it, the paper and its supplementary material, or two papers side by side.</p>
+<table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>Ctrl-w v</code></td><td>split side by side, on the same PDF</td></tr><tr><td><code>Ctrl-w s</code></td><td>split one above the other</td></tr><tr><td><code>:vsplit other.pdf</code> / <code>:split other.pdf</code></td><td>the same, with another PDF in the new pane</td></tr><tr><td><code>Ctrl-w w</code>, <code>Ctrl-w Ctrl-w</code></td><td>go to the other pane</td></tr><tr><td><code>Ctrl-w h</code> <code>j</code> <code>k</code> <code>l</code></td><td>go to the pane to the left / below / above / right</td></tr><tr><td><code>Ctrl-w x</code></td><td>the panes change places</td></tr><tr><td><code>Ctrl-w q</code>, <code>Ctrl-w c</code>, <code>:close</code></td><td>close this pane</td></tr><tr><td><code>Ctrl-w o</code>, <code>:only</code></td><td>keep only this pane</td></tr></tbody></table>
+<p>Keys act on the <strong>focused</strong> pane, marked by a thin accent line along its top. A click or the mouse wheel over a pane focuses it. Search, marks, highlighting, zoom: everything works in each pane as in a whole window.</p>
+<p>The first pane shows the current tab; switching tabs changes it, and the second pane stays.</p>
+<h2 id="sessions">Sessions<a class="anchor" href="#sessions">#</a></h2>
+<p>The open tabs are remembered as they change, even if the program is killed. <code>npdf</code> with no file reopens them (so does <code>:session</code> from inside). Each file opens where you stopped reading.</p>
+<nav class="pager"><a href="Changing-Pages.html"><small>Previous</small>Changing pages</a><a class="next" href="LaTeX-and-VimTeX.html"><small>Next</small>LaTeX and VimTeX</a></nav>
+</main>
+</div>
+<footer><div class="wrap">
+<span>Nomadys-PDF 0.4.0 · MIT licence · made by Hugo Oliveira</span>
+<span class="right"><a href="../docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:hs.oliveira@mailbox.org">Contact</a></span>
+</div></footer>
+</body></html>

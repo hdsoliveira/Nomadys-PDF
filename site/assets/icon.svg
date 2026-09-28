@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Nomadys-PDF: a tent at dawn, a trail towards the mountain, and a page
+       glowing in the doorway. At home anywhere, always going on. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c2143"/>
+      <stop offset="0.3" stop-color="#43386e"/>
+      <stop offset="0.5" stop-color="#b8607a"/>
+      <stop offset="0.66" stop-color="#f4a261"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff1c1"/>
+      <stop offset="1" stop-color="#ffc766"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffd27a" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffd27a" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="round">
+      <rect width="512" height="512" rx="112"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#round)">
+    <rect width="512" height="512" fill="url(#sky)"/>
+    <!-- stars -->
+    <g fill="#fdf6e3">
+      <circle cx="96" cy="92" r="4"/>
+      <circle cx="170" cy="58" r="2.5"/>
+      <circle cx="402" cy="84" r="3.5"/>
+      <circle cx="446" cy="150" r="2.5"/>
+      <circle cx="300" cy="46" r="2.5"/>
+    </g>
+    <!-- the sun rising behind the mountain: somewhere better -->
+    <circle cx="372" cy="228" r="54" fill="#ffc46b"/>
+    <circle cx="372" cy="228" r="80" fill="#ffc46b" opacity="0.25"/>
+    <!-- the far range -->
+    <path d="M0 330 L92 250 L150 292 L236 196 L318 290 L380 238 L512 330 L512 512 L0 512 Z" fill="#5b4f86"/>
+    <!-- the mountain, snow on top -->
+    <path d="M140 360 L300 150 L470 360 Z" fill="#2b2d57"/>
+    <path d="M300 150 L262 200 L282 194 L298 212 L318 192 L338 202 Z" fill="#eef1f8"/>
+    <!-- the ground -->
+    <path d="M0 372 Q140 336 280 356 T512 344 L512 512 L0 512 Z" fill="#191b35"/>
+    <!-- the trail towards the mountain -->
+    <path d="M250 474 C320 450 270 414 334 398 S410 376 382 352" fill="none" stroke="#f6c68a" stroke-width="8"
+          stroke-linecap="round" stroke-dasharray="1 17"/>
+    <g transform="translate(160 486) scale(1.16) translate(-170 -470)">
+    <!-- light around the doorway -->
+    <circle cx="170" cy="420" r="92" fill="url(#halo)"/>
+    <!-- the tent -->
+    <path d="M58 470 L170 286 L282 470 Z" fill="#e76f51"/>
+    <path d="M170 286 L282 470 L214 470 Z" fill="#c4553a"/>
+    <path d="M160 272 L170 286 L180 272" fill="none" stroke="#e9c46a" stroke-width="8" stroke-linecap="round"
+          stroke-linejoin="round"/>
+    <!-- the doorway, lit, a page inside -->
+    <path d="M170 318 L118 470 L222 470 Z" fill="url(#glow)"/>
+    <path d="M150 404 L184 404 L194 414 L194 454 L150 454 Z" fill="#ffffff"/>
+    <path d="M184 404 L184 414 L194 414 Z" fill="#e3d3a8"/>
+    <g stroke="#c9b27e" stroke-width="3" stroke-linecap="round">
+      <line x1="158" y1="420" x2="186" y2="420"/>
+      <line x1="158" y1="430" x2="186" y2="430"/>
+      <line x1="158" y1="440" x2="178" y2="440"/>
+    </g>
+    </g>
+  </g>
+</svg>

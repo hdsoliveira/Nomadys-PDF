@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changing pages · Nomadys-PDF documentation</title>
+<meta name="description" content="Delete, turn, reorder, extract or insert pages, in the page grid or from the command line. The file itself changes (it is saved like any other change), and ever">
+<link rel="icon" href="../assets/icon.svg"><link rel="stylesheet" href="../assets/style.css">
+</head><body>
+<header class="top"><div class="wrap">
+<a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="">Nomadys-PDF</a>
+<nav><a href="../index.html#features">Features</a><a href="../index.html#research">For research</a>
+<a class="docs-link" href="../docs/index.html">Documentation</a><a href="../index.html#install">Install</a>
+<a class="gh" href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a></nav>
+</div></header>
+<div class="wrap docs">
+<aside class="side"><ul><li><a href="index.html">Home</a></li></ul><p>Start</p><ul><li><a href="Installation.html">Installation</a></li><li><a href="Getting-Started.html">Getting started</a></li></ul><p>Using it</p><ul><li><a href="Reading-and-Navigation.html">Reading and navigation</a></li><li><a href="Searching.html">Searching</a></li><li><a href="Highlights-and-Comments.html">Highlights and comments</a></li><li><a href="Quoting-and-Citing.html">Quoting and citing</a></li><li><a href="Images-and-Regions.html">Images and regions</a></li><li><a href="Changing-Pages.html" class=on>Changing pages</a></li><li><a href="Tabs-Windows-and-Split-View.html">Tabs, windows and split view</a></li><li><a href="LaTeX-and-VimTeX.html">LaTeX and VimTeX</a></li><li><a href="Forms-Printing-and-Passwords.html">Forms, printing and passwords</a></li></ul><p>Making it yours</p><ul><li><a href="Configuration.html">Configuration</a></li><li><a href="Themes-and-Dark-Mode.html">Themes and dark mode</a></li></ul><p>Reference</p><ul><li><a href="Keyboard-Reference.html">Keyboard reference</a></li><li><a href="Commands.html">Commands</a></li><li><a href="Files-Memory-and-Speed.html">Files, memory and speed</a></li><li><a href="FAQ.html">FAQ</a></li></ul></aside>
+<main class="doc">
+<h1 id="changing-pages">Changing pages</h1>
+<p>Delete, turn, reorder, extract or insert pages, in the page grid or from the command line. The <strong>file itself</strong> changes (it is saved like any other change), and every change can be undone.</p>
+<figure class="demo"><div class="window"><div class="bar"><i></i><i></i><i></i><span>Choosing pages, moving, deleting, undoing</span></div><video autoplay muted loop playsinline preload="metadata" poster="../assets/demos/pages.jpg"><source src="../assets/demos/pages.mp4" type="video/mp4"></video></div></figure>
+<h2 id="in-the-page-grid">In the page grid<a class="anchor" href="#in-the-page-grid">#</a></h2>
+<p>Open the grid with <code>\g</code>. The page under the frame is the <em>selected</em> one. To act on several pages, press <code>v</code> and move to the other end: the pages between are tinted.</p>
+<table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>v</code></td><td>choose several pages (again: stop)</td></tr><tr><td><code>x</code> or <code>d</code></td><td>delete them</td></tr><tr><td><code>r</code> / <code>R</code></td><td>turn them 90° right / left, in the file</td></tr><tr><td><code>&lt;</code> / <code>&gt;</code></td><td>move them one place earlier / later (<code>3&gt;</code>: three places)</td></tr><tr><td><code>y</code></td><td>save them as a new PDF; the name is asked (<code>paper-p3-7.pdf</code> is offered)</td></tr><tr><td><code>i</code></td><td>insert another PDF after the selected page (<code>Tab</code> completes the path)</td></tr><tr><td><code>u</code> / <code>Ctrl-r</code></td><td>undo / redo</td></tr><tr><td><code>Enter</code></td><td>go to the page</td></tr><tr><td><code>Esc</code></td><td>close the grid</td></tr></tbody></table>
+<p>The bottom line of the grid always lists the keys; after <code>v</code> it shows which pages are chosen.</p>
+<h2 id="from-the-command-line">From the command line<a class="anchor" href="#from-the-command-line">#</a></h2>
+<table><thead><tr><th>Command</th><th>Action</th></tr></thead><tbody><tr><td><code>:delete 3-7</code></td><td>delete pages 3 to 7 (<code>:delete 4</code> one page, <code>:delete 10-</code> to the end)</td></tr><tr><td><code>:extract 3-7</code></td><td>save pages 3 to 7 as <code>paper-p3-7.pdf</code> next to the PDF</td></tr><tr><td><code>:extract 3-7 ~/slides/fig.pdf</code></td><td>… under another name</td></tr><tr><td><code>:insert other.pdf</code></td><td>insert all pages of another PDF after the page you are reading (in the grid: after the selected one)</td></tr><tr><td><code>:append other.pdf</code></td><td>add them at the end</td></tr></tbody></table>
+<h2 id="good-to-know">Good to know<a class="anchor" href="#good-to-know">#</a></h2>
+<ul><li><strong>Undo</strong> works for every page change (<code>u</code>, <code>Ctrl-r</code>), mixed with the undo of highlights and comments. Before each change, the document is kept in <code>~/.cache/nomadys-pdf/undo</code>; those copies are deleted when the PDF is closed, after which the change is final.</li><li><strong>Marks follow their pages</strong>: a mark on page 10 is on page 9 after page 3 is deleted. A mark on a deleted page is removed. You stay on the page you were reading.</li><li>Highlights and comments go with their pages, into extracted PDFs too.</li><li>Turning here changes the file; <code>r</code> while reading only turns the view.</li><li><strong>Signed PDFs</strong> are left alone: changing their pages would break the signature.</li><li>A PDF needs at least one page, so the last page cannot be deleted.</li></ul>
+<nav class="pager"><a href="Images-and-Regions.html"><small>Previous</small>Images and regions</a><a class="next" href="Tabs-Windows-and-Split-View.html"><small>Next</small>Tabs, windows and split view</a></nav>
+</main>
+</div>
+<footer><div class="wrap">
+<span>Nomadys-PDF 0.4.0 · MIT licence · made by Hugo Oliveira</span>
+<span class="right"><a href="../docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:hs.oliveira@mailbox.org">Contact</a></span>
+</div></footer>
+</body></html>

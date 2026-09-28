@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LaTeX and VimTeX · Nomadys-PDF documentation</title>
+<meta name="description" content="Nomadys-PDF is made to sit next to Vim or Neovim while you write.">
+<link rel="icon" href="../assets/icon.svg"><link rel="stylesheet" href="../assets/style.css">
+</head><body>
+<header class="top"><div class="wrap">
+<a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="">Nomadys-PDF</a>
+<nav><a href="../index.html#features">Features</a><a href="../index.html#research">For research</a>
+<a class="docs-link" href="../docs/index.html">Documentation</a><a href="../index.html#install">Install</a>
+<a class="gh" href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a></nav>
+</div></header>
+<div class="wrap docs">
+<aside class="side"><ul><li><a href="index.html">Home</a></li></ul><p>Start</p><ul><li><a href="Installation.html">Installation</a></li><li><a href="Getting-Started.html">Getting started</a></li></ul><p>Using it</p><ul><li><a href="Reading-and-Navigation.html">Reading and navigation</a></li><li><a href="Searching.html">Searching</a></li><li><a href="Highlights-and-Comments.html">Highlights and comments</a></li><li><a href="Quoting-and-Citing.html">Quoting and citing</a></li><li><a href="Images-and-Regions.html">Images and regions</a></li><li><a href="Changing-Pages.html">Changing pages</a></li><li><a href="Tabs-Windows-and-Split-View.html">Tabs, windows and split view</a></li><li><a href="LaTeX-and-VimTeX.html" class=on>LaTeX and VimTeX</a></li><li><a href="Forms-Printing-and-Passwords.html">Forms, printing and passwords</a></li></ul><p>Making it yours</p><ul><li><a href="Configuration.html">Configuration</a></li><li><a href="Themes-and-Dark-Mode.html">Themes and dark mode</a></li></ul><p>Reference</p><ul><li><a href="Keyboard-Reference.html">Keyboard reference</a></li><li><a href="Commands.html">Commands</a></li><li><a href="Files-Memory-and-Speed.html">Files, memory and speed</a></li><li><a href="FAQ.html">FAQ</a></li></ul></aside>
+<main class="doc">
+<h1 id="latex-and-vimtex">LaTeX and VimTeX</h1>
+<p>Nomadys-PDF is made to sit next to Vim or Neovim while you write.</p>
+<h2 id="auto-reload">Auto-reload<a class="anchor" href="#auto-reload">#</a></h2>
+<p>When LaTeX writes a new PDF, it reloads in place: same page, zoom and mode. No key to press, no flicker. If a [<code>:diff</code>](Searching.md#comparing-two-versions-diff) comparison is on, it is made again with the new version.</p>
+<p>Highlights made in a PDF that LaTeX then rewrites are lost with the old version (the file was replaced), so annotate the final PDF, or a copy.</p>
+<h2 id="from-the-source-to-the-pdf-forward-search">From the source to the PDF (forward search)<a class="anchor" href="#from-the-source-to-the-pdf-forward-search">#</a></h2>
+<p>In VimTeX, <code>\lv</code> shows the line under the editor cursor in the PDF, briefly highlighted. A second <code>npdf --synctex-forward …</code> hands the request to the window already open (through a socket in <code>$XDG_RUNTIME_DIR</code>) and exits, so no second window appears.</p>
+<h2 id="from-the-pdf-to-the-source-inverse-search">From the PDF to the source (inverse search)<a class="anchor" href="#from-the-pdf-to-the-source-inverse-search">#</a></h2>
+<p><strong>Double click</strong> or <strong>Ctrl + click</strong> a spot in the PDF, or press <code>Enter</code> in the text or free cursor: the editor opens that line of the source.</p>
+<p>Compile with <code>-synctex=1</code> (latexmk and VimTeX do by default).</p>
+<h2 id="setting-it-up-in-neovim--vim">Setting it up in Neovim / Vim<a class="anchor" href="#setting-it-up-in-neovim--vim">#</a></h2>
+<pre><code>let g:vimtex_view_method = &#x27;general&#x27;
+let g:vimtex_view_general_viewer = &#x27;npdf&#x27;
+let g:vimtex_view_general_options = &#x27;--synctex-forward @line:@col:@tex @pdf&#x27;</code></pre>
+<p>The editor command for inverse search is <code>synctex_editor</code> in the <a href="Configuration.html">configuration</a>; the default works with Neovim and VimTeX:</p>
+<pre><code>synctex_editor = nvim --headless -c &quot;VimtexInverseSearch %l &#x27;%f&#x27;&quot;</code></pre>
+<p><code>%l</code> is the line, <code>%c</code> the column and <code>%f</code> the file. It can also be given on the command line: <code>npdf -x &quot;code -g %f:%l&quot; paper.pdf</code>.</p>
+<h2 id="useful-while-writing">Useful while writing<a class="anchor" href="#useful-while-writing">#</a></h2>
+<ul><li><code>:diff submitted.pdf</code> shows everything that changed since the submitted version, updated at every recompilation: see <a href="Searching.html#comparing-two-versions-diff">Searching</a>.</li><li><code>Y</code> copies a quotation with its page, <code>:bibtex</code> the BibTeX of the paper you are reading: see <a href="Quoting-and-Citing.html">Quoting and citing</a>.</li><li><code>y</code> in the free cursor copies a figure as an image, for slides.</li></ul>
+<nav class="pager"><a href="Tabs-Windows-and-Split-View.html"><small>Previous</small>Tabs, windows and split view</a><a class="next" href="Forms-Printing-and-Passwords.html"><small>Next</small>Forms, printing and passwords</a></nav>
+</main>
+</div>
+<footer><div class="wrap">
+<span>Nomadys-PDF 0.4.0 · MIT licence · made by Hugo Oliveira</span>
+<span class="right"><a href="../docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:hs.oliveira@mailbox.org">Contact</a></span>
+</div></footer>
+</body></html>

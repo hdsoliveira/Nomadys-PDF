@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Installation · Nomadys-PDF documentation</title>
+<meta name="description" content="Nomadys-PDF runs on Linux, on Wayland and X11. The command is npdf.">
+<link rel="icon" href="../assets/icon.svg"><link rel="stylesheet" href="../assets/style.css">
+</head><body>
+<header class="top"><div class="wrap">
+<a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="">Nomadys-PDF</a>
+<nav><a href="../index.html#features">Features</a><a href="../index.html#research">For research</a>
+<a class="docs-link" href="../docs/index.html">Documentation</a><a href="../index.html#install">Install</a>
+<a class="gh" href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a></nav>
+</div></header>
+<div class="wrap docs">
+<aside class="side"><ul><li><a href="index.html">Home</a></li></ul><p>Start</p><ul><li><a href="Installation.html" class=on>Installation</a></li><li><a href="Getting-Started.html">Getting started</a></li></ul><p>Using it</p><ul><li><a href="Reading-and-Navigation.html">Reading and navigation</a></li><li><a href="Searching.html">Searching</a></li><li><a href="Highlights-and-Comments.html">Highlights and comments</a></li><li><a href="Quoting-and-Citing.html">Quoting and citing</a></li><li><a href="Images-and-Regions.html">Images and regions</a></li><li><a href="Changing-Pages.html">Changing pages</a></li><li><a href="Tabs-Windows-and-Split-View.html">Tabs, windows and split view</a></li><li><a href="LaTeX-and-VimTeX.html">LaTeX and VimTeX</a></li><li><a href="Forms-Printing-and-Passwords.html">Forms, printing and passwords</a></li></ul><p>Making it yours</p><ul><li><a href="Configuration.html">Configuration</a></li><li><a href="Themes-and-Dark-Mode.html">Themes and dark mode</a></li></ul><p>Reference</p><ul><li><a href="Keyboard-Reference.html">Keyboard reference</a></li><li><a href="Commands.html">Commands</a></li><li><a href="Files-Memory-and-Speed.html">Files, memory and speed</a></li><li><a href="FAQ.html">FAQ</a></li></ul></aside>
+<main class="doc">
+<h1 id="installation">Installation</h1>
+<p>Nomadys-PDF runs on Linux, on Wayland and X11. The command is <code>npdf</code>.</p>
+<h2 id="dependencies">Dependencies<a class="anchor" href="#dependencies">#</a></h2>
+<pre><code>sudo apt install build-essential pkg-config libsdl3-dev libfreetype-dev libfontconfig-dev zlib1g-dev</code></pre>
+<p>PDFium (the PDF engine) is <strong>downloaded automatically</strong> by the first <code>make</code>: a pinned release (<code>chromium/8066</code> from <a href="https://github.com/bblanchon/pdfium-binaries">bblanchon/pdfium-binaries</a>), checked against its SHA-256. It is not stored in the repository.</p>
+<p>Optional, for extra features:</p>
+<table><thead><tr><th>Program</th><th>Used for</th></tr></thead><tbody><tr><td><code>pdflatex</code> (TeX Live) with <code>amsmath</code>, <code>amssymb</code></td><td>equations in comments (<a href="Highlights-and-Comments.html">Highlights and comments</a>)</td></tr><tr><td><code>synctex</code> (comes with TeX Live)</td><td>jumping between the PDF and the LaTeX source (<a href="LaTeX-and-VimTeX.html">LaTeX and VimTeX</a>)</td></tr><tr><td><code>curl</code></td><td><code>:bibtex</code> (<a href="Quoting-and-Citing.html">Quoting and citing</a>)</td></tr><tr><td>CUPS (<code>lp</code>, <code>lpstat</code>)</td><td>printing</td></tr><tr><td><code>xdg-open</code></td><td>opening web links in the browser</td></tr></tbody></table>
+<p>Everything else works without them.</p>
+<h2 id="building-and-installing">Building and installing<a class="anchor" href="#building-and-installing">#</a></h2>
+<pre><code>git clone https://github.com/hdsoliveira/Nomadys-PDF.git
+cd Nomadys-PDF
+make              # builds ./npdf
+make install      # installs for your user</code></pre>
+<p><code>make install</code> puts, under <code>~/.local</code>:</p>
+<ul><li><code>bin/npdf</code>, the program</li><li><code>lib/nomadys-pdf/libpdfium.so</code>, the PDF engine</li><li><code>share/nomadys-pdf/themes/</code>, the colour themes</li><li><code>share/applications/npdf.desktop</code> and the icons, so it appears in your application menu and can be chosen as the program for PDFs</li></ul>
+<p>Make sure <code>~/.local/bin</code> is in your <code>PATH</code>.</p>
+<p><code>make uninstall</code> removes all of it. Your settings (<code>~/.config/nomadys-pdf</code>) and data (marks, recent files, the search index) are left alone; see <a href="Files-Memory-and-Speed.html">Files, memory and speed</a> to remove those too.</p>
+<h2 id="updating">Updating<a class="anchor" href="#updating">#</a></h2>
+<pre><code>git pull &amp;&amp; make &amp;&amp; make install</code></pre>
+<h2 id="making-it-the-default-pdf-reader">Making it the default PDF reader<a class="anchor" href="#making-it-the-default-pdf-reader">#</a></h2>
+<pre><code>xdg-mime default npdf.desktop application/pdf</code></pre>
+<h2 id="checking-the-installation">Checking the installation<a class="anchor" href="#checking-the-installation">#</a></h2>
+<pre><code>npdf --version      # Nomadys-PDF (npdf) 0.4.0
+npdf --help         # a short list of keys and options</code></pre>
+<p>Next: <a href="Getting-Started.html">Getting started</a>.</p>
+<nav class="pager"><a href="index.html"><small>Previous</small>Home</a><a class="next" href="Getting-Started.html"><small>Next</small>Getting started</a></nav>
+</main>
+</div>
+<footer><div class="wrap">
+<span>Nomadys-PDF 0.4.0 · MIT licence · made by Hugo Oliveira</span>
+<span class="right"><a href="../docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:hs.oliveira@mailbox.org">Contact</a></span>
+</div></footer>
+</body></html>

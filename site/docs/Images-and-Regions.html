@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Images and regions · Nomadys-PDF documentation</title>
+<meta name="description" content="All of this starts in the free cursor (Ctrl-v): a thin cross that can go anywhere on the page. h j k l move it; w b J K (or Ctrl-h/j/k/l) move it faster; v star">
+<link rel="icon" href="../assets/icon.svg"><link rel="stylesheet" href="../assets/style.css">
+</head><body>
+<header class="top"><div class="wrap">
+<a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="">Nomadys-PDF</a>
+<nav><a href="../index.html#features">Features</a><a href="../index.html#research">For research</a>
+<a class="docs-link" href="../docs/index.html">Documentation</a><a href="../index.html#install">Install</a>
+<a class="gh" href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a></nav>
+</div></header>
+<div class="wrap docs">
+<aside class="side"><ul><li><a href="index.html">Home</a></li></ul><p>Start</p><ul><li><a href="Installation.html">Installation</a></li><li><a href="Getting-Started.html">Getting started</a></li></ul><p>Using it</p><ul><li><a href="Reading-and-Navigation.html">Reading and navigation</a></li><li><a href="Searching.html">Searching</a></li><li><a href="Highlights-and-Comments.html">Highlights and comments</a></li><li><a href="Quoting-and-Citing.html">Quoting and citing</a></li><li><a href="Images-and-Regions.html" class=on>Images and regions</a></li><li><a href="Changing-Pages.html">Changing pages</a></li><li><a href="Tabs-Windows-and-Split-View.html">Tabs, windows and split view</a></li><li><a href="LaTeX-and-VimTeX.html">LaTeX and VimTeX</a></li><li><a href="Forms-Printing-and-Passwords.html">Forms, printing and passwords</a></li></ul><p>Making it yours</p><ul><li><a href="Configuration.html">Configuration</a></li><li><a href="Themes-and-Dark-Mode.html">Themes and dark mode</a></li></ul><p>Reference</p><ul><li><a href="Keyboard-Reference.html">Keyboard reference</a></li><li><a href="Commands.html">Commands</a></li><li><a href="Files-Memory-and-Speed.html">Files, memory and speed</a></li><li><a href="FAQ.html">FAQ</a></li></ul></aside>
+<main class="doc">
+<h1 id="images-and-regions">Images and regions</h1>
+<p>All of this starts in the <strong>free cursor</strong> (<code>Ctrl-v</code>): a thin cross that can go anywhere on the page. <code>h</code> <code>j</code> <code>k</code> <code>l</code> move it; <code>w</code> <code>b</code> <code>J</code> <code>K</code> (or <code>Ctrl-h/j/k/l</code>) move it faster; <code>v</code> starts a rectangle.</p>
+<h2 id="copying-a-region-as-an-image">Copying a region as an image<a class="anchor" href="#copying-a-region-as-an-image">#</a></h2>
+<p>For slides, a report, a message: mark a rectangle with <code>v</code>, then</p>
+<table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>y</code></td><td>copy it to the clipboard as a PNG; paste it anywhere</td></tr><tr><td><code>Y</code></td><td>save it as a PNG next to the PDF (<code>paper-p5-1.png</code>, <code>paper-p5-2.png</code>, …)</td></tr></tbody></table>
+<p>It is drawn at <code>copy_dpi</code> (300 dpi by default), in the page's own colours (also in dark mode), with highlights and filled-in forms as they are. The message says its size and resolution.</p>
+<h2 id="putting-a-picture-on-a-page">Putting a picture on a page<a class="anchor" href="#putting-a-picture-on-a-page">#</a></h2>
+<p>A signature, a screenshot, a figure, a stamp:</p>
+<table><thead><tr><th>How</th><th>Action</th></tr></thead><tbody><tr><td><code>I</code> in the free cursor</td><td>choose an image file (PNG, JPEG, BMP; <code>Tab</code> completes the path)</td></tr><tr><td><code>P</code> in the free cursor</td><td>paste an image from the clipboard</td></tr><tr><td><code>:image file.png</code></td><td>from anywhere</td></tr></tbody></table>
+<ul><li>With a rectangle marked (<code>v</code>), the picture fits inside it.</li><li>Otherwise its top-left corner goes at the cross, at its natural size, but never larger than 80% of the page.</li><li>Transparent PNGs stay transparent.</li><li>Right after it is placed, it can be moved and resized (below).</li></ul>
+<p>Pictures are standard stamp annotations: other readers show them, the panel lists them, <code>x</code> deletes them and <code>u</code> undoes.</p>
+<p><strong>Quality.</strong> Pictures stay sharp when you zoom in. Small ones (a signature, a screenshot) are stored with more pixels than the screen shows, enlarged with a bicubic filter, so they stay smooth up to about 250% zoom on a HiDPI screen. Images up to 4096 pixels are kept exactly (a JPEG is copied byte for byte); only very large ones are reduced, never below 4096 pixels on the longer side. A 24-megapixel photo goes in in under a second and adds about 2 MB to the file. Pictures over 120 megapixels are refused.</p>
+<h2 id="moving-resizing-turning">Moving, resizing, turning<a class="anchor" href="#moving-resizing-turning">#</a></h2>
+<p>Put the cross on a picture or a highlighted area and press <code>e</code>:</p>
+<table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>h</code> <code>j</code> <code>k</code> <code>l</code> (with <code>Ctrl</code>: faster)</td><td>move</td></tr><tr><td><code>+</code> / <code>-</code></td><td>bigger / smaller, keeping the proportions</td></tr><tr><td><code>H</code> / <code>L</code></td><td>narrower / wider</td></tr><tr><td><code>K</code> / <code>J</code></td><td>shorter / taller</td></tr><tr><td><code>=</code></td><td>a picture back to its own proportions</td></tr><tr><td><code>r</code> / <code>R</code></td><td>turn a picture 90° clockwise / counter-clockwise</td></tr><tr><td><code>c</code></td><td>crop a picture (below)</td></tr><tr><td><code>x</code></td><td>delete it</td></tr><tr><td><code>Enter</code></td><td>done</td></tr><tr><td><code>Esc</code></td><td>cancel: back where it was</td></tr></tbody></table>
+<p>Highlighted <em>text</em> stays with its words; only areas and pictures move.</p>
+<h2 id="cropping">Cropping<a class="anchor" href="#cropping">#</a></h2>
+<p><code>c</code> while moving a picture:</p>
+<table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>h</code> <code>j</code> <code>k</code> <code>l</code></td><td>cut the left / bottom / top / right side, as you see it (<code>Ctrl</code> cuts faster)</td></tr><tr><td><code>H</code> <code>J</code> <code>K</code> <code>L</code></td><td>give that side back</td></tr><tr><td><code>u</code></td><td>the whole picture again</td></tr><tr><td><code>Enter</code></td><td>back to moving and resizing</td></tr><tr><td><code>Esc</code></td><td>cancel this cropping</td></tr></tbody></table>
+<p>The picture itself is never cut or re-encoded: the PDF keeps it whole and only shows a part of it. So a crop, or a turn, can be undone at any time, even after the file was closed and opened again, with no loss of quality.</p>
+<nav class="pager"><a href="Quoting-and-Citing.html"><small>Previous</small>Quoting and citing</a><a class="next" href="Changing-Pages.html"><small>Next</small>Changing pages</a></nav>
+</main>
+</div>
+<footer><div class="wrap">
+<span>Nomadys-PDF 0.4.0 · MIT licence · made by Hugo Oliveira</span>
+<span class="right"><a href="../docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:hs.oliveira@mailbox.org">Contact</a></span>
+</div></footer>
+</body></html>
