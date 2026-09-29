@@ -73,12 +73,30 @@ void notes_page(Doc *d, int page)
     free_notes(s);
     int n = FPDFPage_GetAnnotCount(p);
     s->notes = xcalloc(n ? n : 1, sizeof *s->notes);
+    /* Acrobat's check marks: replies (IRT) with /StateModel /Marked; the
+     * last one of a note tells, unless it has our own NomadysTask */
+    int *marked_of = xmalloc((size_t)(n ? n : 1) * sizeof *marked_of), nmarked = 0;
+    bool *marked_done = xmalloc((size_t)(n ? n : 1) * sizeof *marked_done);
     for (int i = 0; i < n; i++) {
         FPDF_ANNOTATION a = FPDFPage_GetAnnot(p, i);
         if (!a)
             continue;
         FS_RECTF r;
         int type = FPDFAnnot_GetSubtype(a);
+        char model[16];
+        if (type == FPDF_ANNOT_TEXT && get_string(a, "StateModel", model, sizeof model)) {
+            FPDF_ANNOTATION parent = FPDFAnnot_GetLinkedAnnot(a, "IRT");
+            char state[16] = "";
+            get_string(a, "State", state, sizeof state);
+            if (parent && !strcmp(model, "Marked")) {
+                marked_of[nmarked] = FPDFPage_GetAnnotIndex(p, parent);
+                marked_done[nmarked++] = !strcmp(state, "Marked");
+            }
+            if (parent)
+                FPDFPage_CloseAnnot(parent);
+            FPDFPage_CloseAnnot(a); /* a state, not a note of its own */
+            continue;
+        }
         bool hidden = FPDFAnnot_GetFlags(a) & FPDF_ANNOT_FLAG_HIDDEN; /* deleted (undo can bring it back) */
         if (!hidden && is_markup(type) && FPDFAnnot_GetRect(a, &r)) {
             Note *nt = &s->notes[s->nnotes++];
@@ -105,9 +123,24 @@ void notes_page(Doc *d, int page)
             nt->area = type == FPDF_ANNOT_HIGHLIGHT &&
                        ((get_string(a, "NomadysArea", mark, sizeof mark) && mark[0] == '1') ||
                         (nt->nquads == 1 && nt->quads[0].t - nt->quads[0].b > 40));
+            char task[32];
+            if (get_string(a, "NomadysTask", task, sizeof task) && task[0])
+                nt->task = !strncmp(task, "done", 4) ? TASK_DONE : TASK_OPEN;
+            else
+                nt->task = -1; /* not ours: Acrobat's marks may tell, below */
         }
         FPDFPage_CloseAnnot(a);
     }
+    for (int k = 0; k < nmarked; k++)
+        for (int i = 0; i < s->nnotes; i++)
+            if (s->notes[i].idx == marked_of[k] && s->notes[i].task < 0) /* ours (>= 0) wins */
+                s->notes[i].task = -2 - marked_done[k]; /* -2 open, -3 done; a later one replaces it */
+    for (int i = 0; i < s->nnotes; i++) {
+        int t = s->notes[i].task;
+        s->notes[i].task = t == -1 ? TASK_NONE : t == -2 ? TASK_OPEN : t == -3 ? TASK_DONE : t;
+    }
+    free(marked_of);
+    free(marked_done);
     s->notes_version = s->version + 1;
 }
 
@@ -322,6 +355,17 @@ static bool apply(Doc *d, Undo *u, bool redo)
         doc_mark_changed(d, u->page);
         return true;
     }
+    case U_TASK: {
+        FPDF_PAGE p = doc_page(d, u->page);
+        FPDF_ANNOTATION a = idx >= 0 && p ? FPDFPage_GetAnnot(p, idx) : NULL;
+        if (!a)
+            return false;
+        const char *t = redo ? u->text_after : u->text_before;
+        set_string(a, "NomadysTask", t ? t : "");
+        FPDFPage_CloseAnnot(a);
+        doc_mark_changed(d, u->page);
+        return true;
+    }
     case U_PAGES:
         return false; /* above */
     case U_EDIT:
@@ -342,6 +386,7 @@ static const char *what(const Undo *u)
     case U_COMMENT: return "comment";
     case U_EDIT: return u->has_view ? "image change" : "move / resize";
     case U_PAGES: return "page change";
+    case U_TASK: return "task";
     }
     return "change";
 }
@@ -543,9 +588,10 @@ int note_move(Doc *d, int page, int annot, PRect r)
         return annot;
     }
     uint32_t color = note_color(a);
-    char name[64], area[8] = "";
+    char name[64], area[8] = "", task[32] = "";
     annot_name(a, name, sizeof name); /* the new one is the same annotation */
     get_string(a, "NomadysArea", area, sizeof area);
+    get_string(a, "NomadysTask", task, sizeof task);
     char *comment = NULL;
     unsigned long bytes = FPDFAnnot_GetStringValue(a, "Contents", NULL, 0);
     if (bytes > 2) {
@@ -577,6 +623,8 @@ int note_move(Doc *d, int page, int annot, PRect r)
         if (area[0] == '1')
             set_string(n, "NomadysArea", "1");
     }
+    if (task[0])
+        set_string(n, "NomadysTask", task);
     finish_note(d, page, n, r, comment, color, name);
     free(comment);
     return FPDFPage_GetAnnotCount(p) - 1;
@@ -714,6 +762,44 @@ bool note_set_comment(Doc *d, int page, int note, const char *comment)
     FPDFPage_CloseAnnot(a);
     doc_mark_changed(d, page);
     return true;
+}
+
+/* Makes a note a task (TASK_OPEN), ticks it (TASK_DONE, with the date) or
+ * makes it a plain note again (TASK_NONE). */
+bool note_set_task(Doc *d, int page, int note, int task)
+{
+    FPDF_ANNOTATION a = open_note(d, page, note);
+    if (!a)
+        return false;
+    char before[32] = "", after[32] = "";
+    get_string(a, "NomadysTask", before, sizeof before);
+    if (task == TASK_OPEN)
+        snprintf(after, sizeof after, "open");
+    else if (task == TASK_DONE) {
+        time_t now = time(NULL);
+        strftime(after, sizeof after, "done %Y-%m-%d", localtime(&now));
+    }
+    Undo u = {.kind = U_TASK, .page = page, .text_before = xstrdup(before), .text_after = xstrdup(after),
+              .group = d->undo_group_open};
+    annot_name(a, u.nm, sizeof u.nm);
+    push(d, u);
+    set_string(a, "NomadysTask", after);
+    FPDFPage_CloseAnnot(a);
+    doc_mark_changed(d, page);
+    return true;
+}
+
+void notes_tasks(Doc *d, int *open, int *done)
+{
+    *open = *done = 0;
+    for (int page = 0; page < d->npages; page++) {
+        notes_page(d, page);
+        for (int i = 0; i < d->slots[page].nnotes; i++) {
+            int t = d->slots[page].notes[i].task;
+            *open += t == TASK_OPEN;
+            *done += t == TASK_DONE;
+        }
+    }
 }
 
 bool note_delete(Doc *d, int page, int note)
@@ -885,11 +971,15 @@ static bool copy_annot(Doc *d, int page, FPDF_DOCUMENT sd, FPDF_PAGE sp, FPDF_AN
         return false;
     }
     FPDFAnnot_SetFlags(a, (FPDFAnnot_GetFlags(s) & ~FPDF_ANNOT_FLAG_HIDDEN) | FPDF_ANNOT_FLAG_PRINT);
-    char author[256], name[64];
+    char author[256], name[64], task[32], area[8];
     if (get_string(s, "T", author, sizeof author))
         set_string(a, "T", author);
     if (get_string(s, "Name", name, sizeof name))
         set_string(a, "Name", name);
+    if (get_string(s, "NomadysTask", task, sizeof task) && task[0]) /* a task stays one */
+        set_string(a, "NomadysTask", task);
+    if (get_string(s, "NomadysArea", area, sizeof area) && area[0] == '1')
+        set_string(a, "NomadysArea", "1");
     if (*contents)
         set_string(a, "Contents", contents);
     if (*nm && annot_by_name(d, page, nm) < 0)
@@ -928,7 +1018,9 @@ bool doc_merge(Doc *d, const char *path, MergeResult *res, char *err, size_t cap
             if (!s)
                 continue;
             int sub = FPDFAnnot_GetSubtype(s);
-            bool take = sub != FPDF_ANNOT_FREETEXT && is_markup(sub) &&
+            char model[16];
+            bool state = sub == FPDF_ANNOT_TEXT && get_string(s, "StateModel", model, sizeof model); /* Acrobat's tick */
+            bool take = sub != FPDF_ANNOT_FREETEXT && is_markup(sub) && !state &&
                         !(FPDFAnnot_GetFlags(s) & FPDF_ANNOT_FLAG_HIDDEN) && FPDFAnnot_GetRect(s, &fr);
             if (take && page >= d->npages) {
                 res->skipped++;

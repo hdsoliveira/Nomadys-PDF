@@ -47,6 +47,7 @@ with several options they are listed above the line and `Tab` /
 |---|---|
 | `:library words` | search the text of all your PDFs (`\/`) |
 | `:comments [words]` | search the comments and highlights of all your PDFs (`\n`) |
+| `:tasks [words]` | the tasks still to do in all your PDFs |
 | `:diff old.pdf` | compare with an older version (`]c` `[c` go through the changes) |
 | `:nodiff` | hide the comparison |
 
@@ -54,7 +55,7 @@ with several options they are listed above the line and `Tab` /
 
 | Command | Action |
 |---|---|
-| `:export [file.md] [colours] [commented]` | highlights, comments and marks to Markdown |
+| `:export [file.md] [colours] [commented] [tasks]` | highlights, comments and marks to Markdown (tasks as `- [ ]` / `- [x]`) |
 | `:export! …` | the same, allowed to overwrite a file it did not write |
 | `:merge copy.pdf` | bring in a co-author's highlights and comments |
 | `:bibtex` | copy the paper's BibTeX entry (by its DOI or arXiv number) |

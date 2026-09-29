@@ -5,7 +5,8 @@
  *         that crashes PDFium cannot take the reader down, niced, each doing
  *         the files whose path hash falls to it. Per PDF one gzip file:
  *         a line of text per page, then a line "\1", then one line per note
- *         (page, kind, colour, highlighted text, comment). A manifest per
+ *         (page, kind with "o" / "d" after it for a task to do / done,
+ *         colour, highlighted text, comment). A manifest per
  *         worker lists path, date and size, so only changed files are read
  *         again. It lives in $XDG_CACHE_HOME/nomadys-pdf/index.
  * search: a few threads read the index while you type; a newer query stops
@@ -40,13 +41,33 @@ static uint64_t fnv1a(const char *s)
     return h;
 }
 
-static void index_dir(char *out, size_t cap)
+/* index2: notes carry their task state; "index" (before) is read no more */
+static void index_dir_named(char *out, size_t cap, const char *name)
 {
     const char *xdg = getenv("XDG_CACHE_HOME"), *home = getenv("HOME");
     if (xdg && *xdg)
-        snprintf(out, cap, "%s/nomadys-pdf/index", xdg);
+        snprintf(out, cap, "%s/nomadys-pdf/%s", xdg, name);
     else
-        snprintf(out, cap, "%s/.cache/nomadys-pdf/index", home ? home : "/tmp");
+        snprintf(out, cap, "%s/.cache/nomadys-pdf/%s", home ? home : "/tmp", name);
+}
+
+static void index_dir(char *out, size_t cap) { index_dir_named(out, cap, "index2"); }
+
+/* The index of an older version: only its own files, then the folder. */
+static void remove_old_index(void)
+{
+    char dir[4096], path[4400];
+    index_dir_named(dir, sizeof dir, "index");
+    DIR *dp = opendir(dir);
+    if (!dp)
+        return;
+    for (struct dirent *e; (e = readdir(dp));)
+        if (e->d_name[0] != '.') {
+            snprintf(path, sizeof path, "%s/%s", dir, e->d_name);
+            unlink(path);
+        }
+    closedir(dp);
+    rmdir(dir);
 }
 
 static void mkdirs(const char *path)
@@ -256,12 +277,39 @@ static int extract(const char *path, const char *gz)
             free(u);
         }
         gzputc(g, '\n');
-        for (int k = 0; p && k < FPDFPage_GetAnnotCount(p); k++) {
+        /* tasks: ours (NomadysTask), else Acrobat's last check mark */
+        int nannots = p ? FPDFPage_GetAnnotCount(p) : 0;
+        char *task = xcalloc((size_t)SDL_max(1, nannots), 1), *ours = xcalloc((size_t)SDL_max(1, nannots), 1);
+        for (int k = 0; k < nannots; k++) {
+            FPDF_ANNOTATION a = FPDFPage_GetAnnot(p, k);
+            if (!a)
+                continue;
+            char *mine = annot_string(a, "NomadysTask"), *model = annot_string(a, "StateModel");
+            if (mine[0])
+                task[k] = !strncmp(mine, "done", 4) ? 'd' : 'o', ours[k] = 1;
+            if (!strcmp(model, "Marked")) {
+                FPDF_ANNOTATION parent = FPDFAnnot_GetLinkedAnnot(a, "IRT");
+                int at = parent ? FPDFPage_GetAnnotIndex(p, parent) : -1;
+                char *state = annot_string(a, "State");
+                if (at >= 0 && at < nannots && !ours[at])
+                    task[at] = !strcmp(state, "Marked") ? 'd' : 'o';
+                free(state);
+                if (parent)
+                    FPDFPage_CloseAnnot(parent);
+            }
+            free(mine);
+            free(model);
+            FPDFPage_CloseAnnot(a);
+        }
+        for (int k = 0; k < nannots; k++) {
             FPDF_ANNOTATION a = FPDFPage_GetAnnot(p, k);
             if (!a)
                 continue;
             int sub = FPDFAnnot_GetSubtype(a);
-            if (is_note(sub) && !(FPDFAnnot_GetFlags(a) & FPDF_ANNOT_FLAG_HIDDEN)) {
+            char *model = sub == FPDF_ANNOT_TEXT ? annot_string(a, "StateModel") : xstrdup("");
+            bool state = model[0] != 0; /* Acrobat's tick, not a note */
+            free(model);
+            if (is_note(sub) && !state && !(FPDFAnnot_GetFlags(a) & FPDF_ANNOT_FLAG_HIDDEN)) {
                 char *comment = annot_string(a, "Contents");
                 char *quote = sub == FPDF_ANNOT_HIGHLIGHT || sub == FPDF_ANNOT_UNDERLINE ||
                                       sub == FPDF_ANNOT_SQUIGGLY || sub == FPDF_ANNOT_STRIKEOUT
@@ -271,7 +319,8 @@ static int extract(const char *path, const char *gz)
                 flatten(comment);
                 flatten(quote);
                 char head[64];
-                int hl = snprintf(head, sizeof head, "%d\t%d\t%06x\t", i + 1, sub, annot_color(a) & 0xFFFFFF);
+                int hl = snprintf(head, sizeof head, "%d\t%d%s\t%06x\t", i + 1, sub,
+                                  task[k] == 'd' ? "d" : task[k] == 'o' ? "o" : "", annot_color(a) & 0xFFFFFF);
                 size_t add = (size_t)hl + strlen(quote) + strlen(comment) + 3;
                 notes = xrealloc(notes, notes_len + add);
                 notes_len += (size_t)snprintf(notes + notes_len, add, "%s%s\t%s\n", head, quote, comment);
@@ -280,6 +329,8 @@ static int extract(const char *path, const char *gz)
             }
             FPDFPage_CloseAnnot(a);
         }
+        free(task);
+        free(ours);
         if (tp)
             FPDFText_ClosePage(tp);
         if (p)
@@ -483,6 +534,7 @@ static int indexer_run(void *arg)
         return 0;
     }
     self[n] = 0;
+    remove_old_index();
     index_dir(dir, sizeof dir);
     mkdirs(dir);
     int restarts[WORKERS] = {0};
@@ -580,6 +632,7 @@ static void index_start(void)
 typedef struct {
     int file, page, score;
     bool note;
+    char task;               /* 'o' to do, 'd' done, 0 not a task */
     uint32_t color;
     char snip[240];
     unsigned char spans[6][2]; /* matched words in snip: start, length */
@@ -605,6 +658,7 @@ typedef struct {
     char words[8][64];
     int nwords;
     bool notes;
+    bool tasks;              /* only the tasks to do */
     unsigned gen;
     SDL_AtomicInt left;      /* threads still running */
     SDL_Mutex *m;
@@ -718,9 +772,11 @@ static void search_file(Search *s, int file, Hit **local, int *n, int *cap)
                 char lboth[2048];
                 memcpy(lboth, both, sizeof both);
                 lower(lboth);
-                bool match = s->nwords ? all_words(s, lboth) : f[4][0] != 0; /* no words: every comment */
+                char task = strchr(f[1], 'o') ? 'o' : strchr(f[1], 'd') ? 'd' : 0;
+                bool match = s->tasks ? task == 'o' && (!s->nwords || all_words(s, lboth))
+                                      : s->nwords ? all_words(s, lboth) : f[4][0] != 0; /* no words: every comment */
                 if (match) {
-                    Hit h = {.file = file, .page = atoi(f[0]) , .note = true,
+                    Hit h = {.file = file, .page = atoi(f[0]) , .note = true, .task = task,
                              .color = (uint32_t)strtoul(f[2], NULL, 16)};
                     char *phrase = s->nwords ? strstr(lboth, s->query) : NULL;
                     h.score = phrase ? 2 : 1;
@@ -827,6 +883,7 @@ static void lib_search_start(Window *w)
     s->snap = sn;
     s->gen = g;
     s->notes = w->lib_notes;
+    s->tasks = w->lib_notes && w->lib_tasks;
     s->m = SDL_CreateMutex();
     snprintf(s->query, sizeof s->query, "%s", w->lib_query);
     flatten(s->query);
@@ -868,10 +925,19 @@ void library_open(Window *w, bool notes)
     w->lib_return = w->mode == MODE_LIBRARY ? w->lib_return : w->mode;
     w->mode = MODE_LIBRARY;
     w->lib_notes = notes;
+    w->lib_tasks = false;
     w->lib_query[0] = 0;
     w->lib_sel = w->lib_first = 0;
     lib_search_start(w);
     w->redraw = true;
+}
+
+/* :tasks: the tasks still to do in every PDF, newest files first. */
+void library_tasks(Window *w)
+{
+    library_open(w, true);
+    w->lib_tasks = true;
+    lib_search_start(w);
 }
 
 /* The workers reported, or a search finished. */
@@ -957,6 +1023,12 @@ void library_key(Window *w, const char *tok)
         open_hit(w);
     } else if (!strcmp(tok, "<Tab>") || !strcmp(tok, "<S-Tab>")) {
         w->lib_notes = !w->lib_notes;
+        w->lib_tasks = false;
+        w->lib_sel = w->lib_first = 0;
+        lib_search_start(w);
+    } else if (!strcmp(tok, "<C-t>")) { /* comments: all of them / only the tasks to do */
+        w->lib_notes = true;
+        w->lib_tasks = !w->lib_tasks;
         w->lib_sel = w->lib_first = 0;
         lib_search_start(w);
     } else if (!strcmp(tok, "<Down>") || !strcmp(tok, "<C-j>") || !strcmp(tok, "<C-n>")) {
@@ -1037,7 +1109,8 @@ void library_draw(Window *w)
     ui_fill(w, x, y, bw, bh, t->panel_bg, 255);
     ui_frame(w, x, y, bw, bh, SDL_max(1.0f, w->density), t->panel_header);
     char head[400];
-    snprintf(head, sizeof head, "%s: %s", w->lib_notes ? "Search comments and highlights" : "Search all PDFs",
+    snprintf(head, sizeof head, "%s: %s",
+             w->lib_tasks && w->lib_notes ? "Tasks to do in all PDFs" : w->lib_notes ? "Search comments and highlights" : "Search all PDFs",
              w->lib_query);
     font_draw(w->font, x + pad, y + pad / 2.0f, head, t->panel_fg);
     ui_fill(w, x + pad + font_width(w->font, head) + 1, y + pad / 2.0f, SDL_max(2.0f, 2 * w->density), (float)lh,
@@ -1064,8 +1137,9 @@ void library_draw(Window *w)
     ui_fill(w, x, list_top - pad / 2.0f, bw, SDL_max(1.0f, w->density), t->panel_header, 90);
     ui_fill(w, x, list_bottom, bw, SDL_max(1.0f, w->density), t->panel_header, 90);
     char foot[200];
-    snprintf(foot, sizeof foot - 4, "type words (any order)   Tab %s   Ctrl-j Ctrl-k move   Enter open at the page   Esc close",
-             w->lib_notes ? "search the text" : "search comments and highlights");
+    snprintf(foot, sizeof foot - 4, "type words (any order)   Tab %s   Ctrl-t %s   Ctrl-j Ctrl-k move   Enter open at the page   Esc close",
+             w->lib_notes ? "search the text" : "search comments and highlights",
+             w->lib_tasks && w->lib_notes ? "all comments" : "tasks to do");
     font_fit(w->font, foot, (int)bw - 2 * pad);
     font_draw(w->font, x + pad, list_bottom + pad / 2.0f, foot, t->panel_header);
     if (!count) {
@@ -1073,6 +1147,7 @@ void library_draw(Window *w)
                           : !files          ? "No PDF indexed: pdf_dirs in the config says where to look."
                           : !w->lib_notes && strlen(w->lib_query) < 2 ? "Type at least two letters."
                           : !done           ? "searching…"
+                          : w->lib_notes && w->lib_tasks ? "No tasks to do: t on a highlight (in v or Ctrl-v) makes it one."
                           : w->lib_notes && !w->lib_query[0] ? "No comments in your PDFs yet."
                                                              : "Nothing found.";
         font_draw(w->font, x + pad, list_top + pad / 2.0f, msg, t->panel_header);
@@ -1102,6 +1177,11 @@ void library_draw(Window *w)
             float sq = lh * 0.6f;
             ui_fill(w, nx, ry + 3 * w->density + (lh - sq) / 2, sq, sq, h->color, 255);
             nx += sq + pad / 2.0f;
+            if (h->task) { /* a task: its box */
+                ui_task_box(w, nx, ry + 3 * w->density + (lh - sq) / 2, sq, h->task == 'd',
+                            sel ? t->panel_selected_fg : t->tab_accent, sel ? t->panel_selected_bg : t->panel_bg);
+                nx += sq + pad / 2.0f;
+            }
         }
         font_fit(w->font, name, (int)(x + bw - 2 * pad - pw - nx));
         font_draw(w->font, nx, ry + 3 * w->density, name, fg);

@@ -102,12 +102,13 @@ static void build_notes(Window *w, Doc *d, int *cap)
         notes_page(d, page);
         PageSlot *s = &d->slots[page];
         for (int i = 0; i < s->nnotes; i++) {
-            if (!note_filter_pass(&w->panel_filter, s->notes[i].subtype, s->notes[i].color, s->notes[i].has_comment))
+            if (!note_filter_pass(&w->panel_filter, &s->notes[i]))
                 continue;
             PanelItem *it = add(w, cap);
             it->page = page;
             it->note = i;
             it->color = s->notes[i].color;
+            it->task = s->notes[i].task;
             it->pos = (Pos){page, SDL_max(0.0f, 1 - s->notes[i].r.t / d->ph[page] - 0.05f)};
             bool image = s->notes[i].subtype == FPDF_ANNOT_STAMP;
             char *c = note_comment(d, page, i), *t = image ? xstrdup("(image)") : covered_text(d, page, &s->notes[i]);
@@ -229,7 +230,7 @@ void panel_switch(Window *w, int tab)
 }
 
 /* Highlights tab: C V B N M show / hide a colour, c only those with a
- * comment, a all again, e exports what is shown. */
+ * comment, T only the tasks to do, a all again, e exports what is shown. */
 void panel_filter(Window *w, char key)
 {
     if (w->panel_tab != PANEL_NOTES) {
@@ -242,6 +243,8 @@ void panel_filter(Window *w, char key)
         f->colors ^= 1u << (strchr(colors, key) - colors);
     else if (key == 'c')
         f->commented = !f->commented;
+    else if (key == 'T')
+        f->open_tasks = !f->open_tasks;
     else if (key == 'a')
         *f = (NoteFilter){0};
     else if (key == 'e') {
@@ -312,6 +315,44 @@ void panel_delete(Window *w)
     w->redraw = true;
 }
 
+/* t / T in a cursor or on the panel: a highlight or comment becomes a task,
+ * is ticked, is to do again; T makes it a plain note again. */
+void note_task_key(Window *w, Doc *d, int page, int note, bool remove)
+{
+    notes_page(d, page);
+    if (note < 0 || note >= d->slots[page].nnotes)
+        return;
+    int now = d->slots[page].notes[note].task;
+    int next = remove ? TASK_NONE : now == TASK_OPEN ? TASK_DONE : TASK_OPEN;
+    if (remove && now == TASK_NONE) {
+        ui_message(w, "not a task (t makes it one)");
+        return;
+    }
+    if (!note_set_task(d, page, note, next))
+        return;
+    int open, done;
+    notes_tasks(d, &open, &done);
+    if (next == TASK_NONE)
+        ui_message(w, "no longer a task   u undoes it");
+    else if (next == TASK_OPEN && now == TASK_NONE)
+        ui_message(w, "now a task, to do   t ticks it   T: not a task");
+    else
+        ui_message(w, "%s   %d of %d tasks done in this PDF   u undoes it", next == TASK_DONE ? "done \u2713" : "to do again",
+                   done, open + done);
+    w->redraw = true;
+}
+
+void panel_task(Window *w, bool remove)
+{
+    if (w->panel_tab != PANEL_NOTES || w->sel >= w->nitems)
+        return;
+    PanelItem *it = &w->items[w->sel];
+    note_task_key(w, cur_view(w)->doc, it->page, it->note, remove);
+    int sel = w->sel;
+    rebuild(w);
+    w->sel = SDL_clamp(sel, 0, SDL_max(0, w->nitems - 1)); /* on the same row, or the next when it left */
+}
+
 void panel_delete_comment(Window *w)
 {
     if (w->panel_tab != PANEL_NOTES || w->sel >= w->nitems)
@@ -377,11 +418,16 @@ static void draw_tabs(Box *b, Window *w)
     float x = b->x + b->pad, y = b->y + b->pad / 2.0f;
     for (int k = 0; k < PANEL_NTABS; k++) {
         char label[64];
-        bool filtered = k == PANEL_NOTES && (w->panel_filter.colors || w->panel_filter.commented);
+        bool filtered = k == PANEL_NOTES && (w->panel_filter.colors || w->panel_filter.commented || w->panel_filter.open_tasks);
         if (filtered && k == (int)w->panel_tab)
             snprintf(label, sizeof label, "%s  %d of %d", tab_names[k], w->nitems, w->panel_counts[k]);
         else
             snprintf(label, sizeof label, "%s  %d", tab_names[k], w->panel_counts[k]);
+        int open = 0, done = 0;
+        if (k == PANEL_NOTES && k == (int)w->panel_tab && cur_view(w))
+            notes_tasks(cur_view(w)->doc, &open, &done);
+        if (open + done) /* tasks: how many are done */
+            snprintf(label + strlen(label), sizeof label - strlen(label), "   tasks %d/%d done", done, open + done);
         int tw = font_width(w->font, label);
         bool cur = k == (int)w->panel_tab;
         if (cur)
@@ -423,6 +469,13 @@ static void draw_row(Box *b, PanelItem *it, float y, bool sel)
         float s = b->lh * 0.7f;
         ui_fill(w, x, ty + (b->lh - s) / 2, s, s, it->color, 255);
         x += s + b->pad;
+        if (it->task != TASK_NONE) { /* a task: its box, ticked when done */
+            ui_task_box(w, x, ty + (b->lh - s) / 2, s, it->task == TASK_DONE, sel ? t->panel_selected_fg : t->tab_accent,
+                        sel ? t->panel_selected_bg : t->panel_bg);
+            x += s + b->pad / 2.0f;
+            if (it->task == TASK_DONE && !sel)
+                fg = dim; /* done: it steps back */
+        }
     } else {
         x += it->depth * 2.0f * font_width(w->font, " ");
         if (it->depth == 0)
@@ -444,7 +497,10 @@ static const char *empty_hint(Window *w, char *buf, size_t cap)
 {
     if (w->panel_tab == PANEL_MARKS)
         snprintf(buf, cap, "No marks yet. Mark the current position with %sm and a letter.", leader_label());
-    else if (w->panel_tab == PANEL_NOTES && (w->panel_filter.colors || w->panel_filter.commented))
+    else if (w->panel_tab == PANEL_NOTES && w->panel_filter.open_tasks && !w->panel_filter.colors &&
+             !w->panel_filter.commented)
+        snprintf(buf, cap, "No tasks to do. t on a highlight makes it a task; a shows them all.");
+    else if (w->panel_tab == PANEL_NOTES && (w->panel_filter.colors || w->panel_filter.commented || w->panel_filter.open_tasks))
         snprintf(buf, cap, "No highlights of that kind. a shows them all.");
     else if (w->panel_tab == PANEL_NOTES)
         snprintf(buf, cap, "No highlights. In a cursor (v or Ctrl-v), select with v, then C V B N M or c.");
@@ -455,11 +511,11 @@ static const char *empty_hint(Window *w, char *buf, size_t cap)
 
 static const char *footer(Window *w)
 {
-    static char filtered[300];
+    static char filtered[400];
     if (w->panel_tab == PANEL_NOTES) {
         char which[160];
         note_filter_describe(&w->panel_filter, which, sizeof which);
-        snprintf(filtered, sizeof filtered, "%s%s%sC V B N M colour   c with comments%s   e export %s   Enter go   r comment   x delete",
+        snprintf(filtered, sizeof filtered, "%s%s%sC V B N M colour   c with comments   T to do%s   e export %s   t task \u2713   Enter go   r comment   x delete",
                  which[0] ? "only " : "", which, which[0] ? "   " : "", which[0] ? "   a all" : "",
                  which[0] ? "these" : "");
         return filtered;

@@ -34,7 +34,7 @@ file. Folders synchronised to the local disk (Nextcloud, Dropbox, OneDrive
 clients) are fine.
 
 **The index takes space.**
-About 9 KB per PDF. `~/.cache/nomadys-pdf/index` can be deleted at any time;
+About 9 KB per PDF. `~/.cache/nomadys-pdf/index2` can be deleted at any time;
 limit `pdf_dirs` to the folders you care about to keep it small.
 
 **Equations in comments show as plain text.**

@@ -286,6 +286,9 @@ void page_to_screen(View *v, int page, float x, float y, float *sx, float *sy, i
     *sy = (float)(v->py[page] + dy - v->sy + top);
 }
 
+/* The left edge of a page on screen. */
+float page_left_screen(View *v, int page) { return (float)(v->px[page] + offset_x(v, layout_W(v))); }
+
 bool screen_to_page(View *v, float sx, float sy, int top, int *page, double *x, double *y)
 {
     double cx = sx - offset_x(v, layout_W(v)), cy = sy - top + v->sy;

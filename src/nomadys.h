@@ -47,7 +47,12 @@ typedef struct Window Window;
 typedef struct {
     unsigned colors;         /* bits 0-4: C V B N M colours, bit 5: others; 0 = every colour */
     bool commented;          /* only those with a comment */
+    bool open_tasks;         /* only tasks still to do */
 } NoteFilter;
+
+/* A highlight or comment can be a task (t in a cursor or the panel):
+ * kept in the annotation as NomadysTask = "open" or "done 2026-09-29". */
+enum { TASK_NONE, TASK_OPEN, TASK_DONE };
 
 /* A reading position independent of zoom: page and fraction of its height. */
 typedef struct { int page; float y; } Pos;
@@ -123,6 +128,7 @@ typedef struct {
     int nquads;
     bool has_comment;
     bool area;               /* a highlight over an area (a figure), not over text */
+    int task;                /* TASK_*: not a task, to do, done */
     uint32_t color;          /* 0xRRGGBB, for the panel */
 } Note;
 
@@ -180,7 +186,7 @@ typedef struct {
     int turns;               /* quarter turns clockwise */
 } ImageView;
 
-typedef enum { U_CREATE, U_DELETE, U_COMMENT, U_EDIT, U_PAGES } UndoKind;
+typedef enum { U_CREATE, U_DELETE, U_COMMENT, U_EDIT, U_PAGES, U_TASK } UndoKind;
 typedef struct {
     UndoKind kind;
     int page, group;         /* a group is undone at once */
@@ -188,7 +194,7 @@ typedef struct {
     PRect before, after;     /* U_EDIT */
     bool has_view;
     ImageView vbefore, vafter;
-    char *text_before, *text_after; /* U_COMMENT */
+    char *text_before, *text_after; /* U_COMMENT, U_TASK */
     Mark *marks_before, *marks_after; /* U_PAGES: text_before / text_after are snapshot files */
 } Undo;
 
@@ -265,6 +271,9 @@ bool note_create(Doc *d, int page, const PRect *quads, int n, const char *commen
 bool note_create_area(Doc *d, int page, PRect r, const char *comment, uint32_t color);
 char *note_comment(Doc *d, int page, int note);          /* malloc'd UTF-8, or NULL */
 bool note_set_comment(Doc *d, int page, int note, const char *comment);
+bool note_set_task(Doc *d, int page, int note, int task);  /* TASK_*, undoable */
+void notes_tasks(Doc *d, int *open, int *done);            /* the tasks of the whole PDF */
+void note_task_key(Window *w, Doc *d, int page, int note, bool remove); /* t / T */
 bool note_delete(Doc *d, int page, int note);
 int note_create_image(Doc *d, int page, PRect r, FPDF_PAGEOBJECT image); /* annotation index, or -1 */
 int note_move(Doc *d, int page, int annot, PRect r);     /* new annotation index, or -1 */
@@ -379,6 +388,7 @@ Pos view_pos(View *v);
 void view_set_pos(View *v, Pos p);
 void view_show_rect(View *v, int page, PRect r, int W, int H, int top);
 void page_to_screen(View *v, int page, float x, float y, float *sx, float *sy, int top);
+float page_left_screen(View *v, int page);
 bool screen_to_page(View *v, float sx, float sy, int top, int *page, double *x, double *y);
 
 /* ---------- windows ---------- */
@@ -396,6 +406,7 @@ typedef struct {
     Pos pos;                 /* where Enter goes; page -1 = nowhere */
     int page, note, mark, tab;
     uint32_t color;          /* note colour */
+    int task;                /* note: TASK_* */
 } PanelItem;
 
 /* links.c: a link on screen, labelled for 'f' / 'F' */
@@ -442,6 +453,7 @@ struct Window {
     /* library search (library.c) */
     char lib_query[256];
     bool lib_notes;          /* comments and highlights, not the text */
+    bool lib_tasks;          /* with lib_notes: only the tasks to do (:tasks) */
     int lib_sel, lib_first;
     Mode lib_return;
     /* split view (split.c): a second pane, its own view */
@@ -629,6 +641,7 @@ void panel_move(Window *w, int delta);
 void panel_activate(Window *w);
 void panel_delete(Window *w);
 void panel_delete_comment(Window *w);
+void panel_task(Window *w, bool remove);                   /* t / T on the Highlights tab */
 void panel_rename(Window *w);
 void panel_switch(Window *w, int tab);                    /* tab index, or -1 / -2 for prev / next */
 void panel_draw(Window *w);
@@ -648,6 +661,8 @@ void font_draw(Font *f, float x, float y, const char *s, uint32_t rgb);   /* y =
 
 /* ---------- drawing helpers and overlays (ui.c) ---------- */
 void ui_ring(Window *w, float cx, float cy, float r, float th, uint32_t rgb, uint8_t a);
+void ui_line(Window *w, float x0, float y0, float x1, float y1, float th, uint32_t rgb);
+void ui_task_box(Window *w, float x, float y, float size, bool done, uint32_t rgb, uint32_t tick);
 uint32_t rgb_mix(uint32_t a, uint32_t b, float f);       /* f = 0: a, 1: b */
 void ui_round(Window *w, float x, float y, float wd, float ht, float r, uint32_t rgb, uint8_t a); /* rounded rectangle */
 uint32_t ink_on(uint32_t bg, uint32_t a, uint32_t b);      /* of two inks, the one that reads better on bg */
@@ -730,6 +745,7 @@ void picker_refresh(void);
 int pdf_scan(const char *dirs, char ***paths, long long **when); /* every PDF in pdf_dirs */
 int library_worker(const char *dir, int part);            /* npdf --index-worker DIR K */
 void library_open(Window *w, bool notes);                 /* \/ text, \n comments and highlights */
+void library_tasks(Window *w);                            /* :tasks, the tasks to do in every PDF */
 void library_event(int code);                             /* IPC_INDEX / IPC_LIBRARY */
 void library_key(Window *w, const char *tok);
 void library_text(Window *w, const char *text);
@@ -816,7 +832,7 @@ int export_write(Doc *d, FILE *f, int *ncomments, const NoteFilter *only); /* Ma
 void export_notes(Window *w, View *v, const char *arg, bool force, const NoteFilter *only);
 int note_color_index(uint32_t c);                         /* 0-4: C V B N M; 5: another colour */
 bool note_filter_word(const char *word, NoteFilter *f);   /* "red", "green", "commented"... */
-bool note_filter_pass(const NoteFilter *f, int subtype, uint32_t color, bool has_comment);
+bool note_filter_pass(const NoteFilter *f, const Note *n);
 void note_filter_describe(const NoteFilter *f, char *out, size_t cap);
 
 /* links.c */

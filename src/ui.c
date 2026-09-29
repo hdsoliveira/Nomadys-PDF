@@ -292,6 +292,36 @@ void ui_round(Window *w, float x, float y, float wd, float ht, float r, uint32_t
     SDL_RenderGeometry(w->ren, NULL, v, n, idx, k);
 }
 
+/* A thick line from (x0, y0) to (x1, y1). */
+void ui_line(Window *w, float x0, float y0, float x1, float y1, float th, uint32_t rgb)
+{
+    float dx = x1 - x0, dy = y1 - y0, len = SDL_sqrtf(dx * dx + dy * dy);
+    if (len <= 0)
+        return;
+    float nx = -dy / len * th / 2, ny = dx / len * th / 2;
+    SDL_FColor c = {((rgb >> 16) & 0xFF) / 255.0f, ((rgb >> 8) & 0xFF) / 255.0f, (rgb & 0xFF) / 255.0f, 1};
+    SDL_Vertex v[4] = {{{x0 + nx, y0 + ny}, c, {0, 0}}, {{x1 + nx, y1 + ny}, c, {0, 0}},
+                       {{x1 - nx, y1 - ny}, c, {0, 0}}, {{x0 - nx, y0 - ny}, c, {0, 0}}};
+    int idx[6] = {0, 1, 2, 0, 2, 3};
+    SDL_SetRenderDrawBlendMode(w->ren, SDL_BLENDMODE_BLEND);
+    SDL_RenderGeometry(w->ren, NULL, v, 4, idx, 6);
+}
+
+/* A task's check box, size across, its top left at (x, y): an outline in
+ * rgb on bg while to do, filled with a tick in bg once done. */
+void ui_task_box(Window *w, float x, float y, float size, bool done, uint32_t rgb, uint32_t bg)
+{
+    float th = SDL_max(1.5f, size * 0.14f), r = size * 0.22f;
+    ui_round(w, x, y, size, size, r, rgb, 255);
+    if (!done) {
+        ui_round(w, x + th, y + th, size - 2 * th, size - 2 * th, SDL_max(0.0f, r - th), bg, 255);
+        return;
+    }
+    float lw = SDL_max(1.5f, size * 0.16f);
+    ui_line(w, x + size * 0.24f, y + size * 0.52f, x + size * 0.43f, y + size * 0.71f, lw, bg);
+    ui_line(w, x + size * 0.40f, y + size * 0.72f, x + size * 0.77f, y + size * 0.30f, lw, bg);
+}
+
 /* WCAG contrast of two colours (1 to 21). */
 static float lum(uint32_t c)
 {
@@ -346,7 +376,8 @@ uint32_t rgb_mix(uint32_t a, uint32_t b, float f)
     return out;
 }
 
-/* A small corner marker on highlights that carry a comment. */
+/* A small corner marker on highlights that carry a comment; a check box
+ * in front of those that are tasks. */
 void ui_draw_notes(Window *w, View *v, int top)
 {
     Doc *d = v->doc;
@@ -360,10 +391,21 @@ void ui_draw_notes(Window *w, View *v, int top)
         notes_page(d, page);
         PageSlot *s = &d->slots[page];
         for (int i = 0; i < s->nnotes; i++) {
-            if (!s->notes[i].has_comment)
-                continue;
             PRect r = s->notes[i].quads[0];
             float x, y;
+            if (s->notes[i].task != TASK_NONE) {
+                /* in the page's left margin, at the height of the first line
+                 * (an area: its top), so it never covers the text */
+                float box = 17 * w->density, x0, y0, x1, y1;
+                page_to_screen(v, page, r.l, r.t, &x0, &y0, top);
+                page_to_screen(v, page, r.l, r.b, &x1, &y1, top);
+                float ty = SDL_min(y0, y1), by = SDL_max(y0, y1);
+                float cy = r.t - r.b > 40 ? ty : (ty + by - box) / 2;
+                ui_task_box(w, page_left_screen(v, page) + 12 * w->density, cy, box, s->notes[i].task == TASK_DONE,
+                            wtheme(w)->tab_accent, v->dark ? theme_of(true)->page_bg : 0xFFFFFF);
+            }
+            if (!s->notes[i].has_comment)
+                continue;
             page_to_screen(v, page, r.r, r.t, &x, &y, top);
             ui_fill(w, x - size / 2, y - size / 2, size, size, wtheme(w)->comment_marker, 255);
         }

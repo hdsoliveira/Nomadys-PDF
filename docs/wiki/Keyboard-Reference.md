@@ -109,6 +109,7 @@ always one key away in the program: `\c`.
 | `y` | copy the selected text |
 | `Y` | copy it as a quotation with the page |
 | `x` | delete the highlight under the cursor |
+| `t` / `T` | the highlight under the cursor: make it a task, tick it / a plain highlight again |
 | `Enter` | LaTeX: open this spot in the editor |
 | `Ctrl-v` | switch to the free cursor |
 | `Esc` | cancel the selection, then leave |
@@ -129,6 +130,7 @@ Scrolling, marks, jumps, undo, `\l` and `\c` work here too.
 | `P` | paste an image from the clipboard here |
 | `e` | move / resize the image or area under the cross |
 | `x` | delete the highlight under the cross |
+| `t` / `T` | the highlight under the cross: make it a task, tick it / a plain highlight again |
 | `Enter` | LaTeX: open this spot in the editor |
 | `Ctrl-v` | back to the text cursor |
 | `Esc` | cancel / leave |
@@ -193,6 +195,8 @@ Scrolling, marks, jumps, undo, `\l` and `\c` work here too.
 | `x` | delete the highlight or mark (in Tabs: close the file) |
 | `C` `V` `B` `N` `M` | Highlights: show / hide a colour |
 | `c` / `a` | Highlights: only commented / all |
+| `t` | Highlights: make it a task, tick it |
+| `T` | Highlights: only the tasks to do |
 | `e` | Highlights: export what is shown |
 | `Esc`, `q` | close |
 
@@ -234,6 +238,7 @@ Scrolling, marks, jumps, undo, `\l` and `\c` work here too.
 | `Ctrl-u` | clear |
 | `Ctrl-j` `Ctrl-k`, `Ctrl-n` `Ctrl-p`, `↓` `↑` | move |
 | `Tab` | recent / finder: move; library: text ⇄ comments |
+| `Ctrl-t` | library: every comment ⇄ the tasks to do |
 | `Enter` | open |
 | `Esc` | close |
 

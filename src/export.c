@@ -47,20 +47,26 @@ bool note_filter_word(const char *word, NoteFilter *f)
         f->commented = true;
         return true;
     }
+    if (!strcasecmp(word, "tasks") || !strcasecmp(word, "todo") || !strcasecmp(word, "task")) {
+        f->open_tasks = true;
+        return true;
+    }
     return false;
 }
 
-bool note_filter_pass(const NoteFilter *f, int subtype, uint32_t color, bool has_comment)
+bool note_filter_pass(const NoteFilter *f, const Note *n)
 {
     if (!f)
         return true;
-    if (f->commented && !has_comment)
+    if (f->commented && !n->has_comment)
+        return false;
+    if (f->open_tasks && n->task != TASK_OPEN)
         return false;
     if (!f->colors)
         return true;
-    if (subtype == FPDF_ANNOT_STAMP) /* an image has no colour */
+    if (n->subtype == FPDF_ANNOT_STAMP) /* an image has no colour */
         return false;
-    return f->colors & (1u << note_color_index(color));
+    return f->colors & (1u << note_color_index(n->color));
 }
 
 /* "red, green, with comments", or "" for everything. */
@@ -72,6 +78,8 @@ void note_filter_describe(const NoteFilter *f, char *out, size_t cap)
             snprintf(out + strlen(out), cap - strlen(out), "%s%s", out[0] ? ", " : "", i < 5 ? color_names[i] : "other colours");
     if (f && f->commented)
         snprintf(out + strlen(out), cap - strlen(out), "%s", out[0] ? ", with comments" : "with comments");
+    if (f && f->open_tasks)
+        snprintf(out + strlen(out), cap - strlen(out), "%s", out[0] ? ", tasks to do" : "tasks to do");
 }
 
 /* The name of the configured highlight colour closest to c, or its hex code. */
@@ -237,7 +245,7 @@ int export_write(Doc *d, FILE *f, int *ncomments, const NoteFilter *only)
         notes_page(d, page);
         PageSlot *s = &d->slots[page];
         for (int i = 0; i < s->nnotes; i++)
-            total += note_filter_pass(only, s->notes[i].subtype, s->notes[i].color, s->notes[i].has_comment);
+            total += note_filter_pass(only, &s->notes[i]);
     }
     char which[160];
     note_filter_describe(only, which, sizeof which);
@@ -253,7 +261,7 @@ int export_write(Doc *d, FILE *f, int *ncomments, const NoteFilter *only)
         int shown = 0;
         pass = xrealloc(pass, (size_t)(s->nnotes ? s->nnotes : 1) * sizeof *pass);
         for (int i = 0; i < s->nnotes; i++)
-            shown += pass[i] = note_filter_pass(only, s->notes[i].subtype, s->notes[i].color, s->notes[i].has_comment);
+            shown += pass[i] = note_filter_pass(only, &s->notes[i]);
         if (!shown)
             continue;
         fprintf(f, "## Page %d\n\n", page + 1);
@@ -265,16 +273,18 @@ int export_write(Doc *d, FILE *f, int *ncomments, const NoteFilter *only)
             char hex[16];
             const char *color = color_name(n->color, hex, sizeof hex);
             char *text = note_text(d, page, n), *comment = note_comment(d, page, o[i].note);
+            /* a task is a check box (Obsidian, GitHub): - [ ] to do, - [x] done */
+            const char *item = n->task == TASK_DONE ? "- [x]" : n->task == TASK_OPEN ? "- [ ]" : "-";
             if (n->subtype == FPDF_ANNOT_STAMP)
-                fprintf(f, "- *(image)* placed on the page\n\n");
+                fprintf(f, "%s *(image)* placed on the page\n\n", item);
             else if (n->subtype == FPDF_ANNOT_TEXT)
-                fprintf(f, "- *(note)*\n\n");
+                fprintf(f, "%s *(note)*\n\n", item);
             else if (n->subtype == FPDF_ANNOT_INK)
-                fprintf(f, "- *(%s, drawing)* drawn by hand\n\n", color);
+                fprintf(f, "%s *(%s, drawing)* drawn by hand\n\n", item, color);
             else if (text)
-                fprintf(f, "- *(%s)* “%s”\n\n", color, text); /* blank lines: easier to read */
+                fprintf(f, "%s *(%s)* “%s”\n\n", item, color, text); /* blank lines: easier to read */
             else
-                fprintf(f, "- *(%s, area)* highlighted region — figure, table or equation\n\n", color);
+                fprintf(f, "%s *(%s, area)* highlighted region — figure, table or equation\n\n", item, color);
             if (comment && *comment) {
                 fprintf(f, "  **Comment:** ");
                 write_indented(f, comment, "  ");
@@ -345,8 +355,9 @@ static bool ours(const char *path)
     return yes;
 }
 
-/* :export [file.md] [colours] [commented]: the words that name colours or
- * "commented" choose the notes, the other one is the file. */
+/* :export [file.md] [colours] [commented] [tasks]: the words that name
+ * colours, "commented" or "tasks" (to do) choose the notes, the other one
+ * is the file. */
 void export_notes(Window *w, View *v, const char *arg, bool force, const NoteFilter *base)
 {
     NoteFilter only = base ? *base : (NoteFilter){0};

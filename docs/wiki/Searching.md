@@ -74,6 +74,9 @@ in them. `Tab` switches between the two.
   the highlighted text.
 - With nothing typed, `\n` lists **every comment** you ever wrote, newest
   files first.
+- `Ctrl-t` (or `:tasks`) keeps only the **tasks still to do**, from every
+  PDF: your to-do list across all your papers (see
+  [Highlights and comments](Highlights-and-Comments.md#tasks-tick-your-highlights-off)).
 - `Enter` opens the PDF at that page with the words highlighted; `n` and
   `N` go on to the next matches in that PDF.
 
@@ -81,6 +84,7 @@ in them. `Tab` switches between the two.
 |---|---|
 | typing, `Backspace` | search (each letter refines it at once) |
 | `Tab` | text ⇄ comments and highlights |
+| `Ctrl-t` | comments ⇄ the tasks to do |
 | `Ctrl-j` `Ctrl-k`, `↓` `↑`, `Ctrl-d` | move |
 | `Ctrl-u` | clear |
 | `Enter` | open at that page |
@@ -96,8 +100,9 @@ meanwhile; the top right corner shows the progress ("indexing 1234 / 14195").
 - The first time takes about 16 ms per PDF (about 4 minutes for 14 000
   PDFs). Afterwards only new or changed files are read again, which takes
   a fraction of a second.
-- It lives in `~/.cache/nomadys-pdf/index`, about 9 KB per PDF (compressed).
-  Deleting that folder is safe: it is made again.
+- It lives in `~/.cache/nomadys-pdf/index2`, about 9 KB per PDF
+  (compressed). Deleting that folder is safe: it is made again. (The index
+  of versions before tasks, `index`, is removed and made again once.)
 - A broken PDF cannot crash the reader: the index is made by separate
   processes, and a PDF that crashes one is skipped until it changes.
 - PDFs with a password and scanned PDFs without a text layer have no text to

@@ -17,7 +17,7 @@ stop using Nomadys-PDF.
 | `~/.local/share/nomadys-pdf/recent` | recent files (`\o`) |
 | `~/.local/share/nomadys-pdf/session` | the tabs open now (`npdf` alone reopens them) |
 | `~/.local/share/nomadys-pdf/files` | the list of PDFs found by `\f` |
-| `~/.cache/nomadys-pdf/index/` | the text index for `\/` and `\n` |
+| `~/.cache/nomadys-pdf/index2/` | the text index for `\/`, `\n` and `:tasks` |
 | `~/.cache/nomadys-pdf/math/` | typeset equations |
 | `~/.cache/nomadys-pdf/undo/` | copies kept for undoing page changes, deleted when the PDF closes |
 

@@ -113,6 +113,33 @@ The comment is stored as the text you typed, so other readers show
 `$\sigma = E\varepsilon$` as it is, and exported Markdown shows the equations
 in Obsidian and similar apps.
 
+## Tasks: tick your highlights off
+
+Any highlight or comment can become a **task**: a point to answer in a
+review, a figure to redo, a claim to check. Tasks get a check box in the
+page's left margin, at the height of their line, and you tick them off as
+you go.
+
+| Key | Where | Action |
+|---|---|---|
+| `t` | text cursor (`v`), free cursor (`Ctrl-v`), panel | make it a task; again: tick it (done); again: to do |
+| `T` | text cursor, free cursor | a plain highlight again |
+| `T` | panel, Highlights tab | only the tasks still to do |
+| `u` | anywhere | undo the last tick, like any change |
+
+- The panel's Highlights tab shows each task's box and counts them:
+  "tasks 5/8 done". A done task steps back (dimmer).
+- **`:tasks`** lists the tasks still to do in **all your PDFs**, newest
+  files first; typing words narrows the list, `Enter` opens the paper at the
+  task. In `\n`, `Ctrl-t` switches between every comment and the tasks.
+- Exported to Markdown, tasks are check boxes, `- [ ]` and `- [x]`, which
+  Obsidian and GitHub show as check lists; `:export tasks` writes only those
+  still to do.
+- A task is stored in the annotation itself (`NomadysTask`, with the day it
+  was done), so it travels with the PDF and with `:merge`. Other readers show
+  the highlight as usual, without the box. Check marks set in **Acrobat**
+  (right click on a comment, *Mark with Checkmark*) are read as tasks done.
+
 ## Filtering by colour
 
 Give each colour a meaning, for example green = to cite, red = problems,
@@ -122,6 +149,7 @@ blue = methods. Then, in the panel's **Highlights** tab (`\l`, then `4`):
 |---|---|
 | `C` `V` `B` `N` `M` | show / hide that colour (several can be combined) |
 | `c` | only highlights with a comment |
+| `T` | only the tasks still to do |
 | `a` | all again |
 | `e` | export what is shown to Markdown |
 
@@ -142,6 +170,12 @@ colour and the comment:
   **Comment:** check this claim against [43]
 
 - *(blue, area)* highlighted region — figure, table or equation
+
+- [ ] *(red)* “the boundary conditions are not stated”
+
+  **Comment:** reviewer 2, point 3
+
+- [x] *(green)* “Fig. 4 uses the old data”
 ```
 
 | Command | Writes |
@@ -154,7 +188,8 @@ colour and the comment:
 | `:export!` | the same, allowed to overwrite a file that `:export` did not write |
 
 Colour words: `yellow`, `red`, `green`, `pink`, `blue` (the five keys, in
-order) and `other`; `commented` keeps only those with a comment.
+order) and `other`; `commented` keeps only those with a comment, `tasks` only
+the tasks still to do.
 
 Running `:export` again replaces the file it wrote before, but a Markdown
 file written by someone else is never overwritten without `!`. From a

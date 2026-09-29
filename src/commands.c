@@ -138,6 +138,13 @@ static void c_library(Window *w, View *v, const char *a, bool notes)
 
 static void c_search_all(Window *w, View *v, const char *a) { c_library(w, v, a, false); }
 static void c_search_notes(Window *w, View *v, const char *a) { c_library(w, v, a, true); }
+static void c_tasks(Window *w, View *v, const char *a)
+{
+    (void)v;
+    library_tasks(w);
+    if (*a)
+        library_text(w, a);
+}
 static void c_session(Window *w, View *v, const char *a) { (void)v, (void)a; session_restore(w); }
 
 static void c_about(Window *w, View *v, const char *a) { (void)v, (void)a; about_open(w); }
@@ -277,7 +284,7 @@ static const Command commands[] = {
     {"rotate", ARG_NUMBER, c_rotate, "rotate the view: :rotate 90, -90, 180"},
     {"dark", ARG_NONE, c_dark, "dark mode"},
     {"light", ARG_NONE, c_light, "light mode"},
-    {"export", ARG_MD, c_export, "highlights and comments to Markdown (paper-notes.md); :export red green commented"},
+    {"export", ARG_MD, c_export, "highlights and comments to Markdown (paper-notes.md); :export red green commented tasks"},
     {"export!", ARG_MD, c_export_force, "the same, overwriting any file"},
     {"image", ARG_IMAGE, c_image, "put a PNG / JPEG on the page (then move and resize it)"},
     {"about", ARG_NONE, c_about, "version, author, contact (also \\a)"},
@@ -298,6 +305,7 @@ static const Command commands[] = {
     {"pages", ARG_NONE, c_pages, "all pages as thumbnails (also \\g)"},
     {"library", ARG_WORDS, c_search_all, "search the text of all your PDFs: :library snap-through (also \\/)"},
     {"comments", ARG_WORDS, c_search_notes, "search the comments and highlights of all your PDFs (also \\n)"},
+    {"tasks", ARG_WORDS, c_tasks, "the tasks still to do in all your PDFs (t on a highlight makes one); :tasks words"},
     {"find", ARG_NONE, c_find, "find any PDF in your folders (also \\f; pdf_dirs in the config)"},
     {"recent", ARG_NONE, c_recent, "open a recent file (also \\o)"},
     {"session", ARG_NONE, c_session, "reopen the tabs of the last session"},

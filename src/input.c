@@ -351,6 +351,18 @@ static void a_note_delete(Window *w, View *v, int c, const char *a)
         ui_message(w, "no highlight under the cursor");
 }
 
+/* t: the highlight or comment under the cursor becomes a task, is ticked,
+ * is to do again; T: a plain note again. */
+static void a_note_task(Window *w, View *v, int c, const char *a)
+{
+    (void)c;
+    int page, note;
+    if (cursor_note(w, v, &page, &note))
+        note_task_key(w, v->doc, page, note, a[0] == 'T');
+    else
+        ui_message(w, "no highlight or comment under the cursor");
+}
+
 static void a_leave(Window *w, View *v, int c, const char *a)
 {
     (void)c, (void)a;
@@ -413,6 +425,7 @@ static void a_panel_delete(Window *w, View *v, int c, const char *a) { (void)v, 
 static void a_panel_uncomment(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_delete_comment(w); }
 static void a_panel_rename(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_rename(w); }
 static void a_panel_filter(Window *w, View *v, int c, const char *a) { (void)v, (void)c; panel_filter(w, a[0]); }
+static void a_panel_task(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_task(w, false); }
 static void a_panel_close(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_close(w); }
 static void a_panel_next_tab(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_switch(w, -2); }
 static void a_panel_prev_tab(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; panel_switch(w, -1); }
@@ -748,6 +761,8 @@ static const Binding caret_map[] = {
     {"c", a_caret_comment, "highlight with a comment, or edit the comment"},
     {"y", a_caret_copy, "copy the selection"},
     {"Y", a_caret_cite, "copy it as a quotation: “…” (p. 5)"}, {"x", a_note_delete, "delete the highlight under the cursor"},
+    {"t", a_note_task, "the highlight under the cursor: make it a task / tick it"},
+    {"T", a_note_task, "the highlight under the cursor: no longer a task"},
     GROUP("Other"),
     {"<C-v>", a_area, "switch to the free cursor"}, {"<Esc>", a_leave, "cancel the selection / leave"},
     {"<Enter>", a_source, "LaTeX: open this spot in the editor (SyncTeX)"},
@@ -770,6 +785,8 @@ static const Binding area_map[] = {
     {"M", a_area_mark, "highlight the area: pastel blue"},
     {"c", a_area_comment, "highlight with a comment, or edit the comment"},
     {"x", a_note_delete, "delete the highlight under the cursor"},
+    {"t", a_note_task, "the highlight under the cross: make it a task / tick it"},
+    {"T", a_note_task, "the highlight under the cross: no longer a task"},
     GROUP("Images, moving and resizing"),
     {"I", a_image_file, "put an image here (PNG, JPEG): inside the rectangle, or at the cross"},
     {"P", a_image_paste, "paste an image from the clipboard (a screenshot) here"},
@@ -791,6 +808,8 @@ static const Binding panel_map[] = {
     {"B", a_panel_filter, "Highlights: show / hide a colour"}, {"N", a_panel_filter, "Highlights: show / hide a colour"},
     {"M", a_panel_filter, "Highlights: show / hide a colour"},
     {"c", a_panel_filter, "Highlights: only those with a comment"}, {"a", a_panel_filter, "Highlights: all again"},
+    {"t", a_panel_task, "Highlights: make it a task / tick it"},
+    {"T", a_panel_filter, "Highlights: only the tasks to do"},
     {"e", a_panel_filter, "Highlights: export what is shown to Markdown"},
     {"<Tab>", a_panel_next_tab, "next / previous panel tab"}, {"l", a_panel_next_tab, "next / previous panel tab"},
     {"<S-Tab>", a_panel_prev_tab, "next / previous panel tab"}, {"h", a_panel_prev_tab, "next / previous panel tab"},
