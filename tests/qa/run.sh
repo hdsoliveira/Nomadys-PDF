@@ -35,7 +35,7 @@ def run(name, src, script, timeout):
                         '--test-script', script, target], capture_output=True, text=True)
     return p.stdout.strip(), p.returncode
 
-runs = [(f'open-{os.path.basename(f)[:-4]}', f, seq, 300)
+runs = [(f'open-{os.path.basename(f)[:-4]}', f, seq, 900) # the fixed sequence takes ~2 min without sanitizers
         for f in sorted(glob.glob(f'{work}/corpus/*.pdf')) + ['tests/sample.pdf', '/nonexistent.pdf']]
 runs += [(f'fuzz-{s}', 'tests/sample.pdf', None, 3000) for s in range(1, seeds + 1)]
 fail = 0
