@@ -254,6 +254,21 @@ def demos():
     d.key("<Esc><Esc>", 600).key("\\l4", 2600, label="\\l 4", wait=300)
     out.append(d)
 
+    d = Demo("tasks", [WORK / "tasks" / "paper.pdf"], "Tasks", config="pdf_dirs = %s\n" % (WORK / "tasks"))
+    d.pause(600).key("v", 700).key("8j", 600).key("0", 400).key("v", 500)
+    for _ in range(6):
+        d.key("e", 150)
+    d.key("V", 800).key("t", 1500)
+    d.key("j", 300).key("0", 300).key("v", 400)
+    for _ in range(5):
+        d.key("e", 150)
+    d.key("B", 700).key("t", 900).key("t", 1600)
+    d.key("<Esc><Esc>", 500).key("\\l4", 2400, label="\\l 4", wait=300).key("T", 1800, wait=200)
+    d.key("<Esc>", 500).key(":w<Enter>", 400, label=":w", wait=300).key(":", 300)
+    d.type("tasks", per=80, label=":tasks")
+    d.key("<Enter>", 2800, wait=2500)
+    out.append(d)
+
     d = Demo("preview", [paper], "Reference preview")
     d.setup = "jjjjjj"
     d.pause(700).key("F", 1400).key("d", 2600, wait=300).key("j", 500).key("<Esc>", 600)
@@ -311,6 +326,8 @@ def demos():
 
 def fresh_copies():
     shutil.copy(HERE / "paper" / "paper.pdf", WORK / "paper.pdf")
+    (WORK / "tasks").mkdir(exist_ok=True)       # the tasks demo's own library: just this paper
+    shutil.copy(HERE / "paper" / "paper.pdf", WORK / "tasks" / "paper.pdf")
     shutil.copy(HERE / "paper" / "paper-v1.pdf", WORK / "paper-v1.pdf")
 
 
