@@ -345,13 +345,17 @@ void view_show_rect(View *v, int page, PRect r, int W, int H, int top)
  * ink -> page_fg. The map bends towards the ink (dark_text_weight): light text on dark
  * paper looks thinner than dark text on white, and the half-covered pixels
  * at the edges of letters would otherwise fade into the paper.
- * That is for what has no colour (paper, text, lines, greys). A colour
- * keeps its own look, so the shapes of a diagram stay the colours they were
- * drawn in (a pale face stays pale, instead of turning brown): it is only
- * lifted to the lightness its inversion would have when that is lighter,
- * so red text or a blue link, dark on white, stays readable on the dark
- * paper. Between grey and colour (CHROMA_GREY..+CHROMA_SPAN of max - min)
- * the two blend. (Light mode never calls this: pages stay white.) */
+ * That is for what has no colour (paper, text, lines, greys), and for thin
+ * coloured strokes: red text becomes light red, its soft edges going to the
+ * paper as they should. A coloured area (a pixel with its four neighbours
+ * alike: the shape of a diagram, a bar) keeps its own look instead, so a
+ * pale face stays pale rather than turning brown; it is only lifted to the
+ * lightness its inversion would have when that is lighter, so a dark fill
+ * stays visible. Doing that for letters too drew them with a light outline
+ * (their edges, red mixed with white, are light and coloured). Between grey
+ * and colour (CHROMA_GREY..+CHROMA_SPAN of max - min) the two blend.
+ * (Light mode never calls this: pages stay white.) */
+#define FILL_ALIKE 10  /* largest step to a neighbour inside a coloured area */
 #define CHROMA_GREY 24
 #define CHROMA_SPAN 48
 static void recolor(uint8_t *px, int w, int h, int stride, const uint8_t *keep, bool dark)
@@ -365,9 +369,24 @@ static void recolor(uint8_t *px, int w, int h, int stride, const uint8_t *keep, 
             lut[c][i] = (uint8_t)SDL_lround(dark ? paper + k * (ink - paper) : ink + k * (paper - ink));
         }
     }
+    /* coloured areas, judged on the page as drawn (before any pixel changes) */
+    uint8_t *fill = dark ? calloc((size_t)w * h, 1) : NULL;
+    for (int y = 1; fill && y + 1 < h; y++)
+        for (int x = 1; x + 1 < w; x++) {
+            const uint8_t *q = px + (size_t)y * stride + 4 * (size_t)x;
+            if (SDL_max(q[0], SDL_max(q[1], q[2])) - SDL_min(q[0], SDL_min(q[1], q[2])) <= CHROMA_GREY)
+                continue;
+            const uint8_t *nb[4] = {q - 4, q + 4, q - stride, q + stride};
+            bool alike = true;
+            for (int i = 0; alike && i < 4; i++)
+                alike = SDL_abs(nb[i][0] - q[0]) <= FILL_ALIKE && SDL_abs(nb[i][1] - q[1]) <= FILL_ALIKE &&
+                        SDL_abs(nb[i][2] - q[2]) <= FILL_ALIKE;
+            fill[(size_t)y * w + x] = alike;
+        }
     for (int y = 0; y < h; y++) {
         uint8_t *p = px + (size_t)y * stride;
         const uint8_t *k = keep ? keep + (size_t)y * w : NULL;
+        const uint8_t *f = fill ? fill + (size_t)y * w : NULL;
         for (int x = 0; x < w; x++, p += 4) {
             if (k && k[x])
                 continue;
@@ -380,7 +399,7 @@ static void recolor(uint8_t *px, int w, int h, int stride, const uint8_t *keep, 
             int chroma = SDL_max(r, SDL_max(g, b)) - SDL_min(r, SDL_min(g, b));
             int ib = lut[0][SDL_clamp(b + dlt, 0, 255)], ig = lut[1][SDL_clamp(g + dlt, 0, 255)],
                 ir = lut[2][SDL_clamp(r + dlt, 0, 255)];
-            int mix = SDL_clamp((chroma - CHROMA_GREY) * 256 / CHROMA_SPAN, 0, 256); /* 0 grey .. 256 colour */
+            int mix = f && f[x] ? SDL_clamp((chroma - CHROMA_GREY) * 256 / CHROMA_SPAN, 0, 256) : 0; /* 0 grey .. 256 colour */
             if (mix) {
                 int up = SDL_max(0, dlt);
                 int cb = SDL_min(255, b + up), cg = SDL_min(255, g + up), cr = SDL_min(255, r + up);
@@ -391,6 +410,7 @@ static void recolor(uint8_t *px, int w, int h, int stride, const uint8_t *keep, 
             p[0] = (uint8_t)ib, p[1] = (uint8_t)ig, p[2] = (uint8_t)ir;
         }
     }
+    free(fill);
 }
 
 /* A picture keeps its colours in dark mode; what is drawn on light paper
@@ -408,10 +428,11 @@ static void recolor(uint8_t *px, int w, int h, int stride, const uint8_t *keep, 
  * (not where this slice of the page cuts it). */
 #define BG_LIGHT 185   /* darkest channel of a light background */
 #define BG_FLAT 6      /* largest step between neighbours in a flat one */
+#define BG_SPREAD 6    /* and from the colour it starts with */
+#define PICTURE_TONES 7 /* lightness bands (of 16) a shaded picture spans */
 #define PAPER_WHITE 238
 static void mark_pictures(uint8_t *m, int w, const uint8_t *px, int stride, int l, int t, int r, int b, bool left,
-                          bool top, bool right, bool bottom, const SDL_Rect *glyphs, int nglyphs,
-                          const uint8_t *opaque)
+                          bool top, bool right, bool bottom, const SDL_Rect *glyphs, int nglyphs)
 {
     int bw = r - l, bh = b - t;
     if (bw <= 0 || bh <= 0)
@@ -465,6 +486,10 @@ static void mark_pictures(uint8_t *m, int w, const uint8_t *px, int stride, int 
         Region *g = &reg[nreg++];
         *g = (Region){.first = used};
         list[used++] = (int)i, seen[i] = 1;
+        /* close to where it started, not only to its neighbour: the smooth
+         * shading of a render, step by small step from white to grey, is
+         * not one flat region */
+        const uint8_t *seed = PX((int)(i % bw), (int)(i / bw));
         for (size_t h = g->first; h < used; h++) {
             int x = list[h] % bw, y = list[h] / bw;
             const uint8_t *q = PX(x, y);
@@ -477,7 +502,9 @@ static void mark_pictures(uint8_t *m, int w, const uint8_t *px, int stride, int 
                 if (nx < 0 || ny < 0 || nx >= bw || ny >= bh)
                     continue;
                 size_t j = (size_t)ny * bw + nx;
-                if (cls[j] == 1 && !seen[j])
+                const uint8_t *e = PX(nx, ny);
+                if (cls[j] == 1 && !seen[j] && SDL_abs(e[0] - seed[0]) <= BG_SPREAD &&
+                    SDL_abs(e[1] - seed[1]) <= BG_SPREAD && SDL_abs(e[2] - seed[2]) <= BG_SPREAD)
                     seen[j] = 1, list[used++] = (int)j;
             }
         }
@@ -502,11 +529,6 @@ static void mark_pictures(uint8_t *m, int w, const uint8_t *px, int stride, int 
             cls[list[g->first + h]] = 2;
     }
     free(reg);
-    /* where the image is see-through (a render or a drawing on a
-     * transparent background) the page shows, whatever colour it has there */
-    for (size_t i = 0; opaque && i < n; i++)
-        if (!opaque[i])
-            cls[i] = 2;
     /* and the near-white fringe joined to it: the soft edge of a panel */
     size_t cnt = 0;
     for (size_t i = 0; i < n; i++)
@@ -549,10 +571,13 @@ static void mark_pictures(uint8_t *m, int w, const uint8_t *px, int stride, int 
             continue;
         cnt = 0;
         int x0 = bw, y0 = bh, x1 = -1, y1 = -1;
+        size_t tone[16] = {0}; /* how its lightness spreads: a render's shading, or a drawing's ink */
         list[cnt++] = (int)i, seen[i] = 1;
         for (size_t h = 0; h < cnt; h++) {
             int x = list[h] % bw, y = list[h] / bw;
             x0 = SDL_min(x0, x), x1 = SDL_max(x1, x), y0 = SDL_min(y0, y), y1 = SDL_max(y1, y);
+            const uint8_t *q = PX(x, y);
+            tone[((q[2] * 54 + q[1] * 183 + q[0] * 19) >> 8) >> 4]++;
             for (int dy = -1; dy <= 1; dy++)
                 for (int dx = -1; dx <= 1; dx++) {
                     int nx = x + dx, ny = y + dy;
@@ -564,7 +589,12 @@ static void mark_pictures(uint8_t *m, int w, const uint8_t *px, int stride, int 
                 }
         }
         size_t box = (size_t)(x1 - x0 + 1) * (size_t)(y1 - y0 + 1);
-        if (cnt >= solid && cnt * 2 >= box) /* a picture: kept */
+        int tones = 0;
+        for (int k = 0; k < 16; k++)
+            tones += tone[k] >= SDL_max((size_t)4, cnt / 100);
+        /* a picture, kept: filling most of its box, or shaded in many tones
+         * (a render with thin arms); lines and letters have few */
+        if (cnt >= solid && (cnt * 2 >= box || tones >= PICTURE_TONES))
             for (size_t h = 0; h < cnt; h++)
                 m[(size_t)(t + list[h] / bw) * w + l + list[h] % bw] = 1;
     }
@@ -632,12 +662,16 @@ static void unwhite_edges(uint8_t *m, int w, const uint8_t *px, int stride, int 
 }
 
 /* Pixels to leave untouched in dark mode (see dark_images in the config). */
-/* Where a see-through picture is opaque, over (l, t, r, b) of the bitmap:
+/* Where a see-through picture shows, over (l, t, r, b) of the bitmap px:
  * 1 in out, row by row. Its top-left corner and edges on screen give each
  * pixel's place in the picture (al->full: the whole of it, even where the
- * page clips it). False if it cannot be placed. */
+ * page clips it). A pixel counts where the picture is opaque and the page
+ * shows its colour there: not where a clip path hides it (Inkscape cuts
+ * pictures into pieces of any shape), nor under what is drawn over it.
+ * False if it cannot be placed. */
+#define SHOWS_NEAR 48
 static bool opacity(const Alpha *al, FPDF_PAGE p, int cx, int cy, int pw, int ph, int rot, int l, int t, int r, int b,
-                    uint8_t *out)
+                    const uint8_t *px, int stride, uint8_t *out)
 {
     int ox, oy, ux, uy, vx, vy;
     FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, al->full.l, al->full.t, &ox, &oy);
@@ -650,9 +684,20 @@ static bool opacity(const Alpha *al, FPDF_PAGE p, int cx, int cy, int pw, int ph
         for (int x = l; x < r; x++) {
             double dx = x + 0.5 - ox, dy = y + 0.5 - oy;
             double u = (dx * by - dy * bx) / det, vv = (ax * dy - ay * dx) / det;
+            if (al->flip_x)
+                u = 1 - u;
+            if (al->flip_y)
+                vv = 1 - vv;
             int iu = (int)(u * al->w), iv = (int)(vv * al->h);
-            out[(size_t)(y - t) * (r - l) + (x - l)] =
-                iu >= 0 && iu < al->w && iv >= 0 && iv < al->h && al->a[(size_t)iv * al->w + iu] >= 128;
+            bool shows = iu >= 0 && iu < al->w && iv >= 0 && iv < al->h && (!al->a || al->a[(size_t)iv * al->w + iu] >= 128);
+            if (shows && al->rgb) {
+                const uint8_t *c = al->rgb + ((size_t)iv * al->w + iu) * 3, *q = px + (size_t)y * stride + 4 * (size_t)x;
+                shows = SDL_abs(c[0] - q[0]) <= SHOWS_NEAR && SDL_abs(c[1] - q[1]) <= SHOWS_NEAR &&
+                        SDL_abs(c[2] - q[2]) <= SHOWS_NEAR &&
+                        /* white on white: the paper, whether the picture is there or clipped away */
+                        !(q[0] >= PAPER_WHITE && q[1] >= PAPER_WHITE && q[2] >= PAPER_WHITE);
+            }
+            out[(size_t)(y - t) * (r - l) + (x - l)] = shows;
         }
     return true;
 }
@@ -680,13 +725,20 @@ static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w,
             continue;
         if (!m && !(m = calloc((size_t)w * h, 1)))
             return NULL; /* no memory for the mask: recolour everything */
-        const Alpha *al = s->alphas && s->alphas[k].a ? &s->alphas[k] : NULL;
-        uint8_t *opaque = al ? malloc((size_t)(rr - l) * (b - t)) : NULL;
-        if (opaque && !opacity(al, p, cx, cy, pw, ph, rot, l, t, rr, b, opaque)) {
-            free(opaque);
-            opaque = NULL;
+        /* a see-through image: where the page really shows it */
+        const Alpha *al = s->alphas && s->alphas[k].rgb ? &s->alphas[k] : NULL;
+        uint8_t *mine = al ? malloc((size_t)(rr - l) * (b - t)) : NULL;
+        if (mine && !opacity(al, p, cx, cy, pw, ph, rot, l, t, rr, b, px, stride, mine)) {
+            free(mine);
+            mine = NULL;
         }
-        if (cfg.dark_images == DARK_IMAGES_SMART && k < s->placed_from) { /* photos kept, drawings recoloured */
+        bool see_through = mine != NULL;
+        uint8_t *opaque = see_through ? mine : NULL;
+        /* the image's edges on screen, not where this slice of the page cuts it */
+        bool edge[4] = {SDL_min(x0, x1) >= 0, SDL_min(y0, y1) >= 0, SDL_max(x0, x1) + 1 <= w, SDL_max(y0, y1) + 1 <= h};
+        /* a see-through image says itself what is picture and what is page:
+         * nothing to guess, and the same answer in every piece of it */
+        if (cfg.dark_images == DARK_IMAGES_SMART && k < s->placed_from && !see_through) { /* photos kept, drawings recoloured */
             if (nglyphs < 0) {
                 doc_page_chars(d, page);
                 s = &d->slots[page];
@@ -702,9 +754,8 @@ static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w,
                                                    SDL_abs(gy1 - gy0) + 1};
                 }
             }
-            mark_pictures(m, w, px, stride, l, t, rr, b, SDL_min(x0, x1) >= 0, SDL_min(y0, y1) >= 0,
-                          SDL_max(x0, x1) + 1 <= w, SDL_max(y0, y1) + 1 <= h, glyphs, SDL_max(0, nglyphs), opaque);
-            free(opaque);
+            mark_pictures(m, w, px, stride, l, t, rr, b, edge[0], edge[1], edge[2], edge[3], glyphs,
+                          SDL_max(0, nglyphs));
             continue;
         }
         if (!opaque) {
@@ -716,8 +767,7 @@ static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w,
              * the image really has, not where this slice of the page cuts
              * it. Pictures you placed keep every pixel. */
             if (k < s->placed_from)
-                unwhite_edges(m, w, px, stride, l, t, rr, b, SDL_min(x0, x1) >= 0, SDL_min(y0, y1) >= 0,
-                              SDL_max(x0, x1) + 1 <= w, SDL_max(y0, y1) + 1 <= h);
+                unwhite_edges(m, w, px, stride, l, t, rr, b, edge[0], edge[1], edge[2], edge[3]);
             continue;
         }
         /* a see-through picture: only where it is opaque; the page around

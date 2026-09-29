@@ -88,11 +88,11 @@ also be changed in the [configuration](Configuration.md#colours), in
 
 Dark mode recolours the pages: what has no colour (the paper, text, lines,
 greys) is inverted, with the theme's `page_bg` and `page_fg` as paper and
-ink. **Colours stay as they were drawn**: the shapes of a diagram, the curves
-of a plot and their legend keep their colours (a pale face stays pale, a
-blue curve stays blue). A dark colour is only lightened, so red text or a
-blue link, dark on white paper, stays readable on the dark one, and the
-label on a coloured shape keeps its ink. The ink is given more weight than a plain inversion would, so light
+ink. **Coloured areas keep their colours**: the shapes of a diagram, bars,
+panels (a pale face stays pale instead of turning brown); a dark one is only
+lightened. Coloured text and lines keep their hue and become light, so red
+text, a blue link or the curves of a plot stay readable on the dark paper
+and still match their legend; the label on a coloured shape keeps its ink. The ink is given more weight than a plain inversion would, so light
 letters and thin lines on dark paper look as firm as dark ones on white;
 `dark_text_weight` sets how much (`1` a plain inversion, `2.5` by default,
 higher is bolder).

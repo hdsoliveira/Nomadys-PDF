@@ -138,7 +138,9 @@ typedef struct {
 typedef struct {
     int w, h;
     uint8_t *a;              /* opacity, top row first; NULL: opaque all over */
+    uint8_t *rgb;            /* with a: its colours, B G R, to tell where the page shows it */
     PRect full;              /* the whole picture on the page, before any clipping */
+    bool flip_x, flip_y;     /* a is mirrored against the page (a form around the image) */
 } Alpha;
 
 typedef struct {

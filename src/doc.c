@@ -160,7 +160,7 @@ static void detach(Doc *d) { detach_doc(d, true); }
 static void free_images(PageSlot *s)
 {
     for (int k = 0; s->alphas && k < s->nimages; k++)
-        free(s->alphas[k].a);
+        free(s->alphas[k].a), free(s->alphas[k].rgb);
     free(s->alphas);
     free(s->images);
     s->alphas = NULL;
@@ -617,6 +617,7 @@ static void add_rect(PageSlot *s, int *cap, PRect r, Alpha al)
 
 static Alpha image_alpha(Doc *d, FPDF_PAGE p, FPDF_PAGEOBJECT o);
 
+
 static PRect transformed(Mat m, float l, float b, float r, float t)
 {
     float xs[4] = {l, r, l, r}, ys[4] = {b, b, t, t};
@@ -653,7 +654,8 @@ static void collect(Doc *d, FPDF_PAGE p, PageSlot *s, int *cap, FPDF_PAGEOBJECT 
     FPDF_CLIPPATH clip = FPDFPageObj_GetClipPath(o);
     for (int i = 0, np = clip ? FPDFClipPath_CountPaths(clip) : 0; i < np; i++) {
         float cl = 1e30f, cb = 1e30f, cr = -1e30f, ct = -1e30f, x, y;
-        for (int j = 0, ns = FPDFClipPath_CountPathSegments(clip, i); j < ns; j++) {
+        int ns = FPDFClipPath_CountPathSegments(clip, i);
+        for (int j = 0; j < ns; j++) {
             FPDF_PATHSEGMENT seg = FPDFClipPath_GetPathSegment(clip, i, j);
             if (seg && FPDFPathSegment_GetPoint(seg, &x, &y))
                 cl = SDL_min(cl, x), cr = SDL_max(cr, x), cb = SDL_min(cb, y), ct = SDL_max(ct, y);
@@ -665,6 +667,14 @@ static void collect(Doc *d, FPDF_PAGE p, PageSlot *s, int *cap, FPDF_PAGEOBJECT 
         return; /* clipped away */
     Alpha al = type == FPDF_PAGEOBJ_IMAGE ? image_alpha(d, p, o) : (Alpha){0};
     al.full = full;
+    /* its opacity is drawn with the image's own matrix, not the forms'
+     * around it: a form that mirrors it (Inkscape's y axis) mirrors that
+     * too; one that turns it leaves no simple way to line it up */
+    if (SDL_fabsf(m.b) > 1e-4f || SDL_fabsf(m.c) > 1e-4f) {
+        free(al.a), free(al.rgb);
+        al.a = al.rgb = NULL;
+    }
+    al.flip_x = m.a < 0, al.flip_y = m.d < 0;
     add_rect(s, cap, transformed(m, l, b, r, t), al);
 }
 
@@ -672,7 +682,7 @@ static void collect(Doc *d, FPDF_PAGE p, PageSlot *s, int *cap, FPDF_PAGEOBJECT 
  * ALPHA_SIDE pixels a side; a = NULL when it is opaque all over, so that
  * dark mode keeps its whole rectangle. (FPDFPageObj_HasTransparency does
  * not see an image's soft mask: the pixels tell.) */
-#define ALPHA_SIDE 512
+#define ALPHA_SIDE 1024
 static bool is_jpeg(FPDF_PAGEOBJECT o)
 {
     char f[32];
@@ -681,13 +691,30 @@ static bool is_jpeg(FPDF_PAGEOBJECT o)
 }
 
 /* An image's opacity, or a = NULL when it is opaque all over. A JPEG has
- * none (and image.c keeps placed PNGs lossless). */
+ * none (and image.c keeps placed PNGs lossless). A see-through one keeps
+ * its colours too (rgb), to tell where the page really shows it: its clip
+ * may cut it to any shape. */
 static Alpha image_alpha(Doc *d, FPDF_PAGE p, FPDF_PAGEOBJECT o)
 {
     Alpha out = {0};
     if (!o || FPDFPageObj_GetType(o) != FPDF_PAGEOBJ_IMAGE || is_jpeg(o))
         return out;
+    /* drawn at the size of its matrix, one pixel per point: made larger for
+     * the time of the call, so its edges do not come out in steps */
+    FS_MATRIX mx;
+    unsigned iw = 0, ih = 0;
+    bool scaled = false;
+    if (FPDFPageObj_GetMatrix(o, &mx) && FPDFImageObj_GetImagePixelSize(o, &iw, &ih)) {
+        float side = SDL_max(SDL_sqrtf(mx.a * mx.a + mx.b * mx.b), SDL_sqrtf(mx.c * mx.c + mx.d * mx.d));
+        float k = side > 0 ? SDL_min((float)SDL_max(iw, ih), (float)ALPHA_SIDE) / side : 1;
+        if (k > 1.01f) {
+            FS_MATRIX big = {mx.a * k, mx.b * k, mx.c * k, mx.d * k, mx.e, mx.f};
+            scaled = FPDFPageObj_SetMatrix(o, &big);
+        }
+    }
     FPDF_BITMAP bmp = FPDFImageObj_GetRenderedBitmap(d->pdf, p, o);
+    if (scaled)
+        FPDFPageObj_SetMatrix(o, &mx);
     if (!bmp)
         return out;
     int bw = FPDFBitmap_GetWidth(bmp), bh = FPDFBitmap_GetHeight(bmp), stride = FPDFBitmap_GetStride(bmp);
@@ -700,9 +727,14 @@ static Alpha image_alpha(Doc *d, FPDF_PAGE p, FPDF_PAGEOBJECT o)
         float k = SDL_min(1.0f, (float)ALPHA_SIDE / (float)SDL_max(bw, bh));
         out.w = SDL_max(1, (int)(bw * k)), out.h = SDL_max(1, (int)(bh * k));
         out.a = xmalloc((size_t)out.w * out.h);
+        out.rgb = xmalloc((size_t)out.w * out.h * 3);
         for (int y = 0; y < out.h; y++)
-            for (int x = 0; x < out.w; x++)
-                out.a[(size_t)y * out.w + x] = px[(size_t)(y * bh / out.h) * stride + 4 * (x * bw / out.w) + 3];
+            for (int x = 0; x < out.w; x++) {
+                const uint8_t *q = px + (size_t)(y * bh / out.h) * stride + 4 * (x * bw / out.w);
+                uint8_t *c = out.rgb + ((size_t)y * out.w + x) * 3;
+                out.a[(size_t)y * out.w + x] = q[3];
+                c[0] = q[0], c[1] = q[1], c[2] = q[2]; /* B G R */
+            }
     }
     FPDFBitmap_Destroy(bmp);
     return out;
@@ -744,7 +776,7 @@ void doc_page_images(Doc *d, int i)
             s->alphas[kept] = s->alphas[k];
             s->images[kept++] = r;
         } else {
-            free(s->alphas[k].a);
+            free(s->alphas[k].a), free(s->alphas[k].rgb);
         }
     }
     s->nimages = kept;
