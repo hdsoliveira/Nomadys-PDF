@@ -86,11 +86,13 @@ also be changed in the [configuration](Configuration.md#colours), in
 
 ## Dark mode
 
-Dark mode recolours the pages: the lightness the eye sees is inverted but
-hue is kept, with the theme's `page_bg` and `page_fg` as paper and ink.
-Coloured text stays readable: red text, dark on white paper, becomes a light
-red on the dark one (the changes marked in red in a revised paper, links in
-blue). The ink is given more weight than a plain inversion would, so light
+Dark mode recolours the pages: what has no colour (the paper, text, lines,
+greys) is inverted, with the theme's `page_bg` and `page_fg` as paper and
+ink. **Colours stay as they were drawn**: the shapes of a diagram, the curves
+of a plot and their legend keep their colours (a pale face stays pale, a
+blue curve stays blue). A dark colour is only lightened, so red text or a
+blue link, dark on white paper, stays readable on the dark one, and the
+label on a coloured shape keeps its ink. The ink is given more weight than a plain inversion would, so light
 letters and thin lines on dark paper look as firm as dark ones on white;
 `dark_text_weight` sets how much (`1` a plain inversion, `2.5` by default,
 higher is bolder).
@@ -99,8 +101,9 @@ Images are taken apart (`dark_images = smart`, the default), since a figure
 often holds photos, renders and plots side by side, or on light panels:
 
 - their **light paper** (the white around and between the pictures, a light
-  panel, the corners of rounded photos) becomes the page's paper, so no white
-  block glares. Only the part of a figure that shows counts: one trimmed in
+  panel, the corners of rounded photos, the holes of a render that show the
+  panel behind it, and whatever is see-through) becomes the page's paper, so
+  no white block glares. Only the part of a figure that shows counts: one trimmed in
   LaTeX leaves no light frame around it;
 - what is **drawn** on that paper (plots, lines, labels, markers) is
   recoloured with the page, like the text;

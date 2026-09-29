@@ -159,7 +159,7 @@ static void detach(Doc *d) { detach_doc(d, true); }
 
 static void free_images(PageSlot *s)
 {
-    for (int k = 0; s->alphas && k < s->nimages - s->placed_from; k++)
+    for (int k = 0; s->alphas && k < s->nimages; k++)
         free(s->alphas[k].a);
     free(s->alphas);
     free(s->images);
@@ -604,16 +604,32 @@ static Mat mat_mul(Mat m, Mat n) /* apply m, then n */
                  m.e * n.a + m.f * n.c + n.e, m.e * n.b + m.f * n.d + n.f};
 }
 
-static void add_rect(PageSlot *s, int *cap, PRect r)
+static void add_rect(PageSlot *s, int *cap, PRect r, Alpha al)
 {
     if (s->nimages == *cap) {
         *cap = *cap ? *cap * 2 : 8;
         s->images = xrealloc(s->images, *cap * sizeof *s->images);
+        s->alphas = xrealloc(s->alphas, *cap * sizeof *s->alphas);
     }
+    s->alphas[s->nimages] = al;
     s->images[s->nimages++] = r;
 }
 
-static void collect(PageSlot *s, int *cap, FPDF_PAGEOBJECT o, Mat m, int depth)
+static Alpha image_alpha(Doc *d, FPDF_PAGE p, FPDF_PAGEOBJECT o);
+
+static PRect transformed(Mat m, float l, float b, float r, float t)
+{
+    float xs[4] = {l, r, l, r}, ys[4] = {b, b, t, t};
+    PRect out = {1e30f, -1e30f, -1e30f, 1e30f};
+    for (int i = 0; i < 4; i++) {
+        float x = xs[i] * m.a + ys[i] * m.c + m.e, y = xs[i] * m.b + ys[i] * m.d + m.f;
+        out.l = SDL_min(out.l, x), out.r = SDL_max(out.r, x);
+        out.b = SDL_min(out.b, y), out.t = SDL_max(out.t, y);
+    }
+    return out;
+}
+
+static void collect(Doc *d, FPDF_PAGE p, PageSlot *s, int *cap, FPDF_PAGEOBJECT o, Mat m, int depth)
 {
     int type = FPDFPageObj_GetType(o);
     if (type == FPDF_PAGEOBJ_FORM && depth < 8) {
@@ -623,7 +639,7 @@ static void collect(PageSlot *s, int *cap, FPDF_PAGEOBJECT o, Mat m, int depth)
             inner = mat_mul((Mat){fm.a, fm.b, fm.c, fm.d, fm.e, fm.f}, m);
         int n = FPDFFormObj_CountObjects(o);
         for (int i = 0; i < n; i++)
-            collect(s, cap, FPDFFormObj_GetObject(o, (unsigned long)i), inner, depth + 1);
+            collect(d, p, s, cap, FPDFFormObj_GetObject(o, (unsigned long)i), inner, depth + 1);
         return;
     }
     if (type != FPDF_PAGEOBJ_IMAGE && type != FPDF_PAGEOBJ_SHADING)
@@ -631,6 +647,7 @@ static void collect(PageSlot *s, int *cap, FPDF_PAGEOBJECT o, Mat m, int depth)
     float l, b, r, t;
     if (!FPDFPageObj_GetBounds(o, &l, &b, &r, &t))
         return;
+    PRect full = transformed(m, l, b, r, t);
     /* only what the clip path shows (a figure trimmed in LaTeX): each of
      * its paths bounds the image, in the same space as its bounds */
     FPDF_CLIPPATH clip = FPDFPageObj_GetClipPath(o);
@@ -646,14 +663,9 @@ static void collect(PageSlot *s, int *cap, FPDF_PAGEOBJECT o, Mat m, int depth)
     }
     if (l >= r || b >= t)
         return; /* clipped away */
-    float xs[4] = {l, r, l, r}, ys[4] = {b, b, t, t};
-    PRect out = {1e30f, -1e30f, -1e30f, 1e30f};
-    for (int i = 0; i < 4; i++) {
-        float x = xs[i] * m.a + ys[i] * m.c + m.e, y = xs[i] * m.b + ys[i] * m.d + m.f;
-        out.l = SDL_min(out.l, x), out.r = SDL_max(out.r, x);
-        out.b = SDL_min(out.b, y), out.t = SDL_max(out.t, y);
-    }
-    add_rect(s, cap, out);
+    Alpha al = type == FPDF_PAGEOBJ_IMAGE ? image_alpha(d, p, o) : (Alpha){0};
+    al.full = full;
+    add_rect(s, cap, transformed(m, l, b, r, t), al);
 }
 
 /* Where a placed picture (a stamp) is see-through: its opacity, at most
@@ -668,32 +680,39 @@ static bool is_jpeg(FPDF_PAGEOBJECT o)
     return n > 0 && FPDFImageObj_GetImageFilter(o, n - 1, f, sizeof f) > 0 && !strcmp(f, "DCTDecode");
 }
 
+/* An image's opacity, or a = NULL when it is opaque all over. A JPEG has
+ * none (and image.c keeps placed PNGs lossless). */
+static Alpha image_alpha(Doc *d, FPDF_PAGE p, FPDF_PAGEOBJECT o)
+{
+    Alpha out = {0};
+    if (!o || FPDFPageObj_GetType(o) != FPDF_PAGEOBJ_IMAGE || is_jpeg(o))
+        return out;
+    FPDF_BITMAP bmp = FPDFImageObj_GetRenderedBitmap(d->pdf, p, o);
+    if (!bmp)
+        return out;
+    int bw = FPDFBitmap_GetWidth(bmp), bh = FPDFBitmap_GetHeight(bmp), stride = FPDFBitmap_GetStride(bmp);
+    const uint8_t *px = FPDFBitmap_GetBuffer(bmp);
+    bool see_through = false;
+    for (int y = 0; px && FPDFBitmap_GetFormat(bmp) == FPDFBitmap_BGRA && y < bh && !see_through; y++)
+        for (int x = 0; x < bw && !see_through; x++)
+            see_through = px[(size_t)y * stride + 4 * x + 3] < 250;
+    if (see_through) {
+        float k = SDL_min(1.0f, (float)ALPHA_SIDE / (float)SDL_max(bw, bh));
+        out.w = SDL_max(1, (int)(bw * k)), out.h = SDL_max(1, (int)(bh * k));
+        out.a = xmalloc((size_t)out.w * out.h);
+        for (int y = 0; y < out.h; y++)
+            for (int x = 0; x < out.w; x++)
+                out.a[(size_t)y * out.w + x] = px[(size_t)(y * bh / out.h) * stride + 4 * (x * bw / out.w) + 3];
+    }
+    FPDFBitmap_Destroy(bmp);
+    return out;
+}
+
 static Alpha picture_alpha(Doc *d, FPDF_ANNOTATION a)
 {
     Alpha out = {0};
-    for (int j = 0; j < FPDFAnnot_GetObjectCount(a) && !out.a; j++) {
-        FPDF_PAGEOBJECT o = FPDFAnnot_GetObject(a, j);
-        if (!o || FPDFPageObj_GetType(o) != FPDF_PAGEOBJ_IMAGE || is_jpeg(o))
-            continue; /* a JPEG has no transparency (image.c keeps PNGs lossless) */
-        FPDF_BITMAP bmp = FPDFImageObj_GetRenderedBitmap(d->pdf, NULL, o);
-        if (!bmp)
-            continue;
-        int bw = FPDFBitmap_GetWidth(bmp), bh = FPDFBitmap_GetHeight(bmp), stride = FPDFBitmap_GetStride(bmp);
-        const uint8_t *px = FPDFBitmap_GetBuffer(bmp);
-        bool see_through = false;
-        for (int y = 0; px && FPDFBitmap_GetFormat(bmp) == FPDFBitmap_BGRA && y < bh && !see_through; y++)
-            for (int x = 0; x < bw && !see_through; x++)
-                see_through = px[(size_t)y * stride + 4 * x + 3] < 250;
-        if (see_through) {
-            float k = SDL_min(1.0f, (float)ALPHA_SIDE / (float)SDL_max(bw, bh));
-            out.w = SDL_max(1, (int)(bw * k)), out.h = SDL_max(1, (int)(bh * k));
-            out.a = xmalloc((size_t)out.w * out.h);
-            for (int y = 0; y < out.h; y++)
-                for (int x = 0; x < out.w; x++)
-                    out.a[(size_t)y * out.w + x] = px[(size_t)(y * bh / out.h) * stride + 4 * (x * bw / out.w) + 3];
-        }
-        FPDFBitmap_Destroy(bmp);
-    }
+    for (int j = 0; j < FPDFAnnot_GetObjectCount(a) && !out.a; j++)
+        out = image_alpha(d, NULL, FPDFAnnot_GetObject(a, j));
     return out;
 }
 
@@ -713,7 +732,7 @@ void doc_page_images(Doc *d, int i)
     Mat id = {1, 0, 0, 1, 0, 0};
     int n = FPDFPage_CountObjects(p);
     for (int k = 0; k < n; k++)
-        collect(s, &cap, FPDFPage_GetObject(p, k), id, 0);
+        collect(d, p, s, &cap, FPDFPage_GetObject(p, k), id, 0);
     FS_RECTF box;
     float area = d->pw[i] * d->ph[i];
     if (FPDF_GetPageBoundingBox(p, &box))
@@ -721,8 +740,12 @@ void doc_page_images(Doc *d, int i)
     int kept = 0;
     for (int k = 0; k < s->nimages; k++) {
         PRect r = s->images[k];
-        if ((r.r - r.l) * (r.t - r.b) < 0.8f * area)
+        if ((r.r - r.l) * (r.t - r.b) < 0.8f * area) {
+            s->alphas[kept] = s->alphas[k];
             s->images[kept++] = r;
+        } else {
+            free(s->alphas[k].a);
+        }
     }
     s->nimages = kept;
     /* pictures placed as stamps (image.c: :image, Ctrl-v): you chose them,
@@ -739,11 +762,11 @@ void doc_page_images(Doc *d, int i)
         }
         FS_RECTF r;
         if (picture && FPDFAnnot_GetRect(a, &r)) {
-            add_rect(s, &cap, (PRect){SDL_min(r.left, r.right), SDL_max(r.top, r.bottom), SDL_max(r.left, r.right),
-                                      SDL_min(r.top, r.bottom)});
-            int at = s->nimages - 1 - s->placed_from;
-            s->alphas = xrealloc(s->alphas, (size_t)(at + 1) * sizeof *s->alphas);
-            s->alphas[at] = picture_alpha(d, a);
+            PRect pr = {SDL_min(r.left, r.right), SDL_max(r.top, r.bottom), SDL_max(r.left, r.right),
+                        SDL_min(r.top, r.bottom)};
+            Alpha al = picture_alpha(d, a);
+            al.full = pr;
+            add_rect(s, &cap, pr, al);
         }
         FPDFPage_CloseAnnot(a);
     }

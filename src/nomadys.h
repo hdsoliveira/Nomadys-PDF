@@ -135,7 +135,11 @@ typedef struct {
     uint32_t color;          /* 0xRRGGBB, for the panel */
 } Note;
 
-typedef struct { int w, h; uint8_t *a; } Alpha; /* a placed picture's opacity, top row first */
+typedef struct {
+    int w, h;
+    uint8_t *a;              /* opacity, top row first; NULL: opaque all over */
+    PRect full;              /* the whole picture on the page, before any clipping */
+} Alpha;
 
 typedef struct {
     FPDF_PAGE page;
@@ -145,7 +149,7 @@ typedef struct {
     PRect *images;           /* regions kept untouched in dark mode */
     int nimages;
     int placed_from;         /* images[placed_from..]: pictures you placed, always kept */
-    Alpha *alphas;           /* one per placed picture: where it is see-through (a = NULL: opaque) */
+    Alpha *alphas;           /* one per image: where it is see-through */
     bool images_ready;
     Widget *widgets;
     int nwidgets;
