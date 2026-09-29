@@ -124,8 +124,11 @@ void notes_page(Doc *d, int page)
                        ((get_string(a, "NomadysArea", mark, sizeof mark) && mark[0] == '1') ||
                         (nt->nquads == 1 && nt->quads[0].t - nt->quads[0].b > 40));
             char task[32];
-            if (get_string(a, "NomadysTask", task, sizeof task) && task[0])
+            if (get_string(a, "NomadysTask", task, sizeof task) && task[0]) {
                 nt->task = !strncmp(task, "done", 4) ? TASK_DONE : TASK_OPEN;
+                if (nt->task == TASK_DONE && strlen(task) >= 15) /* "done 2026-09-29" */
+                    snprintf(nt->done_on, sizeof nt->done_on, "%.10s", task + 5);
+            }
             else
                 nt->task = -1; /* not ours: Acrobat's marks may tell, below */
         }

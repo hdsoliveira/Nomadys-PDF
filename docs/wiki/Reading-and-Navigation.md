@@ -90,7 +90,7 @@ moved in the page grid, marks follow their pages.
 
 ## The panel
 
-`\l` (or `:marks`, `:notes`) opens a panel with four tabs:
+`\l` (or `:marks`, `:notes`) opens a panel with five tabs:
 
 | Tab | Shows |
 |---|---|
@@ -98,15 +98,18 @@ moved in the page grid, marks follow their pages.
 | **Summary** | the PDF's table of contents, as a tree |
 | **Marks** | your marks with their names |
 | **Highlights** | every highlight with its colour, comment and highlighted text, and every image |
+| **Tasks** | the highlights you put on the task list (`t`): to do first, then done ([more](Highlights-and-Comments.md#tasks-tick-your-highlights-off)) |
 
 | Key | Action |
 |---|---|
-| `Tab`, `h` `l`, `1`–`4` | change tab |
+| `Tab`, `h` `l`, `1`–`5` | change tab |
 | `j` `k`, `gg` `G` | move |
 | `Enter` | go there |
 | `r` | rename the mark / edit the comment |
-| `d` | delete only the comment |
+| `d` | delete only the comment (Tasks tab: done / to do) |
 | `x` | delete the highlight (with its comment) or the mark |
+| `t` | Highlights, Tasks: on / off the task list |
+| `Space`, `D` | Tasks tab: done / to do; hide / show the done ones |
 | `C` `V` `B` `N` `M` | Highlights tab: show or hide a colour |
 | `c` / `a` | Highlights tab: only those with a comment / all again |
 | `e` | Highlights tab: export what is shown to Markdown |

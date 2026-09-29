@@ -57,7 +57,7 @@
       <li><b>Every link by its letters</b>: <kbd>f</kbd> then the letters shown on the link, like Vimium in a browser</li>
       <li><b>Find any paper</b>: <kbd>\f</kbd> by name, <kbd>\/</kbd> by its text, <kbd>\o</kbd> the recent ones</li>
       <li><b>Notes that travel</b>: highlights and comments saved in the PDF, shown by every other reader</li>
-      <li><b>A to-do list in your papers</b>: <kbd>t</kbd> turns a highlight into a task; <code>:tasks</code> shows what is left in all of them</li>
+      <li><b>A to-do list in your papers</b>: <kbd>t</kbd> puts a highlight on it, <kbd>d</kbd> ticks it; <code>:tasks</code> shows what is left in all of them</li>
       <li><b>Undo anything</b>: highlights, comments, images, deleted pages</li>
       <li><b>Easy on the eyes</b>: a dark mode that keeps photographs, fifteen themes, any system font</li>
       <li><b>No learning wall</b>: <kbd>\c</kbd> shows every key of the mode you are in, and messages say what the next key does</li>
@@ -94,14 +94,15 @@
 
   <div class="feature flip">
     <div class="media window">
-      <div class="bar"><i></i><i></i><i></i><span>V · t · t · \l 4 · T · :tasks</span></div>
+      <div class="bar"><i></i><i></i><i></i><span>V · t · d · \l 5 · Space · :tasks</span></div>
       <video autoplay muted loop playsinline preload="metadata" poster="assets/demos/tasks.jpg"><source src="assets/demos/tasks.mp4" type="video/mp4"></video>
     </div>
     <div>
       <h3>Turn highlights into tasks, and tick them off</h3>
       <p>Answering reviewers, going through a co-author's draft, checking claims: press
-        <kbd>t</kbd> on a highlight and it becomes a task, with a check box in the margin.
-        <kbd>t</kbd> again ticks it. The panel counts what is done.</p>
+        <kbd>t</kbd> on a highlight and it goes on your task list, with a check box in the
+        margin; <kbd>d</kbd> marks it done. The panel's <em>Tasks</em> tab lists what is left,
+        then what is done and when.</p>
       <ul>
         <li><code>:tasks</code> lists what is still to do in <em>all</em> your PDFs</li>
         <li>Exported to Markdown as <code>- [ ]</code> / <code>- [x]</code>, ready for Obsidian</li>

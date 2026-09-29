@@ -129,6 +129,7 @@ typedef struct {
     bool has_comment;
     bool area;               /* a highlight over an area (a figure), not over text */
     int task;                /* TASK_*: not a task, to do, done */
+    char done_on[11];        /* the day it was done, "2026-09-29", or "" */
     uint32_t color;          /* 0xRRGGBB, for the panel */
 } Note;
 
@@ -273,7 +274,7 @@ char *note_comment(Doc *d, int page, int note);          /* malloc'd UTF-8, or N
 bool note_set_comment(Doc *d, int page, int note, const char *comment);
 bool note_set_task(Doc *d, int page, int note, int task);  /* TASK_*, undoable */
 void notes_tasks(Doc *d, int *open, int *done);            /* the tasks of the whole PDF */
-void note_task_key(Window *w, Doc *d, int page, int note, bool remove); /* t / T */
+void note_task_key(Window *w, Doc *d, int page, int note, char key); /* t: a task or not, d: done or not */
 bool note_delete(Doc *d, int page, int note);
 int note_create_image(Doc *d, int page, PRect r, FPDF_PAGEOBJECT image); /* annotation index, or -1 */
 int note_move(Doc *d, int page, int annot, PRect r);     /* new annotation index, or -1 */
@@ -397,7 +398,7 @@ typedef struct Thumb Thumb;
 typedef struct Slide Slide;
 typedef void (*PromptFn)(Window *w, const char *text);
 
-typedef enum { PANEL_OPEN_TABS, PANEL_CONTENTS, PANEL_MARKS, PANEL_NOTES, PANEL_NTABS } PanelTab; /* tab order */
+typedef enum { PANEL_OPEN_TABS, PANEL_CONTENTS, PANEL_MARKS, PANEL_NOTES, PANEL_TASKS, PANEL_NTABS } PanelTab; /* tab order */
 
 typedef struct {
     char text[256];          /* main line */
@@ -407,6 +408,8 @@ typedef struct {
     int page, note, mark, tab;
     uint32_t color;          /* note colour */
     int task;                /* note: TASK_* */
+    bool header;             /* Tasks: the "Done" line between to do and done; not selectable */
+    char when[24];           /* Tasks: when it was done ("today", "3 days ago") */
 } PanelItem;
 
 /* links.c: a link on screen, labelled for 'f' / 'F' */
@@ -513,6 +516,7 @@ struct Window {
     int nitems, sel, first;
     PanelTab panel_tab;
     NoteFilter panel_filter; /* Highlights tab: colours shown, only with comments */
+    bool panel_hide_done;    /* Tasks tab: only those to do (D) */
     int panel_counts[PANEL_NTABS];
     /* link hints and reference preview (links.c) */
     Link *links;
@@ -641,7 +645,7 @@ void panel_move(Window *w, int delta);
 void panel_activate(Window *w);
 void panel_delete(Window *w);
 void panel_delete_comment(Window *w);
-void panel_task(Window *w, bool remove);                   /* t / T on the Highlights tab */
+void panel_task(Window *w, char key);                      /* t, d, Space, D on the Highlights / Tasks tabs */
 void panel_rename(Window *w);
 void panel_switch(Window *w, int tab);                    /* tab index, or -1 / -2 for prev / next */
 void panel_draw(Window *w);

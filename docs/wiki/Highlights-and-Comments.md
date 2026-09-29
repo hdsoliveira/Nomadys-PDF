@@ -115,20 +115,26 @@ in Obsidian and similar apps.
 
 ## Tasks: tick your highlights off
 
-Any highlight or comment can become a **task**: a point to answer in a
-review, a figure to redo, a claim to check. Tasks get a check box in the
-page's left margin, at the height of their line, and you tick them off as
-you go.
+Any highlight or comment can go on your **task list**: a point to answer in
+a review, a figure to redo, a claim to check. Two keys, the same everywhere:
+**`t`** puts it on the list or takes it off (the highlight stays), **`d`**
+marks it **d**one or to do again. Tasks get a check box in the page's left
+margin, at the height of their line.
 
 | Key | Where | Action |
 |---|---|---|
-| `t` | text cursor (`v`), free cursor (`Ctrl-v`), panel | make it a task; again: tick it (done); again: to do |
-| `T` | text cursor, free cursor | a plain highlight again |
-| `T` | panel, Highlights tab | only the tasks still to do |
-| `u` | anywhere | undo the last tick, like any change |
+| `t` | text cursor (`v`), free cursor (`Ctrl-v`) | the highlight under it: on / off the task list |
+| `d` | text cursor, free cursor | the task under it: done / to do |
+| `t` | panel, Highlights and Tasks tabs | on / off the task list |
+| `d`, `Space` | panel, Tasks tab | done / to do |
+| `D` | panel, Tasks tab | hide / show the done ones |
+| `u` | anywhere | undo, like any change |
 
-- The panel's Highlights tab shows each task's box and counts them:
-  "tasks 5/8 done". A done task steps back (dimmer).
+- The panel's **Tasks** tab (`\l`, then `5`) lists them: those to do first,
+  in page order, then a "Done" line and the done ones, dimmer, with when
+  ("done yesterday"). The tab title counts them: "Tasks 5/8". After a tick
+  the selection stays in place, so the next task comes under it.
+- In the **Highlights** tab, the notes that are tasks carry a small box.
 - **`:tasks`** lists the tasks still to do in **all your PDFs**, newest
   files first; typing words narrows the list, `Enter` opens the paper at the
   task. In `\n`, `Ctrl-t` switches between every comment and the tasks.
@@ -149,7 +155,6 @@ blue = methods. Then, in the panel's **Highlights** tab (`\l`, then `4`):
 |---|---|
 | `C` `V` `B` `N` `M` | show / hide that colour (several can be combined) |
 | `c` | only highlights with a comment |
-| `T` | only the tasks still to do |
 | `a` | all again |
 | `e` | export what is shown to Markdown |
 

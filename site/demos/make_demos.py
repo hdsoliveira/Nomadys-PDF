@@ -262,8 +262,9 @@ def demos():
     d.key("j", 300).key("0", 300).key("v", 400)
     for _ in range(5):
         d.key("e", 150)
-    d.key("B", 700).key("t", 900).key("t", 1600)
-    d.key("<Esc><Esc>", 500).key("\\l4", 2400, label="\\l 4", wait=300).key("T", 1800, wait=200)
+    d.key("B", 700).key("t", 900).key("d", 1600)
+    d.key("<Esc><Esc>", 500).key("\\l5", 2400, label="\\l 5", wait=300).key(" ", 1800, label="Space", wait=200)
+    d.key(" ", 1400, label="Space", wait=200)
     d.key("<Esc>", 500).key(":w<Enter>", 400, label=":w", wait=300).key(":", 300)
     d.type("tasks", per=80, label=":tasks")
     d.key("<Enter>", 2800, wait=2500)

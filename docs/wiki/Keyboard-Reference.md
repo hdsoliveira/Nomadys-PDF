@@ -109,7 +109,8 @@ always one key away in the program: `\c`.
 | `y` | copy the selected text |
 | `Y` | copy it as a quotation with the page |
 | `x` | delete the highlight under the cursor |
-| `t` / `T` | the highlight under the cursor: make it a task, tick it / a plain highlight again |
+| `t` | the highlight under the cursor: on / off the task list |
+| `d` | the task under the cursor: done / to do |
 | `Enter` | LaTeX: open this spot in the editor |
 | `Ctrl-v` | switch to the free cursor |
 | `Esc` | cancel the selection, then leave |
@@ -130,7 +131,8 @@ Scrolling, marks, jumps, undo, `\l` and `\c` work here too.
 | `P` | paste an image from the clipboard here |
 | `e` | move / resize the image or area under the cross |
 | `x` | delete the highlight under the cross |
-| `t` / `T` | the highlight under the cross: make it a task, tick it / a plain highlight again |
+| `t` | the highlight under the cross: on / off the task list |
+| `d` | the task under the cross: done / to do |
 | `Enter` | LaTeX: open this spot in the editor |
 | `Ctrl-v` | back to the text cursor |
 | `Esc` | cancel / leave |
@@ -187,16 +189,17 @@ Scrolling, marks, jumps, undo, `\l` and `\c` work here too.
 
 | Key | Action |
 |---|---|
-| `Tab` `Shift-Tab`, `h` `l`, `1`–`4` | change tab |
+| `Tab` `Shift-Tab`, `h` `l`, `1`–`5` | change tab |
 | `j` `k`, `gg` `G` | move |
 | `Enter` | go there |
 | `r` | rename the mark / edit the comment |
-| `d` | delete only the comment |
+| `d` | Highlights: delete only the comment; Tasks: done / to do |
 | `x` | delete the highlight or mark (in Tabs: close the file) |
 | `C` `V` `B` `N` `M` | Highlights: show / hide a colour |
 | `c` / `a` | Highlights: only commented / all |
-| `t` | Highlights: make it a task, tick it |
-| `T` | Highlights: only the tasks to do |
+| `t` | Highlights, Tasks: on / off the task list |
+| `Space` | Tasks: done / to do |
+| `D` | Tasks: hide / show the done ones |
 | `e` | Highlights: export what is shown |
 | `Esc`, `q` | close |
 

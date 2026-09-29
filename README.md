@@ -64,9 +64,10 @@ you go.
 - a text cursor and a free cursor for figures, highlights in five colours,
   comments with **LaTeX equations** typeset as you write
 - all stored as standard PDF annotations (Acrobat, Okular, Zotero… show them)
-- **tasks**: `t` turns a highlight or comment into a task with a check box in
-  the margin, `t` again ticks it; the panel counts them, `:tasks` lists what
-  is still to do in all your PDFs, and Markdown export writes `- [ ]` / `- [x]`
+- **tasks**: `t` puts a highlight or comment on your task list, with a check
+  box in the margin, `d` marks it done; the panel's Tasks tab lists what is
+  left and what is done, `:tasks` what is still to do in all your PDFs, and
+  Markdown export writes `- [ ]` / `- [x]`
 - undo and redo everything; filter by colour; export to Markdown
 - merge a co-author's highlights and comments into your copy
 - place images and signatures; move, resize, crop them
@@ -98,7 +99,7 @@ you go.
 | | |
 |---|---|
 | ![Tasks](site/assets/demos/tasks.gif) | ![Previewing a citation](site/assets/demos/preview.gif) |
-| `t`: a highlight becomes a task; `:tasks` lists what is left | `F`: preview a reference in place |
+| `t`: a highlight goes on the task list, `d` ticks it | `F`: preview a reference in place |
 | ![Quoting with the page](site/assets/demos/quote.gif) | ![Searching every PDF](site/assets/demos/library.gif) |
 | `Y`: copy a quotation with its page number | `\/`: search the text of every PDF |
 | ![Comparing versions](site/assets/demos/diff.gif) | ![Split view](site/assets/demos/split.gif) |
@@ -178,7 +179,7 @@ pdf_dirs = ~/Papers, ~/Books  # where \f and \/ look
 - **Find any paper**: `\f` by name, `\/` by its text, `\o` the recent ones
 - **Notes that travel**: highlights and comments saved in the PDF, shown by
   every other reader
-- **A to-do list in your papers**: `t` turns a highlight into a task;
+- **A to-do list in your papers**: `t` puts a highlight on it, `d` ticks it;
   `:tasks` shows what is left in all of them
 - **Undo anything**: highlights, comments, images, deleted pages
 - **Easy on the eyes**: a dark mode that keeps photographs, fifteen themes,
