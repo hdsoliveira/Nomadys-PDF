@@ -205,11 +205,16 @@ void font_fit(Font *f, char *s, int maxw)
     }
 }
 
-/* Releases FreeType and fontconfig's caches at exit. */
+/* Releases FreeType at exit, and fontconfig's caches in a sanitizer build
+ * (so its leak report stays clean). Not otherwise: under Wayland, SDL's
+ * window decorations (libdecor, GTK) still use fontconfig then, and
+ * fontconfig 2.13 / 2.14 (Ubuntu 22.04, Debian 12) aborts on FcFini. */
 void font_shutdown(void)
 {
     if (ft)
         FT_Done_FreeType(ft);
     ft = NULL;
+#if defined(__SANITIZE_ADDRESS__)
     FcFini();
+#endif
 }
