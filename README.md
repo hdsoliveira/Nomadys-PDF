@@ -10,7 +10,12 @@ between: a minimal, fast, keyboard-driven reader for Linux (the page gets
 the whole window, and everything is one or two keys away) that brings the
 quality-of-life tools that make long reading sessions easier.
 
-Free and open source, for everyone.
+Made first for **researchers who love keyboard-driven tools**, but anyone
+can use it: the mouse scrolls, follows links and selects text, and `\c`
+shows every key.
+
+Free and open source, for everyone. If it saves you time, you can
+[buy me a coffee](https://ko-fi.com/hugooliveira35800).
 
 ![Highlighting, and a comment with an equation](site/assets/demos/highlight.gif)
 
@@ -196,6 +201,9 @@ Nomadys-PDF has no ads, no accounts and no paid version: I build it in my
 free time and share it with everyone. A star helps others find it, and every
 bug report or idea in the
 [issues](https://github.com/hdsoliveira/Nomadys-PDF/issues) makes it better.
+If it saves you time, you can also buy me a coffee:
+
+[![Buy me a coffee on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/hugooliveira35800)
 
 ## Development
 

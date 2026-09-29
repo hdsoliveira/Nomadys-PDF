@@ -85,6 +85,8 @@ kbd {
 .btn:hover { text-decoration: none; border-color: var(--ink-faint); }
 .btn.primary { background: var(--navy); border-color: var(--navy); color: #fff; }
 .btn.primary:hover { background: var(--dusk); border-color: var(--dusk); }
+.btn.coffee { background: #ffd94a; border-color: #ffd94a; color: #1b1d2a; }
+.btn.coffee:hover { background: #ffcc1a; border-color: #ffcc1a; }
 .meta { margin-top: 18px; font-size: 14px; color: var(--ink-faint); }
 
 /* a window around the videos */
