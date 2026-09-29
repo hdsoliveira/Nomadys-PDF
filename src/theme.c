@@ -73,12 +73,13 @@ static uint64_t own_write; /* we wrote the config: not a change to reload */
 /* After the colours changed: what was drawn with the old ones goes. */
 static void refresh_all(void)
 {
+    render_new_theme();
     for (int k = 0; k < nwindows; k++) {
         Window *w = windows[k];
         for (int t = 0; t < w->ntabs; t++)
-            view_invalidate_cache(w->tabs[t]); /* dark pages are drawn in the theme's paper and ink */
+            view_theme_changed(w->tabs[t]); /* dark pages are drawn in the theme's paper and ink */
         if (w->split)
-            view_invalidate_cache(w->split);
+            view_theme_changed(w->split);
         if (w->shadow)
             SDL_DestroyTexture(w->shadow);
         w->shadow = NULL;

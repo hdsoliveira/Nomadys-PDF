@@ -25,6 +25,7 @@ cp config.example ~/.config/nomadys-pdf/config
 | `restore_position` | `true` | reopen each file at the page where you stopped |
 | `remember_view` | `true` | and with its own zoom, dark mode, two-page layout and rotation |
 | `dark_images` | `smart` | dark mode: `smart` keeps photos and the pictures you placed, and recolours figures on white; `keep` leaves every image; `invert` recolours all |
+| `dark_text_weight` | `2.5` | dark mode: how firm light letters and lines are drawn; `1` is a plain inversion, higher is bolder |
 | `subpixel_text` | `false` | sharper text on LCD monitors (subpixel rendering) |
 | `page_shadow` | `true` | the soft shadow around pages |
 | `show_tabs` | `false` | keep the tab bar visible (`t` toggles it) |

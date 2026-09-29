@@ -90,20 +90,22 @@ Dark mode recolours the pages: the lightness the eye sees is inverted but
 hue is kept, with the theme's `page_bg` and `page_fg` as paper and ink.
 Coloured text stays readable: red text, dark on white paper, becomes a light
 red on the dark one (the changes marked in red in a revised paper, links in
-blue). The ink is given a little more weight than a plain inversion would,
-so light letters on dark paper look as firm as dark letters on white.
+blue). The ink is given more weight than a plain inversion would, so light
+letters and thin lines on dark paper look as firm as dark ones on white;
+`dark_text_weight` sets how much (`1` a plain inversion, `2.5` by default,
+higher is bolder).
 
-Images are judged piece by piece (`dark_images = smart`, the default), since
-one figure often holds plots and photographs side by side:
+Images are taken apart (`dark_images = smart`, the default), since a figure
+often holds photos, renders and plots side by side, or on light panels:
 
-- **photos** keep their colours: grainy regions, and dark ones (a part
-  photographed on a black backdrop);
-- **drawings** (plots, diagrams, schematics, 3D renders, colour maps: most
-  scientific figures) are recoloured with the page, so no white blocks
-  glare. Only the part of a figure that shows counts: one trimmed in LaTeX
-  leaves no light frame around it;
-- the **white around and between photos** (the gaps between panels, the
-  corners of rounded ones) becomes the page's paper;
+- their **light paper** (the white around and between the pictures, a light
+  panel, the corners of rounded photos) becomes the page's paper, so no white
+  block glares. Only the part of a figure that shows counts: one trimmed in
+  LaTeX leaves no light frame around it;
+- what is **drawn** on that paper (plots, lines, labels, markers) is
+  recoloured with the page, like the text;
+- **pictures** (photos, 3D renders, colour maps) keep their colours, each
+  one whole, a dark backdrop included;
 - **pictures you placed** (`Ctrl-v` then `i`, `:image`) always keep their
   own colours, screenshots on white included. A picture with a transparent
   background keeps the colours of what it draws, and the page shows through

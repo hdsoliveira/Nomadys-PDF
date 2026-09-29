@@ -28,6 +28,7 @@ Config cfg = {
     .zoom = 0,
     .font = "monospace",
     .font_size = 10.5,
+    .dark_text_weight = 2.5,
     .leader = "\\",
     .synctex_editor = "nvim --headless -c \"VimtexInverseSearch %l '%f'\"",
     .light = {
@@ -158,6 +159,8 @@ static bool set_global_key(const char *k, const char *v)
         cfg.subpixel_text = parse_bool(v);
     else if (!strcmp(k, "copy_dpi"))
         cfg.copy_dpi = SDL_clamp(atoi(v), 72, 1200);
+    else if (!strcmp(k, "dark_text_weight"))
+        cfg.dark_text_weight = SDL_clamp(atof(v), 1, 4);
     else if (!strcmp(k, "dark_images")) {
         if (!strcmp(v, "smart"))
             cfg.dark_images = DARK_IMAGES_SMART;

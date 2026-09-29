@@ -83,6 +83,7 @@ typedef struct {
     bool page_shadow;        /* draw a soft shadow around pages */
     bool mode_indicator;     /* small coloured badge with the current mode */
     int dark_images;         /* DARK_IMAGES_*: how dark mode treats images */
+    double dark_text_weight; /* dark mode: how firm light letters are drawn, 1 = plain inversion */
     bool restore_position;   /* reopen a file where it was left */
     bool remember_view;      /* and with its zoom, dark mode, two pages, rotation */
     uint32_t highlights[5];  /* colours of new highlights for C V B N M, 0xRRGGBB */
@@ -330,6 +331,7 @@ typedef struct {
     unsigned version;
     SDL_Texture *tex;
     uint64_t used;
+    unsigned theme;          /* dark pages: the theme they were drawn in (render_theme) */
 } CacheEntry;
 
 typedef enum { MODE_NORMAL, MODE_FORM, MODE_CARET, MODE_AREA, MODE_PANEL, MODE_PROMPT, MODE_HELP,
@@ -393,6 +395,8 @@ void view_clamp(View *v, int W, int H, int top);
 void view_draw(Window *w, View *v, int top);
 bool view_prefetch(Window *w, View *v, int top);
 void view_invalidate_cache(View *v);
+void render_new_theme(void);          /* the colours changed: then view_theme_changed on each view */
+void view_theme_changed(View *v);    /* dark pages drawn again, the old ones shown meanwhile */
 SDL_Texture *view_render_area(Window *w, View *v, int page, int pw, int ph, int rot, int cx, int cy, int cw, int ch);
 void view_doc_reloaded(View *v);                         /* page count/sizes changed */
 void view_rotate(View *v, int quarter_turns);

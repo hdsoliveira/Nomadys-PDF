@@ -89,6 +89,22 @@ View *view_clone(View *src)
     return v;
 }
 
+/* Dark pages are drawn in the theme's paper and ink; light ones are the
+ * page as it is, whatever the theme. */
+static unsigned render_theme;
+
+static bool fresh(const CacheEntry *e) { return !e->dark || e->theme == render_theme; }
+
+/* The colours changed: dark pages are drawn again, and until then the old
+ * ones stay on screen (placeholder) instead of blank paper. */
+void render_new_theme(void) { render_theme++; }
+
+void view_theme_changed(View *v)
+{
+    if (v->dark)
+        render_cancel_view(v); /* a page half drawn in the old colours */
+}
+
 void view_invalidate_cache(View *v)
 {
     render_cancel_view(v);
@@ -326,11 +342,10 @@ void view_show_rect(View *v, int page, PRect r, int W, int H, int top)
  * paper becomes 0 and black ink 255, and red text, dark on white, becomes
  * light on dark (inverting max + min instead left pure red and blue as
  * dark as they were: unreadable). Each channel then maps paper -> page_bg,
- * ink -> page_fg. The map bends towards the ink (INK_WEIGHT): light text on dark
+ * ink -> page_fg. The map bends towards the ink (dark_text_weight): light text on dark
  * paper looks thinner than dark text on white, and the half-covered pixels
  * at the edges of letters would otherwise fade into the paper. (Light mode
  * never calls this: pages stay white.) */
-#define INK_WEIGHT 1.6
 static void recolor(uint8_t *px, int w, int h, int stride, const uint8_t *keep, bool dark)
 {
     const Theme *t = theme_of(dark);
@@ -338,7 +353,7 @@ static void recolor(uint8_t *px, int w, int h, int stride, const uint8_t *keep, 
     for (int c = 0; c < 3; c++) {
         int paper = (t->page_bg >> (8 * c)) & 0xFF, ink = (t->page_fg >> (8 * c)) & 0xFF;
         for (int i = 0; i < 256; i++) {
-            double k = dark ? 1 - pow(1 - i / 255.0, INK_WEIGHT) : i / 255.0;
+            double k = dark ? 1 - pow(1 - i / 255.0, cfg.dark_text_weight) : i / 255.0;
             lut[c][i] = (uint8_t)SDL_lround(dark ? paper + k * (ink - paper) : ink + k * (paper - ink));
         }
     }
@@ -360,62 +375,155 @@ static void recolor(uint8_t *px, int w, int h, int stride, const uint8_t *keep, 
     }
 }
 
-/* A photo keeps its colours in dark mode; a figure drawn on white (plots,
- * diagrams, schematics, 3D renders) is recoloured with the page so it does
- * not glare. One image often holds both (a figure with plots and photos),
- * so this is judged in tiles: a photo is grainy (most neighbouring pixels
- * differ), a drawing is flat, and mostly light. Measured on real papers:
- * photos 0.34-0.66 of pixels differ from the next but one, drawings, renders
- * and colour maps below 0.26. A grainy tile counts only among grainy
- * neighbours (3 of 8). A tile that is mostly dark is kept too (a photo on a
- * smooth black backdrop): recolouring would only make it light. Marks the
- * tiles to keep of (l, t, r, b) in m. */
-#define TILE 32
-static void mark_photo_tiles(uint8_t *m, int w, const uint8_t *px, int stride, int l, int t, int r, int b)
+/* A picture keeps its colours in dark mode; what is drawn on light paper
+ * inside an image (a plot, labels, line art, the paper itself) is recoloured
+ * with the page, so no white block glares. Figures often place photos and
+ * renders on light panels, or hold several in one image, so an image is
+ * taken apart: its light, flat background (large regions, or those reaching
+ * the image's real edges, with the near-white fringe around them) goes with
+ * the page, and each island left on it is judged whole. A solid island (a
+ * photo, a render, a colour map: big, and filling most of its box) keeps
+ * its colours, dark backdrop included; a small or sparse one (text, lines,
+ * markers, the axes of a plot) is recoloured. Judging whole islands, never
+ * squares, a picture is never cut into a patchwork. Marks the pixels of
+ * (l, t, r, b) to keep in m; left..bottom: the image's real edges are there
+ * (not where this slice of the page cuts it). */
+#define BG_LIGHT 185   /* darkest channel of a light background */
+#define BG_FLAT 6      /* largest step between neighbours in a flat one */
+#define PAPER_WHITE 238
+static void mark_pictures(uint8_t *m, int w, const uint8_t *px, int stride, int l, int t, int r, int b, bool left,
+                          bool top, bool right, bool bottom, const SDL_Rect *glyphs, int nglyphs)
 {
-    int cols = (r - l + TILE - 1) / TILE, rows = (b - t + TILE - 1) / TILE;
-    uint8_t *kind = calloc((size_t)cols * rows, 1); /* 1 grainy, 2 dark */
-    if (!kind)
+    int bw = r - l, bh = b - t;
+    if (bw <= 0 || bh <= 0)
         return;
-    for (int j = 0; j < rows; j++)
-        for (int i = 0; i < cols; i++) {
-            int tx = l + i * TILE, ty = t + j * TILE, x1 = SDL_min(r, tx + TILE), y1 = SDL_min(b, ty + TILE);
-            int n = 0, light = 0, grain = 0, dark = 0;
-            for (int y = ty; y < y1; y++) {
-                const uint8_t *row = px + (size_t)y * stride;
-                for (int x = tx; x + 2 < x1; x++, n++) {
-                    const uint8_t *q = row + 4 * x, *q2 = q + 8;
-                    light += q[0] > 225 && q[1] > 225 && q[2] > 225;
-                    dark += q[0] * 19 + q[1] * 183 + q[2] * 54 < 90 * 256;
-                    grain += SDL_abs(q[0] - q2[0]) > 3 || SDL_abs(q[1] - q2[1]) > 3 || SDL_abs(q[2] - q2[2]) > 3;
+    size_t n = (size_t)bw * bh;
+    uint8_t *cls = calloc(n, 1); /* 1 light and flat, 2 background */
+    int *list = malloc(n * sizeof *list);
+    uint8_t *seen = calloc(n, 1);
+    if (!cls || !list || !seen) { /* no memory: the image as it is */
+        for (int y = t; y < b; y++)
+            memset(m + (size_t)y * w + l, 1, (size_t)bw);
+        free(cls), free(list), free(seen);
+        return;
+    }
+#define PX(x, y) (px + (size_t)(t + (y)) * stride + 4 * (size_t)(l + (x)))
+    for (int y = 0; y < bh; y++)
+        for (int x = 0; x < bw; x++) {
+            const uint8_t *q = PX(x, y);
+            if (SDL_min(q[0], SDL_min(q[1], q[2])) < BG_LIGHT)
+                continue;
+            bool flat = true;
+            if (x + 1 < bw) {
+                const uint8_t *e = PX(x + 1, y);
+                flat &= SDL_abs(q[0] - e[0]) <= BG_FLAT && SDL_abs(q[1] - e[1]) <= BG_FLAT && SDL_abs(q[2] - e[2]) <= BG_FLAT;
+            }
+            if (y + 1 < bh) {
+                const uint8_t *e = PX(x, y + 1);
+                flat &= SDL_abs(q[0] - e[0]) <= BG_FLAT && SDL_abs(q[1] - e[1]) <= BG_FLAT && SDL_abs(q[2] - e[2]) <= BG_FLAT;
+            }
+            cls[(size_t)y * bw + x] = flat;
+        }
+    /* the background: light flat regions that reach a real edge, or large
+     * white ones (a panel inside the image); a light part of a photo (a
+     * pale object, a lit surface) is neither */
+    size_t big = SDL_max((size_t)400, n / 100);
+    for (size_t i = 0; i < n; i++) {
+        if (cls[i] != 1 || seen[i])
+            continue;
+        size_t cnt = 0, white = 0;
+        bool edge = false;
+        list[cnt++] = (int)i, seen[i] = 1;
+        for (size_t h = 0; h < cnt; h++) {
+            int x = list[h] % bw, y = list[h] / bw;
+            const uint8_t *q = PX(x, y);
+            white += q[0] >= PAPER_WHITE && q[1] >= PAPER_WHITE && q[2] >= PAPER_WHITE;
+            edge |= (left && x == 0) || (right && x == bw - 1) || (top && y == 0) || (bottom && y == bh - 1);
+            int nb[4][2] = {{x - 1, y}, {x + 1, y}, {x, y - 1}, {x, y + 1}};
+            for (int k = 0; k < 4; k++) {
+                int nx = nb[k][0], ny = nb[k][1];
+                if (nx < 0 || ny < 0 || nx >= bw || ny >= bh)
+                    continue;
+                size_t j = (size_t)ny * bw + nx;
+                if (cls[j] == 1 && !seen[j])
+                    seen[j] = 1, list[cnt++] = (int)j;
+            }
+        }
+        if (edge || (cnt >= big && white * 10 >= cnt * 9))
+            for (size_t h = 0; h < cnt; h++)
+                cls[list[h]] = 2;
+    }
+    /* and the near-white fringe joined to it: the soft edge of a panel */
+    size_t cnt = 0;
+    for (size_t i = 0; i < n; i++)
+        if (cls[i] == 2)
+            list[cnt++] = (int)i;
+    for (size_t h = 0; h < cnt; h++) {
+        int x = list[h] % bw, y = list[h] / bw;
+        int nb[4][2] = {{x - 1, y}, {x + 1, y}, {x, y - 1}, {x, y + 1}};
+        for (int k = 0; k < 4; k++) {
+            int nx = nb[k][0], ny = nb[k][1];
+            if (nx < 0 || ny < 0 || nx >= bw || ny >= bh)
+                continue;
+            size_t j = (size_t)ny * bw + nx;
+            const uint8_t *q = PX(nx, ny);
+            if (cls[j] != 2 && q[0] >= PAPER_WHITE && q[1] >= PAPER_WHITE && q[2] >= PAPER_WHITE)
+                cls[j] = 2, list[cnt++] = (int)j;
+        }
+    }
+    /* the page's own letters over the image (a label laid on a figure),
+     * where they stand on its paper, go with the paper: joined to a picture
+     * they would keep their dark ink and a light fringe */
+    for (int g = 0; g < nglyphs; g++) {
+        int gx0 = SDL_max(glyphs[g].x - 1, l) - l, gy0 = SDL_max(glyphs[g].y - 1, t) - t;
+        int gx1 = SDL_min(glyphs[g].x + glyphs[g].w + 1, r) - l, gy1 = SDL_min(glyphs[g].y + glyphs[g].h + 1, b) - t;
+        if (gx0 >= gx1 || gy0 >= gy1)
+            continue;
+        size_t on_paper = 0, all = (size_t)(gx1 - gx0) * (size_t)(gy1 - gy0);
+        for (int y = gy0; y < gy1; y++)
+            for (int x = gx0; x < gx1; x++)
+                on_paper += cls[(size_t)y * bw + x] == 2;
+        if (on_paper * 4 >= all)
+            for (int y = gy0; y < gy1; y++)
+                memset(cls + (size_t)y * bw + gx0, 2, (size_t)(gx1 - gx0));
+    }
+    /* the islands, each judged whole (8-connected: a diagonal stroke is one) */
+    memset(seen, 0, n);
+    size_t solid = SDL_max((size_t)600, n / 200);
+    for (size_t i = 0; i < n; i++) {
+        if (cls[i] == 2 || seen[i])
+            continue;
+        cnt = 0;
+        int x0 = bw, y0 = bh, x1 = -1, y1 = -1;
+        list[cnt++] = (int)i, seen[i] = 1;
+        for (size_t h = 0; h < cnt; h++) {
+            int x = list[h] % bw, y = list[h] / bw;
+            x0 = SDL_min(x0, x), x1 = SDL_max(x1, x), y0 = SDL_min(y0, y), y1 = SDL_max(y1, y);
+            for (int dy = -1; dy <= 1; dy++)
+                for (int dx = -1; dx <= 1; dx++) {
+                    int nx = x + dx, ny = y + dy;
+                    if ((!dx && !dy) || nx < 0 || ny < 0 || nx >= bw || ny >= bh)
+                        continue;
+                    size_t j = (size_t)ny * bw + nx;
+                    if (cls[j] != 2 && !seen[j])
+                        seen[j] = 1, list[cnt++] = (int)j;
                 }
-            }
-            kind[j * cols + i] = !n ? 0 : dark * 2 >= n ? 2 : grain * 3 >= n && light * 4 < n ? 1 : 0;
         }
-    /* a photo is a run of grainy tiles; a lone one is the detail of a
-     * drawing or a render, recoloured with the rest of it */
-    for (int j = 0; j < rows; j++)
-        for (int i = 0; i < cols; i++) {
-            int k = kind[j * cols + i], near = 0;
-            if (k == 1)
-                for (int dj = -1; dj <= 1; dj++)
-                    for (int di = -1; di <= 1; di++)
-                        if ((di || dj) && i + di >= 0 && i + di < cols && j + dj >= 0 && j + dj < rows)
-                            near += kind[(j + dj) * cols + i + di] == 1;
-            if (k == 2 || (k == 1 && near >= 3)) {
-                int tx = l + i * TILE, ty = t + j * TILE, x1 = SDL_min(r, tx + TILE), y1 = SDL_min(b, ty + TILE);
-                for (int y = ty; y < y1; y++)
-                    memset(m + (size_t)y * w + tx, 1, (size_t)(x1 - tx));
-            }
-        }
-    free(kind);
+        size_t box = (size_t)(x1 - x0 + 1) * (size_t)(y1 - y0 + 1);
+        if (cnt >= solid && cnt * 2 >= box) /* a picture: kept */
+            for (size_t h = 0; h < cnt; h++)
+                m[(size_t)(t + list[h] / bw) * w + l + list[h] % bw] = 1;
+    }
+#undef PX
+    free(cls);
+    free(list);
+    free(seen);
 }
 
 /* Clears from the mask the near-white pixels joined to the chosen edges of
  * the box (l, t, r, b): a flood fill, 4-connected, through every white
  * pixel of the box (kept or not), so that the white between two photos is
  * found even where recoloured tiles lie on the way. */
-#define PAPER_WHITE 238
 static void unwhite_edges(uint8_t *m, int w, const uint8_t *px, int stride, int l, int t, int r, int b, bool left,
                           bool top, bool right, bool bottom)
 {
@@ -480,6 +588,8 @@ static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w,
     if (!s->nimages)
         return NULL;
     uint8_t *m = NULL;
+    SDL_Rect *glyphs = NULL; /* the page's letters on screen, for mark_pictures */
+    int nglyphs = -1;
     for (int k = 0; k < s->nimages; k++) {
         PRect r = s->images[k];
         int x0, y0, x1, y1;
@@ -492,9 +602,23 @@ static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w,
         if (!m && !(m = calloc((size_t)w * h, 1)))
             return NULL; /* no memory for the mask: recolour everything */
         if (cfg.dark_images == DARK_IMAGES_SMART && k < s->placed_from) { /* photos kept, drawings recoloured */
-            mark_photo_tiles(m, w, px, stride, l, t, rr, b);
-            unwhite_edges(m, w, px, stride, l, t, rr, b, SDL_min(x0, x1) >= 0, SDL_min(y0, y1) >= 0,
-                          SDL_max(x0, x1) + 1 <= w, SDL_max(y0, y1) + 1 <= h);
+            if (nglyphs < 0) {
+                doc_page_chars(d, page);
+                s = &d->slots[page];
+                glyphs = malloc((size_t)SDL_max(1, s->nchars) * sizeof *glyphs);
+                nglyphs = 0;
+                for (int i = 0; glyphs && i < s->nchars; i++) {
+                    if (s->line[i] < 0)
+                        continue;
+                    int gx0, gy0, gx1, gy1;
+                    FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, s->boxes[i].l, s->boxes[i].t, &gx0, &gy0);
+                    FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, s->boxes[i].r, s->boxes[i].b, &gx1, &gy1);
+                    glyphs[nglyphs++] = (SDL_Rect){SDL_min(gx0, gx1), SDL_min(gy0, gy1), SDL_abs(gx1 - gx0) + 1,
+                                                   SDL_abs(gy1 - gy0) + 1};
+                }
+            }
+            mark_pictures(m, w, px, stride, l, t, rr, b, SDL_min(x0, x1) >= 0, SDL_min(y0, y1) >= 0,
+                          SDL_max(x0, x1) + 1 <= w, SDL_max(y0, y1) + 1 <= h, glyphs, SDL_max(0, nglyphs));
             continue;
         }
         const Alpha *al = k >= s->placed_from && s->alphas ? &s->alphas[k - s->placed_from] : NULL;
@@ -530,6 +654,7 @@ static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w,
                     m[(size_t)y * w + x] = 1;
             }
     }
+    free(glyphs);
     return m;
 }
 
@@ -555,6 +680,7 @@ typedef struct {
     uint8_t *buf;
     FPDF_BITMAP bmp;
     FPDF_PAGE p;
+    unsigned theme;
 } Job;
 
 static Job job;
@@ -757,7 +883,7 @@ static CacheEntry *cache_find(View *v, int page, int cx, int cy, int w, int h)
     for (int i = 0; i < CACHE_SLOTS; i++) {
         CacheEntry *e = &v->cache[i];
         if (e->tex && e->page == page && e->pw == v->pwpx[page] && e->ph == v->phpx[page] &&
-            e->dark == v->dark && e->version == ver && e->x <= cx && e->y <= cy &&
+            e->dark == v->dark && fresh(e) && e->version == ver && e->x <= cx && e->y <= cy &&
             e->x + e->w >= cx + w && e->y + e->h >= cy + h) {
             e->used = ++cache_clock;
             return e;
@@ -773,7 +899,7 @@ static CacheEntry *cache_store(View *v, int page, int cx, int cy, int w, int h, 
         CacheEntry *e = &v->cache[i];
         /* replace stale versions of the same page first, then the LRU entry */
         if (e->tex && e->page == page && (e->version != v->doc->slots[page].version ||
-                                          e->pw != v->pwpx[page] || e->dark != v->dark)) {
+                                          e->pw != v->pwpx[page] || e->dark != v->dark || !fresh(e))) {
             slot = e;
             break;
         }
@@ -782,7 +908,7 @@ static CacheEntry *cache_store(View *v, int page, int cx, int cy, int w, int h, 
     }
     drop_entry(slot);
     *slot = (CacheEntry){page, cx, cy, w, h, v->pwpx[page], v->phpx[page], v->dark,
-                         v->doc->slots[page].version, t, ++cache_clock};
+                         v->doc->slots[page].version, t, ++cache_clock, render_theme};
     texture_bytes += entry_bytes(slot);
     trim_textures();
     return slot->tex ? slot : NULL;
@@ -795,7 +921,8 @@ static CacheEntry *job_finish(void)
     FPDF_RenderPage_Close(j.p);
     job = (Job){0};
     bool current = j.v->pwpx[j.page] == j.pw && j.v->phpx[j.page] == j.ph && j.v->dark == j.dark &&
-                   j.v->rotation == j.rot && j.doc->slots[j.page].version == j.version;
+                   j.v->rotation == j.rot && j.doc->slots[j.page].version == j.version &&
+                   (!j.dark || j.theme == render_theme); /* not drawn in colours changed since */
     SDL_Texture *t = finish_pixels(j.win, j.v, j.page, j.p, j.bmp, j.buf, j.pw, j.ph, j.rot, j.cx, j.cy, j.w, j.h,
                                    j.stride, j.dark);
     if (!t)
@@ -831,7 +958,7 @@ static CacheEntry *job_start(Window *win, View *v, int page, int cx, int cy, int
     if (!buf)
         return NULL;
     job = (Job){true, visible, win, v, v->doc, page, pw, ph, v->rotation, cx, cy, w, h, w * 4, v->dark,
-                v->doc->slots[page].version, buf, bmp, p};
+                v->doc->slots[page].version, buf, bmp, p, render_theme};
     pause_at = SDL_GetTicksNS() + budget_ns;
     if (FPDF_RenderPageBitmap_Start(bmp, p, -cx, -cy, pw, ph, v->rotation, RENDER_FLAGS, &pauser) ==
         FPDF_RENDER_TOBECONTINUED)
@@ -843,7 +970,8 @@ static CacheEntry *job_start(Window *win, View *v, int page, int cx, int cy, int
 static bool job_for(View *v, int page, int cx, int cy, int w, int h)
 {
     return job.active && job.v == v && job.page == page && job.pw == v->pwpx[page] && job.ph == v->phpx[page] &&
-           job.dark == v->dark && job.rot == v->rotation && job.version == v->doc->slots[page].version &&
+           job.dark == v->dark && (!job.dark || job.theme == render_theme) && job.rot == v->rotation &&
+           job.version == v->doc->slots[page].version &&
            job.cx <= cx && job.cy <= cy && job.cx + job.w >= cx + w && job.cy + job.h >= cy + h;
 }
 
