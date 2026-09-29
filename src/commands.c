@@ -112,6 +112,8 @@ static void c_print(Window *w, View *v, const char *a) { print_document(w, v, a)
 
 static void c_export(Window *w, View *v, const char *a) { export_notes(w, v, a, false, NULL); }
 static void c_export_force(Window *w, View *v, const char *a) { export_notes(w, v, a, true, NULL); }
+static void c_response(Window *w, View *v, const char *a) { response_letter(w, v, a, false); }
+static void c_response_force(Window *w, View *v, const char *a) { response_letter(w, v, a, true); }
 
 static void c_image(Window *w, View *v, const char *a)
 {
@@ -286,6 +288,8 @@ static const Command commands[] = {
     {"light", ARG_NONE, c_light, "light mode"},
     {"export", ARG_MD, c_export, "highlights and comments to Markdown (paper-notes.md); :export red green commented tasks"},
     {"export!", ARG_MD, c_export_force, "the same, overwriting any file"},
+    {"response", ARG_MD, c_response, "the reply to the reviewers: their comments and your replies (r), to Markdown"},
+    {"response!", ARG_MD, c_response_force, "the same, overwriting any file"},
     {"image", ARG_IMAGE, c_image, "put a PNG / JPEG on the page (then move and resize it)"},
     {"about", ARG_NONE, c_about, "version, author, contact (also \\a)"},
     {"theme", ARG_THEME, c_theme, "colour theme: :theme gruvbox, :theme (the list), :theme new NAME (yours)"},

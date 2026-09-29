@@ -70,6 +70,9 @@ you go.
   Markdown export writes `- [ ]` / `- [x]`
 - undo and redo everything; filter by colour; export to Markdown
 - merge a co-author's highlights and comments into your copy
+- **answer the reviewers**: `r` replies to a comment they left in the PDF
+  (Acrobat and Okular show it in the thread), `:response` writes the
+  response letter in Markdown: each point, your reply, what is left
 - place images and signatures; move, resize, crop them
 
 **Searching**

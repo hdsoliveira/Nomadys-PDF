@@ -127,6 +127,7 @@ typedef struct {
     PRect *quads;            /* highlight areas, or just the rect */
     int nquads;
     bool has_comment;
+    bool has_reply;          /* someone answered it (a reply, /IRT) */
     bool area;               /* a highlight over an area (a figure), not over text */
     int task;                /* TASK_*: not a task, to do, done */
     char done_on[11];        /* the day it was done, "2026-09-29", or "" */
@@ -236,6 +237,10 @@ struct Doc {
     int pages_opened;        /* since the last (re)load: when to compact */
     int save_ms;             /* how long the last save took */
     uint64_t hidden_since;   /* 0 while a window shows it */
+    /* replies made here: (reply /NM, the /NM of the note it answers); their
+     * /IRT is written into the file after each save (reply.c) */
+    char (*replies)[2][64];
+    int nreplies;
 };
 
 /* Every page accessor checks this: a reload can shrink the document under
@@ -273,6 +278,16 @@ bool note_create_area(Doc *d, int page, PRect r, const char *comment, uint32_t c
 char *note_comment(Doc *d, int page, int note);          /* malloc'd UTF-8, or NULL */
 bool note_set_comment(Doc *d, int page, int note, const char *comment);
 bool note_set_task(Doc *d, int page, int note, int task);  /* TASK_*, undoable */
+void note_author(Doc *d, int page, int note, char *out, size_t cap); /* /T, or "" */
+typedef struct {
+    char author[128];
+    char *text;              /* malloc'd UTF-8 */
+    bool mine;               /* written by this user (answering a reviewer) */
+} NoteReply;
+int note_replies(Doc *d, int page, int note, NoteReply **out); /* the replies to a note, oldest first */
+void note_replies_free(NoteReply *r, int n);
+bool note_set_reply(Doc *d, int page, int note, const char *text); /* ours: new, changed, "" deletes; undoable */
+const char *note_user(void);                                /* the author name we write (/T) */
 void notes_tasks(Doc *d, int *open, int *done);            /* the tasks of the whole PDF */
 void note_task_key(Window *w, Doc *d, int page, int note, char key); /* t: a task or not, d: done or not */
 bool note_delete(Doc *d, int page, int note);
@@ -591,6 +606,11 @@ void caret_move(Window *w, View *v, char motion, int count);
 void caret_toggle_select(Window *w, View *v);
 void caret_mark(Window *w, View *v, bool comment, uint32_t color); /* highlight selection */
 void caret_copy(Window *w, View *v, bool cite);            /* cite: as a quotation with its page */
+bool note_reply_edit(Window *w, View *v);                  /* r: answer the note under the cursor */
+char *note_thread(Doc *d, int page, int note);             /* its comment and the replies, for showing */
+void caret_mouse_down(Window *w, View *v, float x, float y); /* selecting by dragging over the text */
+void caret_mouse_drag(Window *w, View *v, float x, float y);
+void caret_mouse_up(Window *w, View *v);                     /* copies what was dragged over */
 void cite_copy(Window *w, View *v, char *text, int first_page, int last_page);
 void cite_bibtex(Window *w, View *v);                      /* :bibtex */
 void cite_result(Window *w, const char *text);             /* the download finished */
@@ -833,6 +853,11 @@ SDL_Surface *image_surface(const unsigned char *data, size_t len);
 
 /* export.c */
 int export_write(Doc *d, FILE *f, int *ncomments, const NoteFilter *only); /* Markdown; returns highlights */
+int response_write(Doc *d, FILE *f, int *answered);         /* the reply to the reviewers; returns points */
+void response_letter(Window *w, View *v, const char *arg, bool force);
+
+/* ---------- replies in the file (reply.c) ---------- */
+bool pdf_link_replies(int fd, char (*replies)[2][64], int n);
 void export_notes(Window *w, View *v, const char *arg, bool force, const NoteFilter *only);
 int note_color_index(uint32_t c);                         /* 0-4: C V B N M; 5: another colour */
 bool note_filter_word(const char *word, NoteFilter *f);   /* "red", "green", "commented"... */

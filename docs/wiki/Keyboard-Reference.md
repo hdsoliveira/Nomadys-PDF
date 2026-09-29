@@ -91,6 +91,7 @@ always one key away in the program: `\c`.
 |---|---|
 | wheel | scroll (`Ctrl` + wheel: zoom) |
 | click on a link | follow it |
+| drag over text | select it and copy it (then `C` `V` `B` `N` `M`, `c`, `Y` work on it) |
 | click on a form field | fill it |
 | double click, `Ctrl` + click | open that spot in the LaTeX source |
 | click on a pane | focus it |
@@ -111,6 +112,7 @@ always one key away in the program: `\c`.
 | `x` | delete the highlight under the cursor |
 | `t` | the highlight under the cursor: on / off the task list |
 | `d` | the task under the cursor: done / to do |
+| `r` | reply to the comment under the cursor (a reviewer's), or change the reply |
 | `Enter` | LaTeX: open this spot in the editor |
 | `Ctrl-v` | switch to the free cursor |
 | `Esc` | cancel the selection, then leave |
@@ -133,6 +135,7 @@ Scrolling, marks, jumps, undo, `\l` and `\c` work here too.
 | `x` | delete the highlight under the cross |
 | `t` | the highlight under the cross: on / off the task list |
 | `d` | the task under the cross: done / to do |
+| `r` | reply to the comment under the cross, or change the reply |
 | `Enter` | LaTeX: open this spot in the editor |
 | `Ctrl-v` | back to the text cursor |
 | `Esc` | cancel / leave |

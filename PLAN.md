@@ -142,5 +142,12 @@ More ambitious:
 - Configurable UI font with a warning when it is not installed.
 - The command is `npdf`; config and data stay in `nomadys-pdf` folders.
 
+- Selecting text with the mouse: a drag selects and copies (clipboard and
+  primary selection), leaving the text cursor on it (src/caret.c).
+- Answering reviewers (2026-09-29): `r` replies to a comment, stored as a
+  standard reply (/IRT, added to the file after each save by src/reply.c,
+  since PDFium cannot write it); `:response` writes the response letter in
+  Markdown, by reviewer, with what is still unanswered (src/export.c).
+
 Left: 11 (OCR), 12 (background rendering; a paused/progressive render would
 be the simpler first step).

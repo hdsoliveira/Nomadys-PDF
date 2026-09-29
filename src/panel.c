@@ -120,6 +120,13 @@ static PanelItem *note_item(Window *w, Doc *d, int page, int i, int *cap)
     } else {
         snprintf(it->text, sizeof it->text, t && !image ? "“%s”" : "%s", t ? t : "(highlighted area)");
     }
+    if (s->notes[i].has_reply) { /* answered: the last reply, where the quotation was */
+        NoteReply *r;
+        int n = note_replies(d, page, i, &r);
+        if (n)
+            snprintf(it->sub, sizeof it->sub, "↳ %s: %s", r[n - 1].author[0] ? r[n - 1].author : "reply", r[n - 1].text);
+        note_replies_free(r, n);
+    }
     one_line(it->text);
     one_line(it->sub);
     free(c);
@@ -354,7 +361,7 @@ void panel_activate(Window *w)
         return;
     jump_to(w, v, it.pos);
     if (tab == PANEL_NOTES || tab == PANEL_TASKS) {
-        char *c = note_comment(v->doc, it.page, it.note);
+        char *c = note_thread(v->doc, it.page, it.note);
         if (c)
             ui_message_long(w, 6000, "%s", c);
         free(c);

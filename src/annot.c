@@ -27,6 +27,7 @@ static PRect norm(FS_RECTF r)
 }
 
 static bool get_string(FPDF_ANNOTATION a, const char *key, char *out, size_t cap);
+static int reply_parent(FPDF_PAGE p, FPDF_ANNOTATION a);
 
 static void free_notes(PageSlot *s)
 {
@@ -77,6 +78,7 @@ void notes_page(Doc *d, int page)
      * last one of a note tells, unless it has our own NomadysTask */
     int *marked_of = xmalloc((size_t)(n ? n : 1) * sizeof *marked_of), nmarked = 0;
     bool *marked_done = xmalloc((size_t)(n ? n : 1) * sizeof *marked_done);
+    int *answered = xmalloc((size_t)(n ? n : 1) * sizeof *answered), nanswered = 0; /* notes with a reply */
     for (int i = 0; i < n; i++) {
         FPDF_ANNOTATION a = FPDFPage_GetAnnot(p, i);
         if (!a)
@@ -95,6 +97,13 @@ void notes_page(Doc *d, int page)
             if (parent)
                 FPDFPage_CloseAnnot(parent);
             FPDFPage_CloseAnnot(a); /* a state, not a note of its own */
+            continue;
+        }
+        int parent_idx = type == FPDF_ANNOT_TEXT ? reply_parent(p, a) : -1;
+        if (parent_idx >= 0 || parent_idx == -2) { /* a reply: shown under the note it answers */
+            if (parent_idx >= 0 && !(FPDFAnnot_GetFlags(a) & FPDF_ANNOT_FLAG_HIDDEN))
+                answered[nanswered++] = parent_idx;
+            FPDFPage_CloseAnnot(a);
             continue;
         }
         bool hidden = FPDFAnnot_GetFlags(a) & FPDF_ANNOT_FLAG_HIDDEN; /* deleted (undo can bring it back) */
@@ -142,8 +151,12 @@ void notes_page(Doc *d, int page)
         int t = s->notes[i].task;
         s->notes[i].task = t == -1 ? TASK_NONE : t == -2 ? TASK_OPEN : t == -3 ? TASK_DONE : t;
     }
+    for (int k = 0; k < nanswered; k++)
+        for (int i = 0; i < s->nnotes; i++)
+            s->notes[i].has_reply |= s->notes[i].idx == answered[k];
     free(marked_of);
     free(marked_done);
+    free(answered);
     s->notes_version = s->version + 1;
 }
 
@@ -216,7 +229,10 @@ static void annot_name(FPDF_ANNOTATION a, char *out, size_t cap)
     static unsigned counter;
     if (get_string(a, "NM", out, cap) && out[0])
         return;
-    snprintf(out, cap, "npdf-%llx-%u", (unsigned long long)time(NULL), ++counter);
+    static unsigned salt; /* another session in the same second draws other names */
+    if (!salt)
+        salt = (unsigned)getpid() * 2654435761u ^ (unsigned)SDL_GetTicksNS();
+    snprintf(out, cap, "npdf-%llx-%x-%u", (unsigned long long)time(NULL), salt & 0xFFFFFF, ++counter);
     set_string(a, "NM", out);
 }
 
@@ -472,9 +488,7 @@ static void finish_note(Doc *d, int page, FPDF_ANNOTATION a, PRect bounds, const
     FPDFAnnot_SetFlags(a, FPDF_ANNOT_FLAG_PRINT);
     FS_RECTF rect = {bounds.l, bounds.t, bounds.r, bounds.b};
     FPDFAnnot_SetRect(a, &rect);
-    const char *user = getenv("USER");
-    if (user)
-        set_string(a, "T", user); /* author, shown by other readers */
+    set_string(a, "T", note_user()); /* author, shown by other readers */
     if (comment && *comment)
         set_string(a, "Contents", comment);
     FPDFPage_CloseAnnot(a);
@@ -824,6 +838,189 @@ bool note_delete(Doc *d, int page, int note)
     record(d, U_DELETE, page, a);
     FPDFPage_CloseAnnot(a);
     return set_hidden(d, page, nm, true);
+}
+
+/* ---------- replies: answering a reviewer's note ---------- */
+/* A reply is a Text annotation pointing at the note it answers with /IRT,
+ * as Acrobat, Okular and others write it, so they show it in the note's
+ * thread. PDFium cannot write that reference, so ours also name their
+ * note (/NomadysReplyTo, its /NM), and reply.c adds the /IRT to the file
+ * after each save. */
+const char *note_user(void)
+{
+    const char *user = getenv("USER");
+    return user && *user ? user : "me";
+}
+
+/* The index of the note a Text annotation answers; -1 if it is not a
+ * reply, -2 if it is one whose note is gone. */
+static int reply_parent(FPDF_PAGE p, FPDF_ANNOTATION a)
+{
+    FPDF_ANNOTATION parent = FPDFAnnot_GetLinkedAnnot(a, "IRT");
+    if (parent) {
+        int idx = FPDFPage_GetAnnotIndex(p, parent);
+        FPDFPage_CloseAnnot(parent);
+        return idx >= 0 ? idx : -2;
+    }
+    char nm[64], got[64];
+    if (!get_string(a, "NomadysReplyTo", nm, sizeof nm) || !nm[0])
+        return -1;
+    for (int i = 0; i < FPDFPage_GetAnnotCount(p); i++) {
+        FPDF_ANNOTATION b = FPDFPage_GetAnnot(p, i);
+        bool same = b && get_string(b, "NM", got, sizeof got) && !strcmp(got, nm);
+        if (b)
+            FPDFPage_CloseAnnot(b);
+        if (same)
+            return i;
+    }
+    return -2;
+}
+
+void note_author(Doc *d, int page, int note, char *out, size_t cap)
+{
+    FPDF_ANNOTATION a = open_note(d, page, note);
+    out[0] = 0;
+    if (!a)
+        return;
+    get_string(a, "T", out, cap);
+    FPDFPage_CloseAnnot(a);
+}
+
+/* The replies to a note: their annotation indexes (oldest first, the order
+ * they are on the page), or only ours. */
+static int reply_indexes(Doc *d, int page, int note, bool only_mine, int **out)
+{
+    *out = NULL;
+    if (!doc_page_ok(d, page))
+        return 0;
+    notes_page(d, page);
+    PageSlot *s = &d->slots[page];
+    FPDF_PAGE p = doc_page(d, page);
+    if (!p || note < 0 || note >= s->nnotes)
+        return 0;
+    int target = s->notes[note].idx, n = 0, count = FPDFPage_GetAnnotCount(p);
+    *out = xmalloc((size_t)SDL_max(1, count) * sizeof **out);
+    for (int i = 0; i < count; i++) {
+        FPDF_ANNOTATION a = FPDFPage_GetAnnot(p, i);
+        if (!a)
+            continue;
+        char author[128] = "";
+        bool hit = FPDFAnnot_GetSubtype(a) == FPDF_ANNOT_TEXT && !(FPDFAnnot_GetFlags(a) & FPDF_ANNOT_FLAG_HIDDEN) &&
+                   !FPDFAnnot_HasKey(a, "StateModel") && reply_parent(p, a) == target;
+        if (hit && only_mine)
+            hit = get_string(a, "T", author, sizeof author) && !strcmp(author, note_user());
+        FPDFPage_CloseAnnot(a);
+        if (hit)
+            (*out)[n++] = i;
+    }
+    return n;
+}
+
+int note_replies(Doc *d, int page, int note, NoteReply **out)
+{
+    int *idx, n = reply_indexes(d, page, note, false, &idx);
+    FPDF_PAGE p = n ? doc_page(d, page) : NULL;
+    *out = xcalloc((size_t)SDL_max(1, n), sizeof **out);
+    int got = 0;
+    for (int k = 0; p && k < n; k++) {
+        FPDF_ANNOTATION a = FPDFPage_GetAnnot(p, idx[k]);
+        if (!a)
+            continue;
+        NoteReply *r = &(*out)[got++];
+        get_string(a, "T", r->author, sizeof r->author);
+        r->mine = !strcmp(r->author, note_user());
+        unsigned long bytes = FPDFAnnot_GetStringValue(a, "Contents", NULL, 0);
+        if (bytes > 2) {
+            unsigned short *u = xmalloc(bytes);
+            FPDFAnnot_GetStringValue(a, "Contents", u, bytes);
+            r->text = utf16_to_utf8(u, (int)(bytes / 2) - 1);
+            free(u);
+        } else {
+            r->text = xstrdup("");
+        }
+        FPDFPage_CloseAnnot(a);
+    }
+    free(idx);
+    return got;
+}
+
+void note_replies_free(NoteReply *r, int n)
+{
+    for (int i = 0; i < n; i++)
+        free(r[i].text);
+    free(r);
+}
+
+/* Our reply to a note: written, changed, or deleted when text is "". The
+ * last of ours is the one edited. */
+bool note_set_reply(Doc *d, int page, int note, const char *text)
+{
+    int *idx, n = reply_indexes(d, page, note, true, &idx);
+    FPDF_PAGE p = doc_page(d, page);
+    if (!p) {
+        free(idx);
+        return false;
+    }
+    if (n) { /* ours already: change it, or delete it */
+        FPDF_ANNOTATION a = FPDFPage_GetAnnot(p, idx[n - 1]);
+        free(idx);
+        if (!a)
+            return false;
+        char nm[64];
+        annot_name(a, nm, sizeof nm);
+        if (!*text) {
+            record(d, U_DELETE, page, a);
+            FPDFPage_CloseAnnot(a);
+            return set_hidden(d, page, nm, true);
+        }
+        char before[4096];
+        get_long_string(a, "Contents", before, sizeof before);
+        Undo u = {.kind = U_COMMENT, .page = page, .text_before = xstrdup(before), .text_after = xstrdup(text),
+                  .group = d->undo_group_open};
+        snprintf(u.nm, sizeof u.nm, "%s", nm);
+        push(d, u);
+        set_string(a, "Contents", text);
+        FPDFPage_CloseAnnot(a);
+        doc_mark_changed(d, page);
+        return true;
+    }
+    free(idx);
+    if (!*text)
+        return true; /* nothing to delete */
+    FPDF_ANNOTATION parent = open_note(d, page, note);
+    if (!parent)
+        return false;
+    char parent_nm[64];
+    annot_name(parent, parent_nm, sizeof parent_nm);
+    FS_RECTF pr;
+    PRect at = FPDFAnnot_GetRect(parent, &pr) ? norm(pr) : (PRect){0, 20, 20, 0};
+    FPDFPage_CloseAnnot(parent);
+    FPDF_ANNOTATION a = FPDFPage_CreateAnnot(p, FPDF_ANNOT_TEXT);
+    if (!a)
+        return false;
+    record(d, U_CREATE, page, a); /* gives it its /NM */
+    char nm[64];
+    annot_name(a, nm, sizeof nm);
+    set_string(a, "NomadysReplyTo", parent_nm);
+    set_string(a, "T", note_user());
+    set_string(a, "Contents", text);
+    time_t now = time(NULL);
+    char date[32];
+    strftime(date, sizeof date, "D:%Y%m%d%H%M%S", localtime(&now));
+    set_string(a, "M", date);
+    set_string(a, "CreationDate", date);
+    /* at the note's corner, drawn by no one: readers show it in the thread */
+    FS_RECTF rect = {at.l, at.t, at.l + 20, at.t - 20};
+    FPDFAnnot_SetRect(a, &rect);
+    unsigned short empty[1] = {0};
+    FPDFAnnot_SetAP(a, FPDF_ANNOT_APPEARANCEMODE_NORMAL, empty);
+    FPDFPage_CloseAnnot(a);
+    d->replies = xrealloc(d->replies, (size_t)(d->nreplies + 1) * sizeof *d->replies);
+    snprintf(d->replies[d->nreplies][0], 64, "%s", nm);
+    snprintf(d->replies[d->nreplies][1], 64, "%s", parent_nm);
+    d->nreplies++;
+    doc_mark_changed(d, page);
+    return true;
 }
 
 /* ---------- :merge — a co-author's highlights and comments ---------- */

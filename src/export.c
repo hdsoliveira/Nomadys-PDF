@@ -322,7 +322,7 @@ int export_write(Doc *d, FILE *f, int *ncomments, const NoteFilter *only)
 }
 
 /* "paper.pdf" -> "paper-notes.md"; a relative name goes next to the PDF. */
-static char *target_path(Doc *d, const char *arg)
+static char *target_path(Doc *d, const char *arg, const char *suffix)
 {
     const char *home = getenv("HOME");
     const char *slash = strrchr(d->path, '/');
@@ -332,7 +332,8 @@ static char *target_path(Doc *d, const char *arg)
         size_t n = strlen(d->path);
         if (n > 4 && !strcasecmp(d->path + n - 4, ".pdf"))
             n -= 4;
-        sprintf(out, "%.*s-notes.md", (int)n, d->path);
+        out = xrealloc(out, n + strlen(suffix) + 1);
+        sprintf(out, "%.*s%s", (int)n, d->path, suffix);
     } else if (arg[0] == '~' && home) {
         sprintf(out, "%s%s", home, arg + 1);
     } else if (arg[0] == '/') {
@@ -344,13 +345,13 @@ static char *target_path(Doc *d, const char *arg)
 }
 
 /* True if the file is missing or was written by an earlier export. */
-static bool ours(const char *path)
+static bool ours(const char *path, const char *tag)
 {
     FILE *f = fopen(path, "r");
     if (!f)
         return true;
     char line[64] = "";
-    bool yes = fgets(line, sizeof line, f) && !strncmp(line, EXPORT_TAG, strlen(EXPORT_TAG));
+    bool yes = fgets(line, sizeof line, f) && !strncmp(line, tag, strlen(tag));
     fclose(f);
     return yes;
 }
@@ -372,8 +373,8 @@ void export_notes(Window *w, View *v, const char *arg, bool force, const NoteFil
         if (!note_filter_word(word, &only) && !file[0])
             snprintf(file, sizeof file, "%s", word);
     }
-    char *path = target_path(v->doc, file);
-    if (!force && !ours(path)) {
+    char *path = target_path(v->doc, file, "-notes.md");
+    if (!force && !ours(path, EXPORT_TAG)) {
         ui_message_long(w, 6000, "%s exists and was not made by :export — use :export! to overwrite", base_name(path));
         free(path);
         return;
@@ -398,6 +399,150 @@ void export_notes(Window *w, View *v, const char *arg, bool force, const NoteFil
         note_filter_describe(&only, which, sizeof which);
         ui_message_long(w, 5000, "%d highlight%s, %d comment%s%s%s → %s", n, n == 1 ? "" : "s", comments,
                         comments == 1 ? "" : "s", which[0] ? " — only " : "", which, base_name(path));
+    }
+    free(tmp);
+    free(path);
+}
+
+/* ---------- :response — the answer to the reviewers ---------- */
+#define RESPONSE_TAG "<!-- nomadys-pdf response -->"
+
+/* A reviewer's point: a note someone else wrote (not a picture placed). */
+static bool is_point(Doc *d, int page, int i, char *author, size_t cap)
+{
+    const Note *n = &d->slots[page].notes[i];
+    if (n->subtype == FPDF_ANNOT_STAMP)
+        return false;
+    note_author(d, page, i, author, cap);
+    return strcmp(author, note_user()) != 0;
+}
+
+/* Writes the letter, grouped by reviewer (the notes' author), each point
+ * with its page, what it marks, the comment and our reply; returns the
+ * number of points, *answered those with a reply of ours. */
+int response_write(Doc *d, FILE *f, int *answered)
+{
+    char (*who)[128] = NULL; /* the reviewers, in the order they first appear */
+    int nwho = 0, total = 0, done = 0;
+    for (int page = 0; page < d->npages; page++) {
+        notes_page(d, page);
+        for (int i = 0; i < d->slots[page].nnotes; i++) {
+            char a[128];
+            if (!is_point(d, page, i, a, sizeof a))
+                continue;
+            total++;
+            int k = 0;
+            while (k < nwho && strcmp(who[k], a))
+                k++;
+            if (k == nwho) {
+                who = xrealloc(who, (size_t)(nwho + 1) * sizeof *who);
+                snprintf(who[nwho++], sizeof *who, "%s", a);
+            }
+        }
+    }
+    char when[64];
+    time_t now = time(NULL);
+    strftime(when, sizeof when, "%Y-%m-%d %H:%M", localtime(&now));
+    fprintf(f, RESPONSE_TAG "\n# Response to the reviewers — %s\n\n", base_name(d->path));
+    fprintf(f, "Written by Nomadys-PDF on %s from `%s`.\n\n", when, d->path);
+    if (!total)
+        fprintf(f, "No comments from anyone else in this PDF: the reviewers' notes come in with the PDF they "
+                   "annotated, or with `:merge`.\n");
+    Buf todo = {0};
+    for (int k = 0; k < nwho; k++) {
+        const char *name = who[k][0] ? who[k] : "(no name)";
+        fprintf(f, "## %s\n\n", nwho == 1 && !who[k][0] ? "Reviewer" : name);
+        int num = 0;
+        for (int page = 0; page < d->npages; page++) {
+            notes_page(d, page);
+            PageSlot *s = &d->slots[page];
+            if (!s->nnotes)
+                continue;
+            Order *o = page_order(d, page);
+            for (int j = 0; j < s->nnotes; j++) {
+                int i = o[j].note;
+                char a[128];
+                if (!is_point(d, page, i, a, sizeof a) || strcmp(a, who[k]))
+                    continue;
+                const Note *n = &s->notes[i];
+                fprintf(f, "### %d. Page %d\n\n", ++num, page + 1);
+                char *text = note_text(d, page, n), *comment = note_comment(d, page, i);
+                if (text)
+                    fprintf(f, "> “%s”\n\n", text);
+                else if (n->subtype != FPDF_ANNOT_TEXT)
+                    fprintf(f, "> *(a figure, table or equation marked on the page)*\n\n");
+                if (comment && *comment) {
+                    fprintf(f, "**Comment:** ");
+                    write_indented(f, comment, "");
+                    fprintf(f, "\n");
+                }
+                NoteReply *r;
+                int nr = note_replies(d, page, i, &r);
+                bool mine = false;
+                for (int q = 0; q < nr; q++) {
+                    if (!*r[q].text)
+                        continue;
+                    if (r[q].mine) {
+                        fprintf(f, "**Response:** ");
+                        mine = true;
+                    } else {
+                        fprintf(f, "**%s:** ", r[q].author[0] ? r[q].author : "Reply");
+                    }
+                    write_indented(f, r[q].text, "");
+                    fprintf(f, "\n");
+                }
+                note_replies_free(r, nr);
+                if (mine) {
+                    done++;
+                } else {
+                    fprintf(f, "**Response:** *not written yet*\n\n");
+                    char item[200];
+                    int il = snprintf(item, sizeof item, "%s%s %d (page %d)", todo.len ? ", " : "", name, num, page + 1);
+                    put(&todo, item, (size_t)SDL_min(il, (int)sizeof item - 1));
+                }
+                free(text);
+                free(comment);
+            }
+            free(o);
+        }
+    }
+    if (total) {
+        fprintf(f, "---\n\n%d of %d point%s answered.", done, total, total == 1 ? "" : "s");
+        if (todo.len)
+            fprintf(f, " Still to answer: %s.", todo.s);
+        fprintf(f, "\n");
+    }
+    free(todo.s);
+    free(who);
+    if (answered)
+        *answered = done;
+    return total;
+}
+
+/* :response [file.md] */
+void response_letter(Window *w, View *v, const char *arg, bool force)
+{
+    while (*arg == ' ')
+        arg++;
+    char *path = target_path(v->doc, arg, "-response.md");
+    if (!force && !ours(path, RESPONSE_TAG)) {
+        ui_message_long(w, 6000, "%s exists and was not made by :response — use :response! to overwrite", base_name(path));
+        free(path);
+        return;
+    }
+    char *tmp = xmalloc(strlen(path) + 16);
+    sprintf(tmp, "%s.tmp%d", path, (int)getpid());
+    FILE *f = fopen(tmp, "w");
+    int answered = 0, n = f ? response_write(v->doc, f, &answered) : 0;
+    bool ok = f && !ferror(f);
+    ok = f && fclose(f) == 0 && ok;
+    if (!ok || rename(tmp, path)) {
+        unlink(tmp);
+        ui_message_long(w, 6000, "cannot write %s", path);
+    } else if (!n) {
+        ui_message_long(w, 5000, "no reviewer comments in this PDF → %s", base_name(path));
+    } else {
+        ui_message_long(w, 5000, "%d of %d point%s answered → %s", answered, n, n == 1 ? "" : "s", base_name(path));
     }
     free(tmp);
     free(path);

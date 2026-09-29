@@ -1,6 +1,7 @@
 /* Keyboard cursors: the text caret (mode CARET) that walks characters, and
  * the free cursor (mode AREA) that moves in page space to mark figures.
  * Both select with 'v' and create highlights, optionally with a comment. */
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -316,6 +317,54 @@ static bool edit_note_comment(Window *w, View *v)
     return true;
 }
 
+static void reply_done(Window *w, const char *text)
+{
+    int page = w->prompt_arg >> 16, note = w->prompt_arg & 0xFFFF;
+    note_set_reply(cur_view(w)->doc, page, note, text);
+    ui_message(w, *text ? "reply saved" : "reply removed");
+}
+
+/* r: our reply to the note under the cursor, in the comment box. */
+bool note_reply_edit(Window *w, View *v)
+{
+    int page, note;
+    if (!cursor_note(w, v, &page, &note))
+        return false;
+    NoteReply *r;
+    int n = note_replies(v->doc, page, note, &r);
+    const char *old = "";
+    for (int i = 0; i < n; i++)
+        if (r[i].mine)
+            old = r[i].text; /* the last of ours */
+    prompt_open(w, "reply: ", old, reply_done, (page << 16) | note);
+    comment_editor_open(w, page, v->doc->slots[page].notes[note].r);
+    note_replies_free(r, n);
+    return true;
+}
+
+/* A note's comment followed by its replies, "— author: text"; NULL if
+ * there is nothing to show. */
+char *note_thread(Doc *d, int page, int note)
+{
+    char *c = note_comment(d, page, note);
+    if (!d->slots[page].notes[note].has_reply)
+        return c;
+    NoteReply *r;
+    int n = note_replies(d, page, note, &r);
+    size_t len = (c ? strlen(c) : 0) + 1;
+    for (int i = 0; i < n; i++)
+        len += strlen(r[i].author) + strlen(r[i].text) + 16;
+    char *out = xmalloc(len);
+    snprintf(out, len, "%s", c ? c : "");
+    for (int i = 0; i < n; i++) {
+        size_t at = strlen(out);
+        snprintf(out + at, len - at, "%s— %s: %s", at ? "\n\n" : "", r[i].author[0] ? r[i].author : "reply", r[i].text);
+    }
+    note_replies_free(r, n);
+    free(c);
+    return out;
+}
+
 void caret_mark(Window *w, View *v, bool comment, uint32_t color)
 {
     v->mark_color = color;
@@ -332,21 +381,17 @@ void caret_mark(Window *w, View *v, bool comment, uint32_t color)
     w->redraw = true;
 }
 
-typedef struct { char *buf; size_t len; } CopyCtx;
-
-void caret_copy(Window *w, View *v, bool cite)
+/* The selected text, hyphens at line ends joined; its first and last page. */
+static char *selection_text(View *v, int *first_page, int *last_page)
 {
-    if (!v->selecting) {
-        ui_message(w, "select with v before copying");
-        return;
-    }
     TextPos a = v->anchor, b = v->caret;
     if (cmp(a, b) > 0) {
         TextPos t = a;
         a = b;
         b = t;
     }
-    CopyCtx c = {NULL, 0};
+    char *buf = NULL;
+    size_t len = 0;
     for (int page = a.page; page <= b.page; page++) {
         FPDF_TEXTPAGE tp = doc_text(v->doc, page);
         int first = page == a.page ? a.ch : 0;
@@ -359,21 +404,119 @@ void caret_copy(Window *w, View *v, bool cite)
         char *s = utf16_to_utf8(u, got > 0 ? got : 0);
         text_join_hyphens(s);
         size_t sl = strlen(s);
-        c.buf = xrealloc(c.buf, c.len + sl + 1);
-        memcpy(c.buf + c.len, s, sl + 1);
-        c.len += sl;
+        buf = xrealloc(buf, len + sl + 1);
+        memcpy(buf + len, s, sl + 1);
+        len += sl;
         free(s);
         free(u);
     }
-    if (c.buf && cite) {
-        cite_copy(w, v, c.buf, a.page, b.page);
-        free(c.buf);
-    } else if (c.buf) {
-        SDL_SetClipboardText(c.buf);
-        ui_message(w, "copied (%zu characters)", c.len);
-        free(c.buf);
+    *first_page = a.page, *last_page = b.page;
+    return buf;
+}
+
+void caret_copy(Window *w, View *v, bool cite)
+{
+    if (!v->selecting) {
+        ui_message(w, "select with v before copying");
+        return;
     }
+    int first, last;
+    char *text = selection_text(v, &first, &last);
+    if (text && cite) {
+        cite_copy(w, v, text, first, last);
+    } else if (text) {
+        SDL_SetClipboardText(text);
+        ui_message(w, "copied (%zu characters)", strlen(text));
+    }
+    free(text);
     v->selecting = false;
+    w->redraw = true;
+}
+
+/* ---------- selecting with the mouse ---------- */
+/* Dragging over the text selects it, as the caret would, and the selection
+ * goes to the clipboard (and the primary selection, for a middle click)
+ * when the button is let go. The caret stays on it, so H, C, y and Y work
+ * on it as after v. A press away from the text, or one that does not move,
+ * is a plain click (links, form fields). */
+static struct {
+    Window *w;
+    bool pressed, dragging;
+    TextPos start;
+    float x, y;
+} drag;
+
+/* The character nearest to a point of a page; false if the page has none
+ * or it is more than `within` points away (< 0: at any distance). */
+static bool char_near(View *v, int page, double px, double py, double within, TextPos *out)
+{
+    PageSlot *s = chars(v, page);
+    double best = -1;
+    for (int i = 0; i < s->nchars; i++) {
+        if (s->line[i] < 0)
+            continue;
+        PRect r = s->boxes[i];
+        double dx = px < r.l ? r.l - px : px > r.r ? px - r.r : 0;
+        double dy = py > r.t ? py - r.t : py < r.b ? r.b - py : 0;
+        double d = dx * dx + 4 * dy * dy; /* the same line before the next one */
+        if (best < 0 || d < best)
+            best = d, *out = (TextPos){page, i};
+    }
+    return best >= 0 && (within < 0 || best <= within * within);
+}
+
+void caret_mouse_down(Window *w, View *v, float x, float y)
+{
+    if (w->mode == MODE_CARET) { /* a click puts a selection away */
+        v->selecting = false;
+        w->mode = MODE_NORMAL;
+        w->redraw = true;
+    }
+    int page;
+    double px, py;
+    drag.w = w;
+    drag.x = x, drag.y = y;
+    drag.dragging = false;
+    drag.pressed = w->mode == MODE_NORMAL && screen_to_page(v, x, y, top_of(w), &page, &px, &py) &&
+                   char_near(v, page, px, py, 10, &drag.start);
+}
+
+void caret_mouse_drag(Window *w, View *v, float x, float y)
+{
+    if (!drag.pressed || drag.w != w)
+        return;
+    if (!drag.dragging) {
+        if (SDL_fabsf(x - drag.x) + SDL_fabsf(y - drag.y) < 6 * w->density || !valid(v, drag.start))
+            return;
+        drag.dragging = true;
+        w->mode = MODE_CARET;
+        v->anchor = v->caret = drag.start;
+        v->selecting = true;
+    }
+    int page;
+    double px, py;
+    TextPos p;
+    if (screen_to_page(v, x, y, top_of(w), &page, &px, &py) && char_near(v, page, px, py, -1, &p)) {
+        v->caret = p;
+        remember_x(v);
+        w->redraw = true;
+    }
+}
+
+void caret_mouse_up(Window *w, View *v)
+{
+    bool dragged = drag.pressed && drag.dragging && drag.w == w;
+    drag.pressed = drag.dragging = false;
+    if (!dragged || w->mode != MODE_CARET || !v->selecting)
+        return;
+    int first, last;
+    char *text = selection_text(v, &first, &last);
+    if (text && *text) {
+        SDL_SetClipboardText(text);
+        SDL_SetPrimarySelectionText(text);
+        ui_message(w, "copied (%zu characters)", strlen(text));
+    }
+    free(text);
     w->redraw = true;
 }
 
@@ -567,7 +710,7 @@ void cursor_draw(Window *w, View *v, int top)
     }
     int page, note;
     if (cursor_note(w, v, &page, &note)) {
-        char *text = note_comment(v->doc, page, note);
+        char *text = note_thread(v->doc, page, note);
         if (text && *text)
             comment_draw(w, text);
         free(text);

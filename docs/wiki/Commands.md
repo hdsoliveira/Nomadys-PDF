@@ -57,6 +57,8 @@ with several options they are listed above the line and `Tab` /
 |---|---|
 | `:export [file.md] [colours] [commented] [tasks]` | highlights, comments and marks to Markdown (tasks as `- [ ]` / `- [x]`) |
 | `:export! …` | the same, allowed to overwrite a file it did not write |
+| `:response [file.md]` | the response letter to the reviewers: their comments and your replies (`r`), by reviewer ([more](Highlights-and-Comments.md#answering-the-reviewers)) |
+| `:response! …` | the same, allowed to overwrite a file it did not write |
 | `:merge copy.pdf` | bring in a co-author's highlights and comments |
 | `:bibtex` | copy the paper's BibTeX entry (by its DOI or arXiv number) |
 | `:image file.png` | put a picture on the page |

@@ -12,6 +12,8 @@ automatically about a second after each change.
    with `w` `b`, to the end of a word with `e`, to the start / end of the
    line with `0` `$`. A number repeats a move: `8j`, `5e`.
 2. `v` again starts **selecting**; move to the end of what you want.
+   Or drag the mouse over the text: it is selected and copied at once,
+   and the keys below work on it as well.
 3. Choose a colour:
 
 | Key | Colour (default) |
@@ -201,6 +203,33 @@ file written by someone else is never overwritten without `!`. From a
 terminal, `npdf --export paper.pdf` prints the same to standard output.
 
 To search your comments across **all** your PDFs, use `\n` ([Searching](Searching.md)).
+
+## Answering the reviewers
+
+The reviewers commented on your manuscript's PDF (in Acrobat, Okular or any
+other reader)? Open it, go through their comments and answer each one:
+
+1. Put the text cursor (`v`) or the free cursor (`Ctrl-v`) on a comment,
+   and press `r`. Your answer is written in the comment box (equations too),
+   and `Enter` keeps it.
+2. `r` again on the same comment changes your answer; emptied, it is
+   deleted. `u` undoes either.
+3. `t` and `d` keep track of which points are dealt with, as for any task.
+
+The answer is stored as a **reply** in the PDF, the way Acrobat and Okular
+write theirs, so they show it in the comment's thread: send the PDF back
+and the reviewer sees your answers under their comments. Replies written
+in other readers show up here as well. In the panel (`\l`), each comment
+shows its latest reply under it; the box that opens on a comment shows the
+whole thread.
+
+`:response` writes the **response letter** in Markdown, next to the PDF
+(`paper-response.md`; `:response letter.md` for another name). It is
+grouped by reviewer (the author of the comments) and numbered. Each point
+has its page, the text the reviewer marked, the comment, and your reply. It
+ends by counting the answered points and listing those still without a
+reply. Your own highlights are left out. As with `:export`, a file written
+by something else is only replaced with `:response!`.
 
 ## Merging a co-author's notes
 

@@ -564,6 +564,18 @@ static void handle_event(SDL_Event *e)
             }
         }
         return;
+    case SDL_EVENT_MOUSE_MOTION:
+        if ((e->motion.state & SDL_BUTTON_LMASK) && (w = window_by_id(e->motion.windowID)) && w->ntabs &&
+            (w->mode == MODE_NORMAL || w->mode == MODE_CARET)) {
+            float x = e->motion.x * w->density, y = e->motion.y * w->density;
+            bool pane = pane_enter_focused(w); /* the pane where the drag began */
+            if (pane)
+                x -= w->pane_x, y -= w->pane_y;
+            caret_mouse_drag(w, cur_view(w), x, y);
+            if (pane && alive(w))
+                pane_leave(w);
+        }
+        return;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
     case SDL_EVENT_MOUSE_BUTTON_UP:
         /* presenting: left click forward, right click back */
@@ -588,16 +600,22 @@ static void handle_event(SDL_Event *e)
             return;
         }
         if ((w = window_by_id(e->button.windowID)) && e->button.button == SDL_BUTTON_LEFT &&
-            (w->mode == MODE_NORMAL || w->mode == MODE_FORM)) {
+            (w->mode == MODE_NORMAL || w->mode == MODE_FORM || w->mode == MODE_CARET)) {
             static float down_x, down_y;
             float x = e->button.x * w->density, y = e->button.y * w->density;
             bool down = e->type == SDL_EVENT_MOUSE_BUTTON_DOWN;
             bool pane = pane_enter_at(w, &x, &y); /* a click focuses the pane */
-            form_click(w, x, y, down);
-            if (down)
+            if (w->mode != MODE_CARET)
+                form_click(w, x, y, down);
+            if (down) {
                 down_x = x, down_y = y;
-            else if (w->mode == MODE_NORMAL && SDL_fabsf(x - down_x) + SDL_fabsf(y - down_y) < 6 * w->density)
+                caret_mouse_down(w, cur_view(w), x, y); /* dragging over text selects it */
+            } else if (w->mode == MODE_CARET) {
+                caret_mouse_up(w, cur_view(w));
+            } else if (w->mode == MODE_NORMAL && SDL_fabsf(x - down_x) + SDL_fabsf(y - down_y) < 6 * w->density) {
+                caret_mouse_up(w, cur_view(w));
                 links_click(w, x, y); /* a plain click on a link follows it */
+            }
             if (pane && alive(w))
                 pane_leave(w);
         }
@@ -745,6 +763,24 @@ static bool script_step(void)
         if (sscanf(tok + 8, "%d,%d", &rw, &rh) == 2)
             SDL_SetWindowSize(w->win, SDL_max(1, rw), SDL_max(1, rh));
         w->redraw = true;
+    } else if (!strncmp(tok, "<drag:", 6)) { /* the left button, from one point to another (window points) */
+        float x0, y0, x1, y1;
+        if (sscanf(tok + 6, "%f,%f,%f,%f", &x0, &y0, &x1, &y1) == 4) {
+            SDL_WindowID id = SDL_GetWindowID(w->win);
+            SDL_Event e = {0};
+            e.button = (SDL_MouseButtonEvent){.type = SDL_EVENT_MOUSE_BUTTON_DOWN, .windowID = id,
+                                              .button = SDL_BUTTON_LEFT, .down = true, .clicks = 1, .x = x0, .y = y0};
+            handle_event(&e);
+            for (int k = 1; k <= 8 && alive(w); k++) {
+                e.motion = (SDL_MouseMotionEvent){.type = SDL_EVENT_MOUSE_MOTION, .windowID = id, .state = SDL_BUTTON_LMASK,
+                                                  .x = x0 + (x1 - x0) * k / 8, .y = y0 + (y1 - y0) * k / 8};
+                handle_event(&e);
+            }
+            e.button = (SDL_MouseButtonEvent){.type = SDL_EVENT_MOUSE_BUTTON_UP, .windowID = id,
+                                              .button = SDL_BUTTON_LEFT, .clicks = 1, .x = x1, .y = y1};
+            if (alive(w))
+                handle_event(&e);
+        }
     } else if (!strncmp(tok, "<wait:", 6)) {
         uint64_t until = SDL_GetTicks() + (uint64_t)atoi(tok + 6);
         while (SDL_GetTicks() < until) {

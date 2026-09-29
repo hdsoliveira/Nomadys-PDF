@@ -363,6 +363,14 @@ static void a_note_task(Window *w, View *v, int c, const char *a)
         ui_message(w, "no highlight or comment under the cursor");
 }
 
+/* r: answer the note under the cursor (a reviewer's), or change the answer */
+static void a_note_reply(Window *w, View *v, int c, const char *a)
+{
+    (void)c, (void)a;
+    if (!note_reply_edit(w, v))
+        ui_message(w, "no highlight or comment under the cursor");
+}
+
 static void a_leave(Window *w, View *v, int c, const char *a)
 {
     (void)c, (void)a;
@@ -770,6 +778,7 @@ static const Binding caret_map[] = {
     {"Y", a_caret_cite, "copy it as a quotation: “…” (p. 5)"}, {"x", a_note_delete, "delete the highlight under the cursor"},
     {"t", a_note_task, "the highlight under the cursor: on / off the task list"},
     {"d", a_note_task, "the task under the cursor: done / to do again"},
+    {"r", a_note_reply, "reply to the comment under the cursor (a reviewer's), or change the reply"},
     GROUP("Other"),
     {"<C-v>", a_area, "switch to the free cursor"}, {"<Esc>", a_leave, "cancel the selection / leave"},
     {"<Enter>", a_source, "LaTeX: open this spot in the editor (SyncTeX)"},
@@ -794,6 +803,7 @@ static const Binding area_map[] = {
     {"x", a_note_delete, "delete the highlight under the cursor"},
     {"t", a_note_task, "the highlight under the cross: on / off the task list"},
     {"d", a_note_task, "the task under the cross: done / to do again"},
+    {"r", a_note_reply, "reply to the comment under the cross (a reviewer's), or change the reply"},
     GROUP("Images, moving and resizing"),
     {"I", a_image_file, "put an image here (PNG, JPEG): inside the rectangle, or at the cross"},
     {"P", a_image_paste, "paste an image from the clipboard (a screenshot) here"},

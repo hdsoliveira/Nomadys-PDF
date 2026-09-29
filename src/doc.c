@@ -384,6 +384,7 @@ void doc_unref(Doc *d)
         }
     }
     free(d->marks_path);
+    free(d->replies);
     free(d->path);
     if (d->password) { /* not left in freed memory */
         explicit_bzero(d->password, strlen(d->password));
@@ -575,6 +576,7 @@ bool doc_save(Doc *d, char *err, size_t errlen)
      * since rewriting them would break the signature. */
     int mode = FPDF_GetSignatureCount(d->pdf) > 0 ? FPDF_INCREMENTAL : FPDF_NO_INCREMENTAL;
     bool ok = FPDF_SaveAsCopy(d->pdf, &w.base, mode) && !w.failed;
+    ok = ok && pdf_link_replies(fd, d->replies, d->nreplies); /* the /IRT PDFium cannot write */
     ok = ok && fsync(fd) == 0;
     ok = (close(fd) == 0) && ok;
     if (ok && rename(tmp, d->path) != 0)
