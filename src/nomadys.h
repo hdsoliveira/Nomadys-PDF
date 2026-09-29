@@ -434,7 +434,7 @@ typedef struct {
     uint32_t color;          /* note colour */
     int task;                /* note: TASK_* */
     bool header;             /* Tasks: the "Done" line between to do and done; not selectable */
-    char when[24];           /* Tasks: when it was done ("today", "3 days ago") */
+    char when[32];           /* Tasks: when it was done ("today", "3 days ago") */
 } PanelItem;
 
 /* links.c: a link on screen, labelled for 'f' / 'F' */

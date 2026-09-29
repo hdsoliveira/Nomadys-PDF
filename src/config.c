@@ -494,6 +494,12 @@ bool theme_save(const char *name, char *err, size_t cap)
     char dir[1024], tmp[1100];
     snprintf(dir, sizeof dir, "%s", path);
     *strrchr(dir, '/') = 0;
+    for (char *c = dir + 1; *c; c++) /* and its parents: $XDG_CONFIG_HOME may not exist yet */
+        if (*c == '/') {
+            *c = 0;
+            mkdir(dir, 0755);
+            *c = '/';
+        }
     mkdir(dir, 0755);
     snprintf(tmp, sizeof tmp, "%s.tmp%d", path, (int)getpid());
     FILE *o = fopen(tmp, "w");

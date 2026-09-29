@@ -781,6 +781,7 @@ static const Binding caret_map[] = {
     {"r", a_note_reply, "reply to the comment under the cursor (a reviewer's), or change the reply"},
     GROUP("Other"),
     {"<C-v>", a_area, "switch to the free cursor"}, {"<Esc>", a_leave, "cancel the selection / leave"},
+    {":", a_command, "command line: :w save, :q close tab, :e file, :42 page"},
     {"<Enter>", a_source, "LaTeX: open this spot in the editor (SyncTeX)"},
     SCROLL_KEYS, MARK_KEYS,
 };
@@ -810,6 +811,7 @@ static const Binding area_map[] = {
     {"e", a_object_edit, "move / resize the image or highlighted area under the cross"},
     GROUP("Other"),
     {"<C-v>", a_to_caret, "back to the text cursor"}, {"<Esc>", a_leave, "cancel / leave"},
+    {":", a_command, "command line: :w save, :q close tab, :e file, :42 page"},
     {"<Enter>", a_source, "LaTeX: open this spot in the editor (SyncTeX)"},
     SCROLL_KEYS, MARK_KEYS,
 };
