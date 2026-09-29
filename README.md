@@ -216,7 +216,8 @@ sequences: `tests/qa/run.sh`. The code is organised one feature per file in
 Releases: `tools/package.sh` builds the AppImage and the `.deb` in an Ubuntu
 22.04 container (with podman), so they run on that and anything newer;
 `tools/distro-test.sh` then tries them on Ubuntu, Debian, Fedora, Arch and
-openSUSE, each in its own container.
+openSUSE, each in its own container: without a window, and in a real one on
+X11 (Xvfb) and Wayland (headless weston), copying text and following links.
 
 ## Licence
 
