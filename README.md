@@ -19,7 +19,7 @@ Free and open source, for everyone. If it saves you time, you can
 
 ![Highlighting, and a comment with an equation](site/assets/demos/highlight.gif)
 
-## Why I wrote it
+## Why I am developing it
 
 I could not find a PDF reader for Linux that fit the way I work.
 [Zathura](https://pwmt.org/projects/zathura/) is great, but too limited for
