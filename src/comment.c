@@ -326,7 +326,12 @@ static void layout_paint(Window *win, const char *text, const Layout *L, float x
         } else if (it->kind == IT_MATH && it->img.tex) {
             uint32_t c = t->comment_fg;
             SDL_SetTextureColorMod(it->img.tex, c >> 16, (c >> 8) & 0xFF, c & 0xFF);
-            SDL_FRect dst = {x0 + it->x, base - it->img.baseline, (float)it->img.w, (float)it->img.h};
+            /* whole pixels: drawn 1:1, a fractional place would drop or double a row */
+            SDL_FRect dst = {SDL_roundf(x0 + it->x), SDL_roundf(base - it->img.baseline), (float)it->img.w,
+                             (float)it->img.h};
+            float full = 0;
+            SDL_GetTextureSize(it->img.tex, &full, NULL);
+            SDL_SetTextureScaleMode(it->img.tex, it->img.w < full ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
             SDL_RenderTexture(win->ren, it->img.tex, NULL, &dst);
         }
     }

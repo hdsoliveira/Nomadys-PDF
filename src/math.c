@@ -312,21 +312,40 @@ static bool make_texture(MathEntry *e, SDL_Renderer *ren, float scale)
     float expect = (e->ht + e->dp) * 72.0f / 72.27f, ph = page ? FPDF_GetPageHeightF(page) : 0;
     if (page && e->ht + e->dp > 0 && SDL_fabsf(ph - expect) < 2 + expect * 0.2f) {
         int w = (int)(FPDF_GetPageWidthF(page) * scale + 0.999f), h = (int)(ph * scale + 0.999f);
-        if (w > 0 && h > 0 && w < 8192 && h < 8192) {
-            FPDF_BITMAP bmp = FPDFBitmap_Create(w, h, 1);
-            if (bmp) {
-                FPDFBitmap_FillRect(bmp, 0, 0, w, h, 0x00000000);
-                FPDF_RenderPageBitmap(bmp, page, 0, 0, w, h, 0, FPDF_ANNOT);
-                uint8_t *px = FPDFBitmap_GetBuffer(bmp);
+        /* drawn SS times larger, then averaged: at the size of a screen's
+         * text (1-2 px per point) PDFium alone drops thin strokes (the top
+         * bar of an "=", a fraction's line) and leaves the rest grey */
+        int ss = scale < 3 ? 4 : 2, W = w * ss, H = h * ss;
+        if (w > 0 && h > 0 && W < 16384 && H < 16384) {
+            FPDF_BITMAP bmp = FPDFBitmap_Create(W, H, 1);
+            uint8_t *out = bmp ? malloc((size_t)w * h * 4) : NULL;
+            if (out) {
+                FPDFBitmap_FillRect(bmp, 0, 0, W, H, 0x00000000);
+                FPDF_RenderPageBitmap(bmp, page, 0, 0, (int)(FPDF_GetPageWidthF(page) * scale * ss + 0.5f),
+                                      (int)(ph * scale * ss + 0.5f), 0, FPDF_ANNOT);
+                const uint8_t *px = FPDFBitmap_GetBuffer(bmp);
                 int stride = FPDFBitmap_GetStride(bmp);
+                /* small type gets a little more weight, as light letters on
+                 * a screen look thinner than on paper */
+                float weight = scale < 2 ? 1.5f : scale < 3 ? 1.25f : 1.0f;
+                uint8_t curve[256];
+                for (int a = 0; a < 256; a++)
+                    curve[a] = (uint8_t)(255.0f * (1 - SDL_powf(1 - a / 255.0f, weight)) + 0.5f);
                 for (int y = 0; y < h; y++)
                     for (int x = 0; x < w; x++) {
-                        uint8_t *p = px + y * stride + x * 4;
-                        p[0] = p[1] = p[2] = 0xFF;
+                        int sum = 0;
+                        for (int j = 0; j < ss; j++) {
+                            const uint8_t *row = px + (size_t)(y * ss + j) * stride + (size_t)x * ss * 4 + 3;
+                            for (int i = 0; i < ss; i++)
+                                sum += row[i * 4];
+                        }
+                        uint8_t *o = out + ((size_t)y * w + x) * 4;
+                        o[0] = o[1] = o[2] = 0xFF; /* white, tinted when drawn */
+                        o[3] = curve[sum / (ss * ss)];
                     }
                 e->tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_BGRA32, SDL_TEXTUREACCESS_STATIC, w, h);
                 if (e->tex) {
-                    SDL_UpdateTexture(e->tex, NULL, px, stride);
+                    SDL_UpdateTexture(e->tex, NULL, out, w * 4);
                     SDL_SetTextureBlendMode(e->tex, SDL_BLENDMODE_BLEND);
                     SDL_SetTextureScaleMode(e->tex, SDL_SCALEMODE_NEAREST);
                     e->ren = ren;
@@ -335,8 +354,10 @@ static bool make_texture(MathEntry *e, SDL_Renderer *ren, float scale)
                     e->th = h;
                     ok = true;
                 }
-                FPDFBitmap_Destroy(bmp);
             }
+            free(out);
+            if (bmp)
+                FPDFBitmap_Destroy(bmp);
         }
     }
     if (page)
