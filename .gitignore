@@ -7,3 +7,4 @@ site/demos/work/
 site/demos/paper/*.aux
 site/demos/paper/*.log
 site/demos/paper/*.out
+dist/
