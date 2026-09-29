@@ -86,18 +86,24 @@ also be changed in the [configuration](Configuration.md#colours), in
 
 ## Dark mode
 
-Dark mode recolours the pages: lightness is inverted but hue is kept (red
-stays red), with the theme's `page_bg` and `page_fg` as paper and ink. The
-ink is given a little more weight than a plain inversion would, so light
-letters on dark paper look as firm as dark letters on white.
+Dark mode recolours the pages: the lightness the eye sees is inverted but
+hue is kept, with the theme's `page_bg` and `page_fg` as paper and ink.
+Coloured text stays readable: red text, dark on white paper, becomes a light
+red on the dark one (the changes marked in red in a revised paper, links in
+blue). The ink is given a little more weight than a plain inversion would,
+so light letters on dark paper look as firm as dark letters on white.
 
-Images are judged one by one (`dark_images = smart`, the default):
+Images are judged piece by piece (`dark_images = smart`, the default), since
+one figure often holds plots and photographs side by side:
 
-- **photos** keep their colours;
-- **figures drawn on white** (plots, diagrams, schematics: most scientific
-  figures) are recoloured with the page, so no white blocks glare. Only the
-  part of a figure that shows counts: one trimmed in LaTeX leaves no light
-  frame around it;
+- **photos** keep their colours: grainy regions, and dark ones (a part
+  photographed on a black backdrop);
+- **drawings** (plots, diagrams, schematics, 3D renders, colour maps: most
+  scientific figures) are recoloured with the page, so no white blocks
+  glare. Only the part of a figure that shows counts: one trimmed in LaTeX
+  leaves no light frame around it;
+- the **white around and between photos** (the gaps between panels, the
+  corners of rounded ones) becomes the page's paper;
 - **pictures you placed** (`Ctrl-v` then `i`, `:image`) always keep their
   own colours, screenshots on white included. A picture with a transparent
   background keeps the colours of what it draws, and the page shows through

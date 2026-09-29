@@ -321,9 +321,12 @@ void view_show_rect(View *v, int page, PRect r, int W, int H, int top)
 
 /* ---------- dark mode ---------- */
 /* Recolours a rendered page with the theme's paper and ink, outside images.
- * Dark mode first inverts lightness (keeping hue: c + 255 - max - min), so
- * white paper becomes 0; each channel then maps paper -> page_bg, ink ->
- * page_fg. The map bends towards the ink (INK_WEIGHT): light text on dark
+ * Dark mode first inverts the lightness the eye sees (luma: 0.21 R + 0.72 G
+ * + 0.07 B), keeping hue: every channel moves by the same amount, so white
+ * paper becomes 0 and black ink 255, and red text, dark on white, becomes
+ * light on dark (inverting max + min instead left pure red and blue as
+ * dark as they were: unreadable). Each channel then maps paper -> page_bg,
+ * ink -> page_fg. The map bends towards the ink (INK_WEIGHT): light text on dark
  * paper looks thinner than dark text on white, and the half-covered pixels
  * at the edges of letters would otherwise fade into the paper. (Light mode
  * never calls this: pages stay white.) */
@@ -347,8 +350,8 @@ static void recolor(uint8_t *px, int w, int h, int stride, const uint8_t *keep, 
                 continue;
             int b = p[0], g = p[1], r = p[2];
             if (dark) {
-                int dlt = 255 - SDL_max(r, SDL_max(g, b)) - SDL_min(r, SDL_min(g, b));
-                b += dlt, g += dlt, r += dlt;
+                int dlt = 255 - 2 * ((r * 54 + g * 183 + b * 19) >> 8);
+                b = SDL_clamp(b + dlt, 0, 255), g = SDL_clamp(g + dlt, 0, 255), r = SDL_clamp(r + dlt, 0, 255);
             }
             p[0] = lut[0][b];
             p[1] = lut[1][g];
@@ -358,20 +361,112 @@ static void recolor(uint8_t *px, int w, int h, int stride, const uint8_t *keep, 
 }
 
 /* A photo keeps its colours in dark mode; a figure drawn on white (plots,
- * diagrams, schematics) is recoloured with the page so it does not glare.
- * Tell them apart by the share of near-white pixels. */
-static bool looks_like_photo(const uint8_t *px, int stride, int l, int t, int r, int b)
+ * diagrams, schematics, 3D renders) is recoloured with the page so it does
+ * not glare. One image often holds both (a figure with plots and photos),
+ * so this is judged in tiles: a photo is grainy (most neighbouring pixels
+ * differ), a drawing is flat, and mostly light. Measured on real papers:
+ * photos 0.34-0.66 of pixels differ from the next but one, drawings, renders
+ * and colour maps below 0.26. A grainy tile counts only among grainy
+ * neighbours (3 of 8). A tile that is mostly dark is kept too (a photo on a
+ * smooth black backdrop): recolouring would only make it light. Marks the
+ * tiles to keep of (l, t, r, b) in m. */
+#define TILE 32
+static void mark_photo_tiles(uint8_t *m, int w, const uint8_t *px, int stride, int l, int t, int r, int b)
 {
-    long white = 0, total = 0;
-    int step = SDL_max(1, SDL_min(r - l, b - t) / 64);
-    for (int y = t; y < b; y += step) {
-        const uint8_t *row = px + (size_t)y * stride;
-        for (int x = l; x < r; x += step, total++) {
-            const uint8_t *q = row + 4 * x;
-            white += q[0] > 225 && q[1] > 225 && q[2] > 225;
+    int cols = (r - l + TILE - 1) / TILE, rows = (b - t + TILE - 1) / TILE;
+    uint8_t *kind = calloc((size_t)cols * rows, 1); /* 1 grainy, 2 dark */
+    if (!kind)
+        return;
+    for (int j = 0; j < rows; j++)
+        for (int i = 0; i < cols; i++) {
+            int tx = l + i * TILE, ty = t + j * TILE, x1 = SDL_min(r, tx + TILE), y1 = SDL_min(b, ty + TILE);
+            int n = 0, light = 0, grain = 0, dark = 0;
+            for (int y = ty; y < y1; y++) {
+                const uint8_t *row = px + (size_t)y * stride;
+                for (int x = tx; x + 2 < x1; x++, n++) {
+                    const uint8_t *q = row + 4 * x, *q2 = q + 8;
+                    light += q[0] > 225 && q[1] > 225 && q[2] > 225;
+                    dark += q[0] * 19 + q[1] * 183 + q[2] * 54 < 90 * 256;
+                    grain += SDL_abs(q[0] - q2[0]) > 3 || SDL_abs(q[1] - q2[1]) > 3 || SDL_abs(q[2] - q2[2]) > 3;
+                }
+            }
+            kind[j * cols + i] = !n ? 0 : dark * 2 >= n ? 2 : grain * 3 >= n && light * 4 < n ? 1 : 0;
         }
+    /* a photo is a run of grainy tiles; a lone one is the detail of a
+     * drawing or a render, recoloured with the rest of it */
+    for (int j = 0; j < rows; j++)
+        for (int i = 0; i < cols; i++) {
+            int k = kind[j * cols + i], near = 0;
+            if (k == 1)
+                for (int dj = -1; dj <= 1; dj++)
+                    for (int di = -1; di <= 1; di++)
+                        if ((di || dj) && i + di >= 0 && i + di < cols && j + dj >= 0 && j + dj < rows)
+                            near += kind[(j + dj) * cols + i + di] == 1;
+            if (k == 2 || (k == 1 && near >= 3)) {
+                int tx = l + i * TILE, ty = t + j * TILE, x1 = SDL_min(r, tx + TILE), y1 = SDL_min(b, ty + TILE);
+                for (int y = ty; y < y1; y++)
+                    memset(m + (size_t)y * w + tx, 1, (size_t)(x1 - tx));
+            }
+        }
+    free(kind);
+}
+
+/* Clears from the mask the near-white pixels joined to the chosen edges of
+ * the box (l, t, r, b): a flood fill, 4-connected, through every white
+ * pixel of the box (kept or not), so that the white between two photos is
+ * found even where recoloured tiles lie on the way. */
+#define PAPER_WHITE 238
+static void unwhite_edges(uint8_t *m, int w, const uint8_t *px, int stride, int l, int t, int r, int b, bool left,
+                          bool top, bool right, bool bottom)
+{
+    int bw = r - l, bh = b - t;
+    if (bw <= 0 || bh <= 0)
+        return;
+    int *stack = malloc((size_t)bw * bh * sizeof *stack), n = 0;
+    uint8_t *seen = calloc((size_t)bw * bh, 1);
+    if (!stack || !seen) {
+        free(stack);
+        free(seen);
+        return;
     }
-    return total && white * 100 < total * 30;
+#define WHITE(x, y) (px[(size_t)(y) * stride + 4 * (x)] >= PAPER_WHITE && px[(size_t)(y) * stride + 4 * (x) + 1] >= PAPER_WHITE && \
+                     px[(size_t)(y) * stride + 4 * (x) + 2] >= PAPER_WHITE)
+#define PUSH(x, y)                                                                     \
+    do {                                                                               \
+        int j_ = ((y) - t) * bw + ((x) - l);                                           \
+        if (!seen[j_] && WHITE(x, y)) {                                                \
+            seen[j_] = 1;                                                              \
+            m[(size_t)(y) * w + (x)] = 0;                                              \
+            stack[n++] = j_;                                                           \
+        }                                                                              \
+    } while (0)
+    for (int x = l; x < r; x++) {
+        if (top)
+            PUSH(x, t);
+        if (bottom)
+            PUSH(x, b - 1);
+    }
+    for (int y = t; y < b; y++) {
+        if (left)
+            PUSH(l, y);
+        if (right)
+            PUSH(r - 1, y);
+    }
+    while (n > 0) {
+        int at = stack[--n], x = l + at % bw, y = t + at / bw;
+        if (x > l)
+            PUSH(x - 1, y);
+        if (x + 1 < r)
+            PUSH(x + 1, y);
+        if (y > t)
+            PUSH(x, y - 1);
+        if (y + 1 < b)
+            PUSH(x, y + 1);
+    }
+#undef PUSH
+#undef WHITE
+    free(stack);
+    free(seen);
 }
 
 /* Pixels to leave untouched in dark mode (see dark_images in the config). */
@@ -394,14 +489,26 @@ static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w,
         int t = SDL_max(0, SDL_min(y0, y1)), b = SDL_min(h, SDL_max(y0, y1) + 1);
         if (l >= rr || t >= b)
             continue;
-        if (cfg.dark_images == DARK_IMAGES_SMART && k < s->placed_from && !looks_like_photo(px, stride, l, t, rr, b))
-            continue;
         if (!m && !(m = calloc((size_t)w * h, 1)))
             return NULL; /* no memory for the mask: recolour everything */
+        if (cfg.dark_images == DARK_IMAGES_SMART && k < s->placed_from) { /* photos kept, drawings recoloured */
+            mark_photo_tiles(m, w, px, stride, l, t, rr, b);
+            unwhite_edges(m, w, px, stride, l, t, rr, b, SDL_min(x0, x1) >= 0, SDL_min(y0, y1) >= 0,
+                          SDL_max(x0, x1) + 1 <= w, SDL_max(y0, y1) + 1 <= h);
+            continue;
+        }
         const Alpha *al = k >= s->placed_from && s->alphas ? &s->alphas[k - s->placed_from] : NULL;
         if (!al || !al->a) {
             for (int y = t; y < b; y++)
                 memset(m + (size_t)y * w + l, 1, rr - l);
+            /* a photo in the paper: the white reaching its edges (the gaps
+             * between the panels of a figure, the corners around rounded
+             * ones) is paper, recoloured with the page. Only from the edges
+             * the image really has, not where this slice of the page cuts
+             * it. Pictures you placed keep every pixel. */
+            if (k < s->placed_from)
+                unwhite_edges(m, w, px, stride, l, t, rr, b, SDL_min(x0, x1) >= 0, SDL_min(y0, y1) >= 0,
+                              SDL_max(x0, x1) + 1 <= w, SDL_max(y0, y1) + 1 <= h);
             continue;
         }
         /* a see-through picture: only where it is opaque; the page around
