@@ -437,6 +437,11 @@ static void handle_request(char *msg)
     synctex_forward(w, v, f[4], atoi(f[2]), atoi(f[3]));
     if (pane)
         pane_leave(w);
+    /* the window may be on another workspace, or hidden: ask for it. How
+     * far the window manager goes is its call (sway: focus_on_window_activation) */
+    SDL_SetHint(SDL_HINT_FORCE_RAISEWINDOW, "1");
+    SDL_RestoreWindow(w->win);
+    SDL_RaiseWindow(w->win);
 }
 
 static void file_changed(int wd, const char *name)
