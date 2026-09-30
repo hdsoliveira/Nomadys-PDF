@@ -10,6 +10,8 @@
 #                  weston has no seat) and following a link (a stand-in
 #                  xdg-open records the address)
 #   nofonts        without a single font installed: it must not crash
+#   pacman, pacman-x11, pacman-wayland
+#                  the Arch package (tools/aur-build.sh), when there is one
 #   tools/distro-test.sh [DISTRO...]     (default: all below)
 # Logs and screenshots in dist/test/DISTRO-KIND/.
 set -eu
@@ -17,6 +19,7 @@ cd "$(dirname "$0")/.."
 ENGINE=${ENGINE:-podman}
 APPIMAGE=$(ls -t dist/*.AppImage 2>/dev/null | head -1)
 DEB=$(ls -t dist/*.deb 2>/dev/null | head -1)
+PKG=$(ls -t dist/*.pkg.tar.zst 2>/dev/null | head -1)  # tools/aur-build.sh, optional
 [ -n "$APPIMAGE" ] && [ -n "$DEB" ] || { echo "no packages in dist/: run tools/package.sh first"; exit 2; }
 ALL="ubuntu:22.04 ubuntu:24.04 debian:12 debian:13 fedora:latest archlinux:latest opensuse/tumbleweed:latest"
 DISTROS=${*:-$ALL}
@@ -115,15 +118,17 @@ run() { # distro kind  -> one line
     distro=$1 kind=$2
     dir=dist/test/$(echo "$distro" | tr ':/' '--')-$kind
     rm -rf "$dir" && mkdir -p "$dir"
-    session=$SESSION backend=
+    session=$SESSION backend= gui=0 install=true npdf=/pkg/$(basename "$APPIMAGE")
+    case $kind in *x11) backend=x11 ;; *wayland) backend=wayland ;; esac
+    [ -n "$backend" ] && session=$GUI_SESSION gui=1
     case $kind in
-    appimage) prep=$(setup "$distro" 0); npdf=/pkg/$(basename "$APPIMAGE") ;;
-    deb) prep="$(setup "$distro" 0) && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq /pkg/$(basename "$DEB") >/dev/null"; npdf=npdf ;;
-    x11 | wayland) prep=$(setup "$distro" 1); npdf=/pkg/$(basename "$APPIMAGE"); session=$GUI_SESSION backend=$kind ;;
-    nofonts) # the libraries, but not one font
-        prep="apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends libfontconfig1 libfreetype6 zlib1g >/dev/null"
-        npdf=/pkg/$(basename "$APPIMAGE") ;;
+    deb) install="DEBIAN_FRONTEND=noninteractive apt-get install -y -qq /pkg/$(basename "$DEB") >/dev/null"; npdf=npdf ;;
+    pacman*) install="pacman -U --noconfirm /pkg/$(basename "$PKG") >/dev/null"; npdf=npdf ;;
     esac
+    prep="$(setup "$distro" $gui) && $install"
+    if [ "$kind" = nofonts ]; then # the libraries, but not one font
+        prep="apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends libfontconfig1 libfreetype6 zlib1g >/dev/null"
+    fi
     case $distro in */*) image=docker.io/$distro ;; *) image=docker.io/library/$distro ;; esac
     result=$("$ENGINE" run --rm -v "$PWD/dist:/pkg:ro,Z" -v "$PWD/tests:/tests:ro,Z" -v "$PWD/$dir:/out:Z" \
         -e NPDF="$npdf" -e BACKEND="$backend" "$image" sh -c "$prep && sh -c '$session'" 2>"$dir/container.log" |
@@ -136,6 +141,7 @@ for d in $DISTROS; do
     run "$d" x11 &
     run "$d" wayland &
     case $d in ubuntu* | debian*) run "$d" deb & ;; esac
+    case $d in archlinux*) [ -n "$PKG" ] && for k in pacman pacman-x11 pacman-wayland; do run "$d" $k & done ;; esac
 done
 run debian:13 nofonts &
 wait

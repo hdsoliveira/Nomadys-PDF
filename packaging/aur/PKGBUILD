@@ -1,0 +1,41 @@
+# Maintainer: Hugo de Souza Oliveira <hs.oliveira@mailbox.org>
+pkgname=nomadys-pdf
+pkgver=0.4.0
+pkgrel=1
+pkgdesc='Keyboard-driven PDF reader for research: vim keys, highlights, LaTeX comments, SyncTeX'
+arch=('x86_64')
+url='https://github.com/hdsoliveira/Nomadys-PDF'
+# npdf and stb: MIT; PDFium and the libraries inside it (share/doc/nomadys-pdf/licenses)
+license=('MIT' 'BSD-3-Clause' 'BSD-2-Clause' 'Apache-2.0' 'Apache-2.0 WITH LLVM-exception'
+         'FTL' 'IJG' 'libpng-2.0' 'Zlib' 'Unicode-3.0' 'LicenseRef-AGG')
+depends=('sdl3' 'fontconfig' 'zlib' 'glibc' 'libgcc' 'hicolor-icon-theme')
+makedepends=('freetype2')  # headers; at run time npdf uses the FreeType inside PDFium
+optdepends=('xdg-utils: open web links'
+            'texlive-latexextra: LaTeX equations in comments'
+            'curl: BibTeX of a cited DOI'
+            'cups: printing')
+_pdfium=8066  # tools/fetch_pdfium.sh: the prebuilt PDFium npdf is tested with
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
+        "pdfium-$_pdfium.tgz::https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/$_pdfium/pdfium-linux-x64.tgz")
+noextract=("pdfium-$_pdfium.tgz")
+sha256sums=('SKIP'
+            '0b43f405477cf2cfc4dbff06905093c3309756c6bca1fb9da99234a2ca97fed2')
+
+prepare() {
+  cd "Nomadys-PDF-$pkgver"
+  mkdir -p third_party/pdfium
+  bsdtar -xf "$srcdir/pdfium-$_pdfium.tgz" -C third_party/pdfium
+}
+
+build() {
+  cd "Nomadys-PDF-$pkgver"
+  make
+}
+
+package() {
+  cd "Nomadys-PDF-$pkgver"
+  make DESTDIR="$pkgdir" PREFIX=/usr install
+  install -d "$pkgdir/usr/share/licenses/$pkgname"
+  ln -s /usr/share/doc/nomadys-pdf/LICENSE /usr/share/doc/nomadys-pdf/licenses \
+    "$pkgdir/usr/share/licenses/$pkgname/"
+}

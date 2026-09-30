@@ -12,7 +12,7 @@ SRC := $(wildcard src/*.c)
 OBJ := $(SRC:src/%.c=build/%.o)
 
 npdf: $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $(OBJ) $(LDLIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJ) $(LDLIBS)
 
 build/%.o: src/%.c src/nomadys.h | build
 	$(CC) $(CFLAGS) -c -o $@ $<
@@ -25,24 +25,27 @@ $(OBJ): | $(PDFIUM)/lib/libpdfium.so
 $(PDFIUM)/lib/libpdfium.so:
 	tools/fetch_pdfium.sh
 
+# a package stages into DESTDIR; the caches are then the package manager's job
+D := $(DESTDIR)$(PREFIX)
+
 install: npdf
-	install -Dm755 npdf $(PREFIX)/bin/npdf
-	rm -f $(PREFIX)/bin/nomadys-pdf  # the old name of the command
-	install -Dm644 $(PDFIUM)/lib/libpdfium.so $(PREFIX)/lib/nomadys-pdf/libpdfium.so
-	install -d $(PREFIX)/share/nomadys-pdf/themes
-	install -m644 themes/*.conf $(PREFIX)/share/nomadys-pdf/themes/
+	install -Dm755 npdf $(D)/bin/npdf
+	rm -f $(D)/bin/nomadys-pdf  # the old name of the command
+	install -Dm644 $(PDFIUM)/lib/libpdfium.so $(D)/lib/nomadys-pdf/libpdfium.so
+	install -d $(D)/share/nomadys-pdf/themes
+	install -m644 themes/*.conf $(D)/share/nomadys-pdf/themes/
 	for n in 16 24 32 48 64 128 256 512; do \
-		install -Dm644 icons/nomadys-pdf-$$n.png $(PREFIX)/share/icons/hicolor/$${n}x$${n}/apps/nomadys-pdf.png; \
+		install -Dm644 icons/nomadys-pdf-$$n.png $(D)/share/icons/hicolor/$${n}x$${n}/apps/nomadys-pdf.png; \
 	done
-	install -Dm644 docs/icon.svg $(PREFIX)/share/icons/hicolor/scalable/apps/nomadys-pdf.svg
-	install -Dm644 npdf.desktop $(PREFIX)/share/applications/npdf.desktop
-	install -d $(PREFIX)/share/doc/nomadys-pdf/licenses/themes $(PREFIX)/share/doc/nomadys-pdf/licenses/pdfium
-	install -m644 LICENSE $(PREFIX)/share/doc/nomadys-pdf/
-	install -m644 licenses/*.txt licenses/README.md $(PREFIX)/share/doc/nomadys-pdf/licenses/
-	install -m644 licenses/themes/*.txt $(PREFIX)/share/doc/nomadys-pdf/licenses/themes/
-	install -m644 $(PDFIUM)/LICENSE $(PDFIUM)/licenses/* $(PREFIX)/share/doc/nomadys-pdf/licenses/pdfium/
-	@gtk-update-icon-cache -q $(PREFIX)/share/icons/hicolor 2>/dev/null || true
-	@update-desktop-database -q $(PREFIX)/share/applications 2>/dev/null || true
+	install -Dm644 docs/icon.svg $(D)/share/icons/hicolor/scalable/apps/nomadys-pdf.svg
+	install -Dm644 npdf.desktop $(D)/share/applications/npdf.desktop
+	install -d $(D)/share/doc/nomadys-pdf/licenses/themes $(D)/share/doc/nomadys-pdf/licenses/pdfium
+	install -m644 LICENSE $(D)/share/doc/nomadys-pdf/
+	install -m644 licenses/*.txt licenses/README.md $(D)/share/doc/nomadys-pdf/licenses/
+	install -m644 licenses/themes/*.txt $(D)/share/doc/nomadys-pdf/licenses/themes/
+	install -m644 $(PDFIUM)/LICENSE $(PDFIUM)/licenses/* $(D)/share/doc/nomadys-pdf/licenses/pdfium/
+	@[ -n "$(DESTDIR)" ] || gtk-update-icon-cache -q $(D)/share/icons/hicolor 2>/dev/null || true
+	@[ -n "$(DESTDIR)" ] || update-desktop-database -q $(D)/share/applications 2>/dev/null || true
 
 uninstall:
 	rm -f $(PREFIX)/bin/npdf $(PREFIX)/bin/nomadys-pdf

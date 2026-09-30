@@ -218,6 +218,9 @@ Releases: `tools/package.sh` builds the AppImage and the `.deb` in an Ubuntu
 `tools/distro-test.sh` then tries them on Ubuntu, Debian, Fedora, Arch and
 openSUSE, each in its own container: without a window, and in a real one on
 X11 (Xvfb) and Wayland (headless weston), copying text and following links.
+The AUR package is `packaging/aur/PKGBUILD`: `tools/aur-build.sh` builds it
+from this tree in an Arch container, with namcap, and `tools/distro-test.sh`
+then tries it too.
 
 ## Licence
 
