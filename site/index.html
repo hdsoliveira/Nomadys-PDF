@@ -5,13 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nomadys-PDF · the keyboard-driven PDF reader for research</title>
 <meta name="description" content="For people who read PDFs for hours: a fast, minimal PDF reader for Linux, driven by vim-style keys: highlights and comments with LaTeX equations, search across every PDF you own, reference previews, version comparison, SyncTeX. Open source.">
-<meta property="og:title" content="Nomadys-PDF">
-<meta property="og:description" content="The keyboard-driven PDF reader for research.">
+<meta name="theme-color" content="#1c2143">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Nomadys-PDF: the keyboard-driven PDF reader for research">
+<meta property="og:description" content="Highlights and comments with LaTeX equations, pictures and text on the page, search across every PDF you own, version comparison. Minimal, fast, free and open source, for Linux.">
 <meta property="og:image" content="assets/demos/highlight.jpg">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="assets/icon.svg">
 <link rel="stylesheet" href="assets/style.css">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Nomadys-PDF","applicationCategory":"UtilitiesApplication","operatingSystem":"Linux","softwareVersion":"0.5.0","license":"https://opensource.org/licenses/MIT","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"A minimal, fast, keyboard-driven PDF reader for Linux, made for researchers: highlights and comments with LaTeX equations, pictures and text on the page, search across every PDF you own, version comparison, SyncTeX.","url":"https://github.com/hdsoliveira/Nomadys-PDF","author":{"@type":"Person","name":"Hugo Oliveira"}}
+</script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to the content</a>
 
 <header class="top"><div class="wrap">
   <a class="brand" href="index.html"><img src="assets/icon.svg" alt="">Nomadys-PDF</a>
@@ -20,12 +27,13 @@
     <a href="#themes">Themes</a>
     <a href="#research">For research</a>
     <a class="docs-link" href="docs/index.html">Documentation</a>
-    <a href="#install">Install</a>
+    <a href="#install">Download</a>
     <a class="gh" href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a>
+    <a class="pill" href="https://ko-fi.com/hugooliveira35800"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9Z"/><path d="M17 11h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M8 3v3M12 3v3"/></svg>Buy me a coffee</a>
   </nav>
 </div></header>
 
-<main>
+<main id="main">
 <div class="hero"><div class="wrap">
   <img class="icon" src="assets/icon.svg" alt="The Nomadys-PDF icon: a tent at dawn, a trail towards the mountain, a page lit in the doorway">
   <h1>For people who read PDFs<br><span>for hours on end.</span></h1>
@@ -37,11 +45,12 @@
   <p class="lead small">Made first for <b>researchers who love keyboard-driven tools</b>, but anyone can use it.</p>
   <p class="lead small">I wrote it for my own daily reading, and I give it to the community for free.</p>
   <div class="buttons">
-    <a class="btn primary" href="#install">Install</a>
+    <a class="btn primary" href="#install">Download</a>
     <a class="btn" href="docs/index.html">Read the documentation</a>
     <a class="btn" href="https://github.com/hdsoliveira/Nomadys-PDF">Source code</a>
+    <a class="btn coffee" href="https://ko-fi.com/hugooliveira35800"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9Z"/><path d="M17 11h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M8 3v3M12 3v3"/></svg>Buy me a coffee</a>
   </div>
-  <p class="meta">Version 0.4.0 · Linux (Wayland and X11) · free and open source, MIT licence</p>
+  <p class="meta">Version 0.5.0 · Linux (Wayland and X11) · .deb, AppImage and Arch package · free and open source, MIT licence</p>
 
   <div class="window">
     <div class="bar"><i></i><i></i><i></i><span>Highlighting, and a comment with an equation</span></div>
@@ -59,8 +68,9 @@
       <li><b>Find any paper</b>: <kbd>\f</kbd> by name, <kbd>\/</kbd> by its text, <kbd>\o</kbd> the recent ones</li>
       <li><b>Notes that travel</b>: highlights and comments saved in the PDF, shown by every other reader</li>
       <li><b>A to-do list in your papers</b>: <kbd>t</kbd> puts a highlight on it, <kbd>d</kbd> ticks it; <code>:tasks</code> shows what is left in all of them</li>
-      <li><b>Undo anything</b>: highlights, comments, images, deleted pages</li>
-      <li><b>Easy on the eyes</b>: a dark mode that keeps photographs, fifteen themes, any system font</li>
+      <li><b>Pictures and text on the page</b>: place a signature, turn and mirror it, write a note anywhere; with the keyboard or the mouse</li>
+      <li><b>Undo anything</b>: highlights, comments, images, text, deleted pages</li>
+      <li><b>Easy on the eyes</b>: a dark mode that keeps photographs, fifteen themes, menus always in the theme's dark side, any system font</li>
       <li><b>No learning wall</b>: <kbd>\c</kbd> shows every key of the mode you are in, and messages say what the next key does</li>
     </ul>
   </div>
@@ -116,6 +126,47 @@
 
   <div class="feature">
     <div class="media window">
+      <div class="bar"><i></i><i></i><i></i><span>:image · drag · corner · knob · f</span></div>
+      <video autoplay muted loop playsinline preload="metadata" poster="assets/demos/images.jpg" aria-label="A stamp placed on a page, moved, resized and turned with the mouse, then mirrored with a key"><source src="assets/demos/images.mp4" type="video/mp4"></video>
+    </div>
+    <div>
+      <h3>Signatures and pictures: place them, turn them, mirror them</h3>
+      <p>A signature, a stamp, a screenshot: <code>:image file.png</code>, or paste one. Then
+        <b>drag it with the mouse</b>: the picture to move it, a corner to resize it, the knob
+        above it to turn it to any angle. Prefer the keyboard? <kbd>hjkl</kbd> move,
+        <kbd>+</kbd> <kbd>-</kbd> resize, <kbd>o</kbd> turns it, <kbd>f</kbd> and <kbd>F</kbd>
+        mirror it.</p>
+      <ul>
+        <li>Follows the mouse at once, even on a heavy page</li>
+        <li>Never re-encoded: crop, turn and mirror can be undone at any time, without loss</li>
+        <li>Standard annotations: every other reader shows them</li>
+      </ul>
+      <p class="keys"><a href="docs/Images-and-Regions.html">How it works →</a> · <a class="gif" href="assets/demos/images.gif">GIF</a></p>
+    </div>
+  </div>
+
+  <div class="feature flip">
+    <div class="media window">
+      <div class="bar"><i></i><i></i><i></i><span>T · write · Ctrl-= · e · L</span></div>
+      <video autoplay muted loop playsinline preload="metadata" poster="assets/demos/text.jpg" aria-label="Text written on a page: the box grows with the text, the letters get bigger, the box is made wider"><source src="assets/demos/text.mp4" type="video/mp4"></video>
+    </div>
+    <div>
+      <h3>Write anywhere on the page</h3>
+      <p>Fill in a line a form has no field for, label a figure, leave a note in the margin:
+        press <kbd>T</kbd>, write, and the <b>box grows with the text</b>. <kbd>Ctrl-=</kbd> and
+        <kbd>Ctrl--</kbd> change the letters; later <kbd>e</kbd> moves the box or changes its width, and
+        <kbd>i</kbd> writes in it again.</p>
+      <ul>
+        <li>Real text in a standard font: a few bytes a letter, sharp at any zoom, and other readers can select and search it</li>
+        <li>Accents and the usual signs work; other alphabets are coming</li>
+        <li>Undo, redo and delete like everything else</li>
+      </ul>
+      <p class="keys"><a href="docs/Images-and-Regions.html#writing-text-on-a-page">How it works →</a> · <a class="gif" href="assets/demos/text.gif">GIF</a></p>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="media window">
       <div class="bar"><i></i><i></i><i></i><span>F · d · Enter · Ctrl-o</span></div>
       <video autoplay muted loop playsinline preload="metadata" poster="assets/demos/preview.jpg"><source src="assets/demos/preview.mp4" type="video/mp4"></video>
     </div>
@@ -163,6 +214,7 @@
         changes in amber, deletions marked in red. <kbd>]c</kbd> goes to the next change and
         tells you what it was: <em>changed, was "3.2"</em>.</p>
       <ul>
+        <li><b>Notes too</b>: new, changed and removed highlights, comments and text boxes are framed in the same colours</li>
         <li>Ignores what is not a change: hyphenation, ligatures, page breaks</li>
         <li>Updated every time LaTeX recompiles: answering reviewers becomes easy</li>
       </ul>
@@ -240,7 +292,8 @@
     <div>
       <h3>Pick one while you read</h3>
       <p>Moving in the list applies each theme at once; <kbd>Enter</kbd> keeps it,
-        <kbd>Esc</kbd> goes back.</p>
+        <kbd>Esc</kbd> goes back. Menus, bars and lists are always in the theme's dark side, so
+        only the page changes when you switch modes.</p>
       <ul>
         <li>gruvbox, tokyonight, catppuccin, rosé pine, kanagawa</li>
         <li>everforest, dracula, nord, solarized, flexoki</li>
@@ -267,6 +320,8 @@
       <p>Highlights and comments, page by page, with equations, filtered by colour; tasks as check boxes. Great with Obsidian.</p></div>
     <div class="card"><span class="k">:merge co-author.pdf</span><h4>Co-authors' notes</h4>
       <p>Bring the highlights and comments of a colleague's copy into yours, without duplicates.</p></div>
+    <div class="card"><span class="k">T</span><h4>Text anywhere on a page</h4>
+      <p>Write a note, a label or a line a form has no field for: the box grows with the text, and you can write in it again later.</p></div>
     <div class="card"><span class="k">Ctrl-v · y</span><h4>Figures for slides</h4>
       <p>Mark a region and copy it as a 300 dpi image, or place a picture or a signature on a page.</p></div>
     <div class="card"><span class="k">F5</span><h4>Presentations</h4>
@@ -289,13 +344,35 @@
 </div></section>
 
 <section id="install"><div class="wrap">
-  <p class="eyebrow">Install</p>
+  <p class="eyebrow">Download</p>
   <h2>Up and running in a minute</h2>
-  <p class="intro">Nomadys-PDF builds from source on any recent Linux. The PDF engine
-    (PDFium, the engine of Chrome) is downloaded and verified automatically.</p>
+  <p class="intro">Pick what suits your system. Every file has a SHA-256 in
+    <code>SHA256SUMS</code>. Tried on Ubuntu 22.04 and 24.04, Debian 12 and 13, Fedora, Arch and
+    openSUSE Tumbleweed, under X11 and Wayland.</p>
+  <div class="downloads">
+    <div class="dl">
+      <h3>Debian, Ubuntu, Linux Mint, Pop!_OS</h3>
+      <p>The <code>.deb</code> package: double-click it, or</p>
+<pre>sudo apt install ./nomadys-pdf_0.5.0_amd64.deb</pre>
+      <a class="btn primary" href="https://github.com/hdsoliveira/Nomadys-PDF/releases/latest">Get the .deb</a>
+    </div>
+    <div class="dl">
+      <h3>Any distribution</h3>
+      <p>The AppImage: nothing to install.</p>
+<pre>chmod +x Nomadys-PDF-0.5.0-x86_64.AppImage
+./Nomadys-PDF-0.5.0-x86_64.AppImage</pre>
+      <a class="btn primary" href="https://github.com/hdsoliveira/Nomadys-PDF/releases/latest">Get the AppImage</a>
+    </div>
+    <div class="dl">
+      <h3>Arch Linux</h3>
+      <p>From the AUR, with your helper of choice:</p>
+<pre>yay -S nomadys-pdf</pre>
+      <a class="btn" href="https://aur.archlinux.org/packages/nomadys-pdf">nomadys-pdf on the AUR</a>
+    </div>
+  </div>
   <div class="install">
     <div>
-      <h3>1. Build and install</h3>
+      <h3>Or build it from source</h3>
 <pre><span class="c"># Debian / Ubuntu</span>
 sudo apt install build-essential pkg-config libsdl3-dev \
      libfreetype-dev libfontconfig-dev zlib1g-dev
@@ -303,12 +380,14 @@ sudo apt install build-essential pkg-config libsdl3-dev \
 git clone https://github.com/hdsoliveira/Nomadys-PDF.git
 cd Nomadys-PDF
 make && make install</pre>
+      <p>The PDF engine (PDFium, the engine of Chrome) is downloaded and verified
+        automatically.</p>
     </div>
     <div>
-      <h3>2. Open a paper</h3>
+      <h3>Open a paper</h3>
 <pre>npdf paper.pdf          <span class="c"># or several: one tab each</span>
 npdf                    <span class="c"># your last session</span></pre>
-      <h3>3. Learn the keys as you go</h3>
+      <h3>Learn the keys as you go</h3>
       <p><kbd>\c</kbd> shows every key of the mode you are in. The
         <a href="docs/Getting-Started.html">getting started guide</a> takes five minutes, and the
         <a href="docs/Keyboard-Reference.html">keyboard reference</a> lists everything.</p>
@@ -318,14 +397,26 @@ npdf                    <span class="c"># your last session</span></pre>
   </div>
 </div></section>
 
-<section class="soft" id="support"><div class="wrap support">
+<section class="soft" id="limits"><div class="wrap">
+  <p class="eyebrow">Honestly</p>
+  <h2>What it does not do (yet)</h2>
+  <ul class="limits">
+    <li><b>Linux only</b>, for now (Wayland and X11).</li>
+    <li><b>Text on the page</b> uses the Latin alphabet with accents; Chinese, Japanese, Korean, Greek and Cyrillic, bold, italic and equations are planned.</li>
+    <li><b>Autosave</b> is on: the open file is saved by itself. <code>:w name.pdf</code> saves a copy; set <code>autosave = false</code> to keep an original untouched.</li>
+    <li><b>:diff</b> compares text and notes, not figures.</li>
+    <li><b>No OCR</b>: scanned pages are shown, not read.</li>
+  </ul>
+</div></section>
+
+<section id="support"><div class="wrap support">
   <p class="eyebrow">Free, and it stays free</p>
   <h2>Enjoying it? Help it grow</h2>
   <p class="intro">Nomadys-PDF has no ads, no accounts and no paid version: I build it in my free
     time and share it with everyone. A star on GitHub helps others find it, and every bug report
     or idea makes it better. If it saves you time, you can also buy me a coffee.</p>
   <div class="buttons">
-    <a class="btn coffee" href="https://ko-fi.com/hugooliveira35800"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9Z"/><path d="M17 11h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M8 3v3M12 3v3"/></svg>Buy me a coffee</a>
+    <a class="btn coffee big" href="https://ko-fi.com/hugooliveira35800"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9Z"/><path d="M17 11h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M8 3v3M12 3v3"/></svg>Buy me a coffee</a>
     <a class="btn primary" href="https://github.com/hdsoliveira/Nomadys-PDF">Star it on GitHub</a>
     <a class="btn" href="https://github.com/hdsoliveira/Nomadys-PDF/issues">Report a bug or an idea</a>
   </div>
@@ -333,7 +424,7 @@ npdf                    <span class="c"># your last session</span></pre>
 </main>
 
 <footer><div class="wrap">
-  <span>Nomadys-PDF 0.4.0 · MIT licence · made by Hugo Oliveira</span>
+  <span>Nomadys-PDF 0.5.0 · MIT licence · made by Hugo Oliveira</span>
   <span class="right"><a href="docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:hs.oliveira@mailbox.org">Contact</a><a href="https://ko-fi.com/hugooliveira35800">Buy me a coffee</a></span>
 </div></footer>
 </body>

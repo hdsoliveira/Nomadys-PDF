@@ -12,6 +12,7 @@ under site/demos/work (not committed); the results go to site/assets/demos.
 The PDFs are fictional papers made for this (paper/paper.tex and the library
 below): no real paper is shown.
 """
+import math
 import os
 import shutil
 import subprocess
@@ -110,24 +111,26 @@ def make_pdfs():
 
 # ---------- a demo: steps -> frames ----------
 class Demo:
-    def __init__(self, name, files, title, cwd=None, config=""):
+    def __init__(self, name, files, title, cwd=None, config="", keys_left=False):
         self.name, self.files, self.title = name, files, title
+        self.keys_left = keys_left  # the keys drawn at the left, when the action is at the top centre
         self.cwd, self.config = cwd, config
-        self.steps = []   # (tokens, hold_ms, label, wait_ms)
+        self.steps = []   # (tokens, hold_ms, label, wait_ms, mouse)
         self.setup = ""   # keys before the first frame (not shown)
 
-    def key(self, tokens, hold=700, label=None, wait=60):
-        self.steps.append((tokens, hold, tokens if label is None else label, wait))
+    def key(self, tokens, hold=700, label=None, wait=60, mouse=None):
+        """mouse: where the pointer is drawn from this step on, (x, y) in the frame, or "off"."""
+        self.steps.append((tokens, hold, tokens if label is None else label, wait, mouse))
         return self
 
     def type(self, text, per=85, label=True):
         for ch in text:
             tok = "<lt>" if ch == "<" else ch
-            self.steps.append((tok, per, ("typed", text if label is True else label), 30))
+            self.steps.append((tok, per, ("typed", text if label is True else label), 30, None))
         return self
 
     def pause(self, hold=1200, wait=60):
-        self.steps.append(("", hold, None, wait))
+        self.steps.append(("", hold, None, wait, None))
         return self
 
 
@@ -152,7 +155,18 @@ def pretty(label):
     return out
 
 
-def overlay(img, label, title):
+def pointer(img, at):
+    """The mouse pointer (a screenshot has none), an arrow with a white edge."""
+    d = ImageDraw.Draw(img, "RGBA")
+    x, y = at
+    arrow = [(0, 0), (0, 21), (5, 16), (9, 25), (13, 23), (9, 15), (16, 15)]
+    pts = [(x + px, y + py) for px, py in arrow]
+    d.polygon([(x + px * 1.0 + 1.5, y + py + 1.5) for px, py in arrow], fill=(0, 0, 0, 70))
+    d.polygon(pts, fill=(20, 22, 30, 255), outline=(255, 255, 255, 255))
+    return img
+
+
+def overlay(img, label, title, left=False):
     """The keys just pressed, as keycaps in the bottom-right corner."""
     d = ImageDraw.Draw(img, "RGBA")
     if label:
@@ -162,7 +176,7 @@ def overlay(img, label, title):
         sizes = [d.textbbox((0, 0), k, font=font) for k in keys]
         widths = [max(34, b[2] - b[0] + 2 * pad) for b in sizes]
         total = sum(widths) + gap * (len(keys) - 1)
-        x = (W - total) / 2  # top centre: clear of messages and pane labels
+        x = 40 if left else (W - total) / 2  # top centre: clear of messages and pane labels
         y = 26
         d.rounded_rectangle((x - 14, y - 12, x + total + 14, y + 52), 14, fill=(20, 22, 30, 200))
         for k, wdt in zip(keys, widths):
@@ -190,7 +204,7 @@ def record(demo):
     env = dict(os.environ, XDG_CONFIG_HOME=str(work / "cfg"), XDG_DATA_HOME=str(data),
                XDG_CACHE_HOME=str(work / "cache"), SDL_VIDEODRIVER="offscreen")
     script = "<wait:400>" + demo.setup
-    for i, (tokens, hold, label, wait) in enumerate(demo.steps):
+    for i, (tokens, hold, label, wait, mouse) in enumerate(demo.steps):
         script += tokens + (f"<wait:{wait}>" if wait else "") + f"<shot:f{i:04d}>"
     script += "<wait:100>"
     files = [str(f) for f in demo.files]
@@ -201,12 +215,19 @@ def record(demo):
     seq.mkdir()
     n = 0
     fps = 25
-    for i, (tokens, hold, label, wait) in enumerate(demo.steps):
+    at = None
+    for i, (tokens, hold, label, wait, mouse) in enumerate(demo.steps):
         src = work / "frames" / f"f{i:04d}.bmp"
+        if mouse == "off":
+            at = None
+        elif mouse:
+            at = mouse
         if not src.exists():
             continue
         img = Image.open(src).convert("RGB").resize((W, H))
-        img = overlay(img, label, demo.title)
+        if at:
+            img = pointer(img, at)
+        img = overlay(img, label, demo.title, demo.keys_left)
         for _ in range(max(1, round(hold / 1000 * fps))):
             img.save(seq / f"{n:05d}.png")
             n += 1
@@ -229,6 +250,22 @@ def record(demo):
 
 
 # ---------- the demos ----------
+def drag(d, points, hold=110, label="drag", end_hold=900):
+    """The left button pressed at the first point, moved through the others and released at the last,
+    a frame for each, with the pointer drawn."""
+    (x0, y0), rest = points[0], points[1:]
+    d.key(f"<down:{x0},{y0}>", 250, label=label, wait=40, mouse=(x0, y0))
+    for x, y in rest[:-1]:
+        d.key(f"<move:{x},{y}>", hold, label=label, wait=30, mouse=(x, y))
+    x, y = rest[-1]
+    d.key(f"<up:{x},{y}>", end_hold, label=label, wait=60, mouse=(x, y))
+
+
+def line(a, b, n):
+    """n points from a to b, the first one a."""
+    return [(a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n) for i in range(n + 1)]
+
+
 def demos():
     paper = WORK / "paper.pdf"          # copies: the demos write highlights into them
     lib = WORK / "library"
@@ -322,6 +359,39 @@ def demos():
         d.key("e", 150)
     d.key("Y", 3200, wait=100)
     out.append(d)
+
+    # a stamp placed on the page, then moved, resized and turned with the mouse, and mirrored with a key
+    d = Demo("images", [paper], "Pictures", cwd=WORK, keys_left=True)
+    d.setup = "<C-v>Kkk"
+    d.pause(500).key(":", 300)
+    d.type("image stamp.png", per=60, label=":image stamp.png")
+    d.key("<Enter>", 1100, wait=300)
+    for _ in range(24):
+        d.key("-", 45, label="-", wait=30)
+    d.pause(900)
+    # drag it (its middle) to the left, a corner to make it bigger, the knob above it to turn it
+    drag(d, line((742, 118), (440, 118), 7))
+    drag(d, line((515, 151), (555, 170), 4), label="drag a corner")
+    cx, cy, r = 440, 120, 75
+    drag(d, [(cx + r * math.sin(math.radians(a)), cy - r * math.cos(math.radians(a))) for a in range(0, 21, 5)],
+         label="drag the knob", end_hold=1000)
+    d.key("f", 1300, wait=200, mouse="off").key("f", 1100, wait=200)
+    d.key("<Enter>", 900, wait=200).key("<Esc>", 500)
+    out.append(d)
+
+    d = Demo("text", [paper], "Text on the page", cwd=WORK, keys_left=True)
+    d.setup = "<C-v>Kkkkkk"
+    d.pause(500).key("T", 600)
+    d.type("Check against Fig. 1:", per=50, label="text")
+    d.key("<Enter>", 300).type("barrier grows with thickness", per=50, label="text")
+    d.pause(900)
+    for _ in range(3):
+        d.key("<C-=>", 600, label="Ctrl-=", wait=100)
+    d.key("<Esc>", 900).key("e", 700, wait=200)
+    for _ in range(5):
+        d.key("L", 300, wait=100)
+    d.key("l", 250).key("l", 250).key("<Enter>", 1300, wait=200)
+    out.append(d)
     return out
 
 
@@ -330,6 +400,7 @@ def fresh_copies():
     (WORK / "tasks").mkdir(exist_ok=True)       # the tasks demo's own library: just this paper
     shutil.copy(HERE / "paper" / "paper.pdf", WORK / "tasks" / "paper.pdf")
     shutil.copy(HERE / "paper" / "paper-v1.pdf", WORK / "paper-v1.pdf")
+    shutil.copy(HERE / "paper" / "stamp.png", WORK / "stamp.png")
 
 
 if __name__ == "__main__":

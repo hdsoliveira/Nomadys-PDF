@@ -209,13 +209,14 @@ def href(page):
 HEADER = """<header class="top"><div class="wrap">
 <a class="brand" href="{root}index.html"><img src="{root}assets/icon.svg" alt="">Nomadys-PDF</a>
 <nav><a href="{root}index.html#features">Features</a><a href="{root}index.html#themes">Themes</a><a href="{root}index.html#research">For research</a>
-<a class="docs-link" href="{root}docs/index.html">Documentation</a><a href="{root}index.html#install">Install</a>
-<a class="gh" href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a></nav>
+<a class="docs-link" href="{root}docs/index.html">Documentation</a><a href="{root}index.html#install">Download</a>
+<a class="gh" href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a>
+<a class="pill" href="https://ko-fi.com/hugooliveira35800">Buy me a coffee</a></nav>
 </div></header>"""
 
 FOOTER = """<footer><div class="wrap">
 <span>Nomadys-PDF {version} · MIT licence · made by Hugo Oliveira</span>
-<span class="right"><a href="{root}docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:hs.oliveira@mailbox.org">Contact</a></span>
+<span class="right"><a href="{root}docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:hs.oliveira@mailbox.org">Contact</a><a href="https://ko-fi.com/hugooliveira35800">Buy me a coffee</a></span>
 </div></footer>"""
 
 

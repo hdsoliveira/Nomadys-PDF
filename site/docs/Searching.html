@@ -8,8 +8,9 @@
 <header class="top"><div class="wrap">
 <a class="brand" href="../index.html"><img src="../assets/icon.svg" alt="">Nomadys-PDF</a>
 <nav><a href="../index.html#features">Features</a><a href="../index.html#themes">Themes</a><a href="../index.html#research">For research</a>
-<a class="docs-link" href="../docs/index.html">Documentation</a><a href="../index.html#install">Install</a>
-<a class="gh" href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a></nav>
+<a class="docs-link" href="../docs/index.html">Documentation</a><a href="../index.html#install">Download</a>
+<a class="gh" href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a>
+<a class="pill" href="https://ko-fi.com/hugooliveira35800">Buy me a coffee</a></nav>
 </div></header>
 <div class="wrap docs">
 <aside class="side"><ul><li><a href="index.html">Home</a></li></ul><p>Start</p><ul><li><a href="Installation.html">Installation</a></li><li><a href="Getting-Started.html">Getting started</a></li></ul><p>Using it</p><ul><li><a href="Reading-and-Navigation.html">Reading and navigation</a></li><li><a href="Searching.html" class=on>Searching</a></li><li><a href="Highlights-and-Comments.html">Highlights and comments</a></li><li><a href="Quoting-and-Citing.html">Quoting and citing</a></li><li><a href="Images-and-Regions.html">Images and regions</a></li><li><a href="Changing-Pages.html">Changing pages</a></li><li><a href="Tabs-Windows-and-Split-View.html">Tabs, windows and split view</a></li><li><a href="LaTeX-and-VimTeX.html">LaTeX and VimTeX</a></li><li><a href="Forms-Printing-and-Passwords.html">Forms, printing and passwords</a></li></ul><p>Making it yours</p><ul><li><a href="Configuration.html">Configuration</a></li><li><a href="Themes-and-Dark-Mode.html">Themes and dark mode</a></li></ul><p>Reference</p><ul><li><a href="Keyboard-Reference.html">Keyboard reference</a></li><li><a href="Commands.html">Commands</a></li><li><a href="Files-Memory-and-Speed.html">Files, memory and speed</a></li><li><a href="FAQ.html">FAQ</a></li></ul></aside>
@@ -42,12 +43,14 @@
 <p><code>:diff old-version.pdf</code> compares the PDF on screen with an older version, word by word:</p>
 <ul><li>new text is shaded <strong>green</strong></li><li>changed text is shaded <strong>amber</strong></li><li>a <strong>red</strong> mark shows where text was deleted</li></ul>
 <p><code>]c</code> / <code>[c</code> go to the next / previous change, and the message says what the old text was: "change 3 of 9: changed, was “0.47”". <code>:nodiff</code> hides it. Nothing is written into the PDF.</p>
+<p><strong>The notes are compared too</strong>: highlights, comments (and their replies), text boxes, pictures and drawings. A frame is drawn round each one that is <strong>new</strong> (green), <strong>changed</strong> (amber: its comment or text is different) or <strong>removed</strong> (red, where it was), and <code>]c</code> takes you through them together with the changes in the text: "new highlight “check this value”", "text box changed, was “Hello”, now “Hello world”". A note is the same one in both versions when it has the same name inside the PDF or, without one, the same kind in the same place. If nothing differs the message says "no change in the text or the notes".</p>
+<p>What is <em>not</em> compared: figures and anything that is not text or a note.</p>
 <p>The comparison ignores what is not a real change: words hyphenated at the end of a line, ligatures (ﬁ, ﬂ) and page numbers, so text that only moved to another page does not show up. When LaTeX recompiles the PDF, the comparison is made again automatically: handy when answering reviewers.</p>
 <nav class="pager"><a href="Reading-and-Navigation.html"><small>Previous</small>Reading and navigation</a><a class="next" href="Highlights-and-Comments.html"><small>Next</small>Highlights and comments</a></nav>
 </main>
 </div>
 <footer><div class="wrap">
-<span>Nomadys-PDF 0.4.0 · MIT licence · made by Hugo Oliveira</span>
-<span class="right"><a href="../docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:hs.oliveira@mailbox.org">Contact</a></span>
+<span>Nomadys-PDF 0.5.0 · MIT licence · made by Hugo Oliveira</span>
+<span class="right"><a href="../docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:hs.oliveira@mailbox.org">Contact</a><a href="https://ko-fi.com/hugooliveira35800">Buy me a coffee</a></span>
 </div></footer>
 </body></html>
