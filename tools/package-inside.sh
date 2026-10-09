@@ -61,8 +61,11 @@ chmod 755 "$APPDIR/AppRun"
     chmod 755 "$CACHE/appimagetool-$APPIMAGETOOL"
 }
 APPIMAGE=/out/Nomadys-PDF-$VERSION-x86_64.AppImage
+# written under another name and then renamed over the old one: an AppImage that is
+# running ("Text file busy") cannot be written to, but its name can be taken over
 ARCH=x86_64 "$CACHE/appimagetool-$APPIMAGETOOL" --appimage-extract-and-run --no-appstream \
-    "$APPDIR" "$APPIMAGE" >/dev/null 2>&1
+    "$APPDIR" "$APPIMAGE.new" >/dev/null 2>&1
+mv -f "$APPIMAGE.new" "$APPIMAGE"
 
 # the .deb: the same files under /usr; Debian versions sort "0.5.0~beta" before "0.5.0"
 DEB=/tmp/deb
