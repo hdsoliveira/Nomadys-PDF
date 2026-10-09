@@ -98,7 +98,7 @@ kbd {
 }
 .window .bar { display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; background: #20222e; }
 .window .bar i { width: 11px; height: 11px; border-radius: 50%; background: #474a5c; display: block; }
-.window .bar span { margin-left: 10px; font: 12px var(--sans); color: #9a9cb0; }
+.window .bar span { margin-left: 10px; font: 12px var(--sans); color: #9a9cb0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .window video, .window img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: #d9d9d9; }
 .hero .window { max-width: 1000px; margin: 48px auto 0; }
 
