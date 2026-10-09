@@ -70,11 +70,6 @@ kbd {
 .top nav a { color: var(--ink-soft); }
 .top nav a:hover { color: var(--ink); text-decoration: none; }
 .top nav .gh { padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); }
-.top nav .pill {
-  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; font-weight: 600;
-  background: #ffd94a; color: #1b1d2a;
-}
-.top nav .pill:hover { background: #ffcc1a; text-decoration: none; color: #1b1d2a; }
 .skip { position: absolute; left: -999px; top: 8px; z-index: 20; padding: 8px 14px; border-radius: 8px; background: var(--navy); color: #fff; }
 .skip:focus { left: 8px; }
 
@@ -214,12 +209,11 @@ footer .right { margin-left: auto; display: flex; gap: 18px; }
   .downloads { grid-template-columns: minmax(0, 1fr); }
   .docs { grid-template-columns: 1fr; gap: 20px; }
   .side { position: static; max-height: none; border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
-  .top nav a:not(.gh):not(.docs-link):not(.pill) { display: none; }
+  .top nav a:not(.gh):not(.docs-link) { display: none; }
   .top nav { gap: 14px; }
 }
 @media (max-width: 560px) {
   .wrap { padding: 0 16px; }
-  .top nav .gh, .top nav .docs-link { display: none; }  /* the hero has both as buttons */
   .grid, .qol ul { grid-template-columns: 1fr; }
   .hero { padding-top: 44px; }
   section { padding: 52px 0; }
