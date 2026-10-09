@@ -68,7 +68,7 @@ you go.
 
 ## About
 
-Version 0.4.0. Made by Hugo Oliveira (hs.oliveira@mailbox.org),
+Version 0.5.0. Made by Hugo Oliveira (hs.oliveira@mailbox.org),
 MIT licence. Source: [github.com/hdsoliveira/Nomadys-PDF](https://github.com/hdsoliveira/Nomadys-PDF).
 Built on [PDFium](https://pdfium.googlesource.com/pdfium/) (the PDF engine
 of Chrome), SDL3, FreeType, fontconfig and stb. `\a` in the program shows

@@ -11,11 +11,13 @@ the whole window, and everything is one or two keys away) that brings the
 quality-of-life tools that make long reading sessions easier.
 
 Made first for **researchers who love keyboard-driven tools**, but anyone
-can use it: the mouse scrolls, follows links and selects text, and `\c`
-shows every key.
+can use it: the mouse scrolls, follows links, selects text and moves, resizes
+and turns pictures, and `\c` shows every key.
 
 Free and open source, for everyone. If it saves you time, you can
-[buy me a coffee](https://ko-fi.com/hugooliveira35800).
+buy me a coffee:
+
+[![Buy me a coffee on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/hugooliveira35800)
 
 ![Highlighting, and a comment with an equation](site/assets/demos/highlight.gif)
 
@@ -78,13 +80,16 @@ you go.
 - **answer the reviewers**: `r` replies to a comment they left in the PDF
   (Acrobat and Okular show it in the thread), `:response` writes the
   response letter in Markdown: each point, your reply, what is left
-- place images and signatures; move, resize, crop them
+- place images and signatures; move, resize, turn (any angle), mirror and crop
+  them, by keyboard or mouse
+- write text anywhere on a page (`T`): the box grows with the text, real
+  Helvetica text a few bytes a letter, editable again later
 
 **Searching**
 - incremental search in the PDF, smart case
 - `\/` searches the **text of every PDF you own**, `\n` every comment you
   ever wrote; `\f` finds any PDF by name; `\o` opens recent files
-- `:diff old.pdf` compares two versions word by word
+- `:diff old.pdf` compares two versions word by word, and their notes
 
 **Writing with LaTeX**
 - SyncTeX both ways with Vim / Neovim (VimTeX), automatic reload
@@ -125,7 +130,18 @@ Each theme has a light and a dark side (`i` switches while reading):
 
 ## Install
 
-Linux (Wayland or X11). On Debian / Ubuntu:
+Linux (Wayland or X11). The easiest ways, from the
+[releases page](https://github.com/hdsoliveira/Nomadys-PDF/releases/latest):
+
+| | |
+|---|---|
+| **Debian, Ubuntu, Linux Mint, Pop!_OS** | `sudo apt install ./nomadys-pdf_0.5.0_amd64.deb` |
+| **Any distribution** | the AppImage: `chmod +x Nomadys-PDF-0.5.0-x86_64.AppImage`, then run it |
+| **Arch Linux** | `nomadys-pdf` from the AUR |
+
+Every file there has a SHA-256 in `SHA256SUMS`. Tried on Ubuntu 22.04 and
+24.04, Debian 12 and 13, Fedora, Arch and openSUSE Tumbleweed, under X11 and
+Wayland. Or build it yourself. On Debian / Ubuntu:
 
 ```sh
 sudo apt install build-essential pkg-config libsdl3-dev libfreetype-dev libfontconfig-dev zlib1g-dev
@@ -157,8 +173,17 @@ npdf                        # your last session
 | `f` / `F` | follow / preview a link |
 | `\l` / `\g` | panel / all pages |
 | `\/` / `\f` | search all your PDFs / find a PDF |
-| `:w` / `:q` | save (it also saves by itself) / close |
+| `:w` / `:q` | save (it also saves by itself) / close; `:w name.pdf` saves a copy |
 | `Esc` | back to reading, from anywhere |
+
+## Limits, honestly
+
+- Linux only for now (Wayland and X11).
+- Free text: letters outside the Latin alphabet (Chinese, Japanese, Greek,
+  Cyrillic…) show as `?` for now; bold, italic and equations are planned.
+- Autosave is on: the open file is saved by itself. `:w name.pdf` makes a copy,
+  but to keep an original untouched set `autosave = false`.
+- `:diff` compares text and notes, not figures.
 
 ## Documentation
 
@@ -233,3 +258,10 @@ copies them to `share/doc/nomadys-pdf/`.
 Portions of this software are copyright © The FreeType Project
 (www.freetype.org). All rights reserved. This software is based in part on
 the work of the Independent JPEG Group.
+
+---
+
+<p align="center">
+Nomadys-PDF is free and stays free. If it saves you time, you can help it grow:<br>
+<a href="https://ko-fi.com/hugooliveira35800"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Buy me a coffee on Ko-fi"></a>
+</p>
