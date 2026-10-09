@@ -77,6 +77,7 @@ typedef struct {
     bool dark;               /* start in dark mode */
     bool autosave;
     int autosave_delay_ms;
+    bool backup;             /* keep the file as it was before the first save of a session (name.pdf.bak) */
     bool subpixel_text;
     int copy_dpi;            /* y / Y in the free cursor: the region as an image */
     bool show_tabs;
@@ -282,6 +283,8 @@ struct Doc {
     long long saved_mtime_ns; /* our own last save, not an external change */
     int pages_opened;        /* since the last (re)load: when to compact */
     int save_ms;             /* how long the last save took */
+    bool backed_up;          /* the .bak of this session is made */
+    bool backup_new;         /* ... just now: save() says so once */
     uint64_t hidden_since;   /* 0 while a window shows it */
     /* replies made here: (reply /NM, the /NM of the note it answers); their
      * /IRT is written into the file after each save (reply.c) */

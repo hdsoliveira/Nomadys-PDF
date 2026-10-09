@@ -310,9 +310,15 @@ void save(Window *w, View *v)
     doc_kill_focus(v->doc);
     if (w->mode == MODE_FORM)
         w->mode = MODE_NORMAL;
-    if (doc_save(v->doc, err, sizeof err))
-        ui_message(w, "saved");
-    else
+    if (doc_save(v->doc, err, sizeof err)) {
+        if (v->doc->backup_new) { /* once a session */
+            const char *name = strrchr(v->doc->path, '/');
+            ui_message_long(w, 5000, "saved; the file as it was is kept as %s.bak", name ? name + 1 : v->doc->path);
+            v->doc->backup_new = false;
+        } else {
+            ui_message(w, "saved");
+        }
+    } else
         ui_message(w, "%s", err);
     w->quit_warned = 0;
 }

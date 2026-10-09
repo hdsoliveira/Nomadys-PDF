@@ -39,6 +39,9 @@ people who read papers for hours. Everything below is in this first release.
 - `:diff old.pdf` compares two versions word by word **and the notes** (new,
   changed and removed highlights, comments, text boxes and pictures).
 - `:w name.pdf` saves a copy under another name (`:w!` replaces a file).
+- **A backup**: before the first save of a session the file is kept next to it
+  as `name.pdf.bak` (a hard link: instant, whatever the size); `backup = false`
+  turns it off.
 
 ### For writing with LaTeX
 - SyncTeX both ways with Vim / Neovim (VimTeX), automatic reload; `Y` quotes
@@ -54,8 +57,8 @@ people who read papers for hours. Everything below is in this first release.
 - Linux only (Wayland and X11).
 - Free text: letters outside the Latin alphabet (Chinese, Japanese, Korean,
   Greek, Cyrillic) show as `?` for now; no bold, italic or equations yet.
-- Autosave is on by default and saves the open file by itself; `:w name.pdf`
-  makes a copy, but the open file is saved too. Set `autosave = false` to
-  keep an original untouched.
+- Autosave is on by default and saves the open file by itself (the file as it
+  was is kept as `name.pdf.bak`); `:w name.pdf` makes a copy, but the open file
+  is saved too. Set `autosave = false` to keep an original untouched.
 - `:diff` compares text and notes, not figures.
 - Pages turned with `r` hide the live preview of free text while you write it.

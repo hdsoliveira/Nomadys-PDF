@@ -52,6 +52,7 @@ cp config.example ~/.config/nomadys-pdf/config
 |---|---|---|
 | `autosave` | `true` | save highlights, comments and form entries automatically; `false`: only with `Ctrl-s` / `:w` (closing then asks) |
 | `autosave_delay_ms` | `1000` | how long after a change to save |
+| `backup` | `true` | before the first save of a session, keep the file as it was, next to it, as `name.pdf.bak` (a hard link: instant, whatever the size); the next session replaces it |
 | `pdf_dirs` | `~` | where `\f`, `\/` and `\n` look for PDFs, comma separated: `~/Papers, ~/Books, ~/Nextcloud` |
 
 ## LaTeX

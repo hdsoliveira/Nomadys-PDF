@@ -181,8 +181,10 @@ npdf                        # your last session
 - Linux only for now (Wayland and X11).
 - Free text: letters outside the Latin alphabet (Chinese, Japanese, Greek,
   Cyrillic…) show as `?` for now; bold, italic and equations are planned.
-- Autosave is on: the open file is saved by itself. `:w name.pdf` makes a copy,
-  but to keep an original untouched set `autosave = false`.
+- Autosave is on: the open file is saved by itself, and the file as it was
+  before the first save of a session is kept next to it as `name.pdf.bak`
+  (`backup = false` turns that off). `:w name.pdf` makes a copy; to keep an
+  original untouched set `autosave = false`.
 - `:diff` compares text and notes, not figures.
 
 ## Documentation

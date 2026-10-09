@@ -10,6 +10,7 @@
 theme = light              # dark | light (i toggles while reading)
 autosave = true            # false: save only with Ctrl-s or :w
 autosave_delay_ms = 1000
+backup = true              # keep the file as it was before the first save of a session, as name.pdf.bak
 restore_position = true    # reopen a file where you stopped reading
 pdf_dirs = ~               # where \f looks for PDFs, comma separated: ~/Papers, ~/Books
 cite_format = “%t” (p. %p)  # Y in the text cursor: %t the text, %p the page(s)

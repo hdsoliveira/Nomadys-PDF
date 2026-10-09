@@ -36,8 +36,13 @@ rm -rf ~/.config/nomadys-pdf ~/.local/share/nomadys-pdf ~/.cache/nomadys-pdf
   when you leave a form field and when you close the file. With
   `autosave = false`, save with `Ctrl-s` or `:w`; closing with unsaved
   changes then asks first.
+- **Your file is kept as it was.** Before the first save of a session, the
+  file on disk is kept next to it as `name.pdf.bak` (a hard link, so it is
+  instant and takes no space, whatever the size). If something goes wrong,
+  rename it back. The next session replaces the `.bak` with the file as that
+  session found it. `backup = false` turns this off.
 - `:w name.pdf` saves a copy under another name. With `autosave` on, the
-  open file is saved by itself as well, so to keep the original untouched
+  open file is saved by itself as well; to keep the original untouched
   set `autosave = false` before you start.
 - The file is written to a temporary file and then renamed over the
   original, so a crash or a full disk never leaves half a PDF.

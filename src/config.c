@@ -15,6 +15,7 @@ Config cfg = {
     .dark = false,
     .autosave = true,
     .autosave_delay_ms = 1000,
+    .backup = true,
     .subpixel_text = false,
     .copy_dpi = 300,
     .show_tabs = false,
@@ -155,6 +156,8 @@ static bool set_global_key(const char *k, const char *v)
         cfg.autosave = parse_bool(v);
     else if (!strcmp(k, "autosave_delay_ms"))
         cfg.autosave_delay_ms = atoi(v);
+    else if (!strcmp(k, "backup"))
+        cfg.backup = parse_bool(v);
     else if (!strcmp(k, "subpixel_text"))
         cfg.subpixel_text = parse_bool(v);
     else if (!strcmp(k, "copy_dpi"))

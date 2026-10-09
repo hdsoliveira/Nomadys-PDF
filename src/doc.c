@@ -601,6 +601,38 @@ bool doc_save_copy(Doc *d, const char *path, bool overwrite, char *err, size_t e
     return write_to(d, path, err, errlen);
 }
 
+/* Keeps the file as it is on disk, as name.pdf.bak, before this session's first
+ * save writes over it. A hard link: nothing is copied (a save puts a new file in
+ * its place), so it costs nothing even for a huge PDF; a copy where links are not
+ * possible. A later session replaces the .bak. Silent when it cannot be made. */
+static void make_backup(Doc *d)
+{
+    if (!cfg.backup || d->backed_up || access(d->path, F_OK) != 0)
+        return;
+    d->backed_up = true;
+    size_t n = strlen(d->path) + 8;
+    char *bak = xmalloc(n);
+    snprintf(bak, n, "%s.bak", d->path);
+    unlink(bak);
+    bool ok = link(d->path, bak) == 0;
+    if (!ok) { /* another kind of file system: a copy */
+        FILE *in = fopen(d->path, "rb"), *out = in ? fopen(bak, "wb") : NULL;
+        char buf[1 << 16];
+        size_t got;
+        ok = out != NULL;
+        while (ok && (got = fread(buf, 1, sizeof buf, in)) > 0)
+            ok = fwrite(buf, 1, got, out) == got;
+        if (out)
+            ok = fclose(out) == 0 && ok;
+        if (in)
+            fclose(in);
+        if (!ok)
+            unlink(bak);
+    }
+    d->backup_new = ok;
+    free(bak);
+}
+
 bool doc_save(Doc *d, char *err, size_t errlen)
 {
     render_cancel(d, -1);
@@ -610,6 +642,7 @@ bool doc_save(Doc *d, char *err, size_t errlen)
         return false;
     }
     uint64_t t0 = SDL_GetTicks();
+    make_backup(d);
     if (!write_to(d, d->path, err, errlen))
         return false;
     d->modified = false;
