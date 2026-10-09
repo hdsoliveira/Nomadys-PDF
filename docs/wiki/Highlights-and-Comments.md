@@ -1,7 +1,7 @@
 # Highlights and comments
 
 Everything is done by keyboard, and everything is stored **in the PDF** as
-standard annotations: Acrobat, Okular, Evince, Zotero, Preview and every
+standard annotations, so Acrobat, Okular, Evince, Zotero, Preview and every
 other reader show your highlights and comments. They are saved
 automatically about a second after each change.
 
@@ -10,11 +10,11 @@ automatically about a second after each change.
 1. `v` shows the **text cursor**, a steady block (rings close in on it for a
    moment so you can find it). Move it with `h` `j` `k` `l`, word by word
    with `w` `b`, to the end of a word with `e`, to the start / end of the
-   line with `0` `$`. A number repeats a move: `8j`, `5e`.
+   line with `0` `$`. A number repeats a move, as in `8j` or `5e`.
 2. `v` again starts **selecting**; move to the end of what you want.
-   Or drag the mouse over the text: it is selected and copied at once,
+   Or drag the mouse over the text, which selects and copies it at once,
    and the keys below work on it as well.
-3. Choose a colour:
+3. Choose a colour with one of these keys.
 
 | Key | Colour (default) |
 |---|---|
@@ -33,7 +33,7 @@ colours can be changed with `highlight_colors` in the
 
 ## Highlighting a figure, a table, an equation
 
-Figures and equations are not text, so they have their own cursor:
+Figures and equations are not text, so they have their own cursor.
 
 1. `Ctrl-v` shows the **free cursor**, a thin cross that can go anywhere.
    `h` `j` `k` `l` move it; `w` `b` `J` `K` (or `Ctrl-h` `Ctrl-j` `Ctrl-k`
@@ -44,13 +44,13 @@ Figures and equations are not text, so they have their own cursor:
 
 With `area_style = frame` in the configuration, areas get a coloured frame
 instead of a transparent highlight. The free cursor can also copy a region
-as an image, or place a picture: see [Images and regions](Images-and-Regions.md).
+as an image, or place a picture, as described in [Images and regions](Images-and-Regions.md).
 
 `Ctrl-v` in the text cursor switches to the free cursor.
 
 ## Editing and deleting
 
-Put either cursor on a highlight:
+Put either cursor on a highlight and use these keys.
 
 | Key | Action |
 |---|---|
@@ -85,7 +85,7 @@ back); then it is removed from the PDF for good.
 
 `c` opens a box right next to the highlight. Write plain text; anything
 between `$…$` is an **equation**, typeset by LaTeX as you type, and
-`$$…$$` is an equation on its own line:
+`$$…$$` is an equation on its own line, as in this example.
 
 ```
 Neo-Hookean: $W = \frac{\mu}{2}(I_1 - 3)$ with $\mu = G$
@@ -115,26 +115,26 @@ The comment is stored as the text you typed, so other readers show
 `$\sigma = E\varepsilon$` as it is, and exported Markdown shows the equations
 in Obsidian and similar apps.
 
-## Tasks: tick your highlights off
+## Tasks, ticking your highlights off
 
-Any highlight or comment can go on your **task list**: a point to answer in
-a review, a figure to redo, a claim to check. Two keys, the same everywhere:
+Any highlight or comment can go on your **task list**, which can hold a point to answer in
+a review, a figure to redo or a claim to check. Two keys do it, and they are the same everywhere.
 **`t`** puts it on the list or takes it off (the highlight stays), **`d`**
 marks it **d**one or to do again. Tasks get a check box in the page's left
 margin, at the height of their line.
 
 | Key | Where | Action |
 |---|---|---|
-| `t` | text cursor (`v`), free cursor (`Ctrl-v`) | the highlight under it: on / off the task list |
-| `d` | text cursor, free cursor | the task under it: done / to do |
+| `t` | text cursor (`v`), free cursor (`Ctrl-v`) | put the highlight under it on the task list, or take it off |
+| `d` | text cursor, free cursor | mark the task under it as done, or as to do again |
 | `t` | panel, Highlights and Tasks tabs | on / off the task list |
 | `d`, `Space` | panel, Tasks tab | done / to do |
 | `D` | panel, Tasks tab | hide / show the done ones |
 | `u` | anywhere | undo, like any change |
 
-- The panel's **Tasks** tab (`\l`, then `5`) lists them: those to do first,
+- The panel's **Tasks** tab (`\l`, then `5`) lists them, with those to do first,
   in page order, then a "Done" line and the done ones, dimmer, with when
-  ("done yesterday"). The tab title counts them: "Tasks 5/8". After a tick
+  ("done yesterday"). The tab title counts them, as in "Tasks 5/8". After a tick
   the selection stays in place, so the next task comes under it.
 - In the **Highlights** tab, the notes that are tasks carry a small box.
 - **`:tasks`** lists the tasks still to do in **all your PDFs**, newest
@@ -151,7 +151,7 @@ margin, at the height of their line.
 ## Filtering by colour
 
 Give each colour a meaning, for example green = to cite, red = problems,
-blue = methods. Then, in the panel's **Highlights** tab (`\l`, then `4`):
+blue = methods. Then, in the panel's **Highlights** tab (`\l`, then `4`), use these keys.
 
 | Key | Action |
 |---|---|
@@ -167,7 +167,7 @@ The tab title says how many are shown ("Highlights 3 of 12").
 `:export` writes every highlight and comment, plus your marks, to
 `paper-notes.md` next to `paper.pdf`, page by page, in reading order, with
 the full highlighted text (words broken across lines joined again), its
-colour and the comment:
+colour and the comment, like this.
 
 ```markdown
 ## Page 3
@@ -194,7 +194,7 @@ colour and the comment:
 | `:export review.md red green` | red and green, to `review.md` |
 | `:export!` | the same, allowed to overwrite a file that `:export` did not write |
 
-Colour words: `yellow`, `red`, `green`, `pink`, `blue` (the five keys, in
+The colour words are `yellow`, `red`, `green`, `pink`, `blue` (the five keys, in
 order) and `other`; `commented` keeps only those with a comment, `tasks` only
 the tasks still to do.
 
@@ -206,8 +206,8 @@ To search your comments across **all** your PDFs, use `\n` ([Searching](Searchin
 
 ## Answering the reviewers
 
-The reviewers commented on your manuscript's PDF (in Acrobat, Okular or any
-other reader)? Open it, go through their comments and answer each one:
+Did the reviewers comment on your manuscript's PDF (in Acrobat, Okular or any
+other reader)? Open it, go through their comments and answer each one as follows.
 
 1. Put the text cursor (`v`) or the free cursor (`Ctrl-v`) on a comment,
    and press `r`. Your answer is written in the comment box (equations too),
@@ -217,7 +217,7 @@ other reader)? Open it, go through their comments and answer each one:
 3. `t` and `d` keep track of which points are dealt with, as for any task.
 
 The answer is stored as a **reply** in the PDF, the way Acrobat and Okular
-write theirs, so they show it in the comment's thread: send the PDF back
+write theirs, so they show it in the comment's thread. Send the PDF back
 and the reviewer sees your answers under their comments. Replies written
 in other readers show up here as well. In the panel (`\l`), each comment
 shows its latest reply under it; the box that opens on a comment shows the

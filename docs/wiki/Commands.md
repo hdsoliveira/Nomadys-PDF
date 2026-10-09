@@ -37,7 +37,7 @@ with several options they are listed above the line and `Tab` /
 
 | Command | Action |
 |---|---|
-| `:vsplit [file.pdf]` | split side by side: this PDF, or another |
+| `:vsplit [file.pdf]` | split side by side, this PDF or another |
 | `:split [file.pdf]` | split one above the other |
 | `:close` | close this pane |
 | `:only` | keep only this pane |
@@ -49,7 +49,7 @@ with several options they are listed above the line and `Tab` /
 | `:library words` | search the text of all your PDFs (`\/`) |
 | `:comments [words]` | search the comments and highlights of all your PDFs (`\n`) |
 | `:tasks [words]` | the tasks still to do in all your PDFs |
-| `:diff old.pdf` | compare with an older version: text and notes (`]c` `[c` go through the changes) |
+| `:diff old.pdf` | compare with an older version, text and notes (`]c` `[c` go through the changes) |
 | `:nodiff` | hide the comparison |
 
 ## Notes, quotes and references
@@ -58,7 +58,7 @@ with several options they are listed above the line and `Tab` /
 |---|---|
 | `:export [file.md] [colours] [commented] [tasks]` | highlights, comments and marks to Markdown (tasks as `- [ ]` / `- [x]`) |
 | `:export! …` | the same, allowed to overwrite a file it did not write |
-| `:response [file.md]` | the response letter to the reviewers: their comments and your replies (`r`), by reviewer ([more](Highlights-and-Comments.md#answering-the-reviewers)) |
+| `:response [file.md]` | the response letter to the reviewers, with their comments and your replies (`r`), by reviewer ([more](Highlights-and-Comments.md#answering-the-reviewers)) |
 | `:response! …` | the same, allowed to overwrite a file it did not write |
 | `:merge copy.pdf` | bring in a co-author's highlights and comments |
 | `:bibtex` | copy the paper's BibTeX entry (by its DOI or arXiv number) |
@@ -73,7 +73,7 @@ with several options they are listed above the line and `Tab` /
 | `:insert other.pdf` | insert another PDF after this page |
 | `:append other.pdf` | add another PDF at the end |
 
-Page ranges: `5`, `3-7`, `10-` (to the end).
+Page ranges can be `5`, `3-7` or `10-` (to the end).
 
 ## Look and information
 

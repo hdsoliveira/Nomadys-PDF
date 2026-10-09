@@ -14,36 +14,44 @@ rotation you left it in. From inside the program, `\o` opens a recent file,
 
 ## The first five minutes
 
-1. **Move around**: `j` `k` scroll, `J` `K` go to the next / previous page,
+1. **Move around.** `j` `k` scroll, `J` `K` go to the next / previous page,
    `Space` goes a screen down, `gg` and `G` go to the first and last page,
    `42G` to page 42.
-2. **Zoom**: `+` and `-`; `=` fits the width, `z` the whole page.
-3. **Dark mode**: `i`. Photos keep their colours; plots and diagrams on
+2. **Zoom.** `+` and `-` change it, `=` fits the width and `z` the whole page.
+3. **Dark mode.** Press `i`. Photos keep their colours; plots and diagrams on
    white are recoloured so nothing glares.
-4. **Search**: `/stiffness`, `Enter`, then `n` and `N` go through the
+4. **Search.** Type `/stiffness` and `Enter`, then `n` and `N` go through the
    matches.
-5. **Follow a reference**: press `F`: letters appear on every link,
-   citation, figure and equation reference on screen; type one to see the
+5. **Follow a reference.** Press `F` and letters appear on every link,
+   citation, figure and equation reference on screen. Type one to see the
    target in a small window without leaving the page.
-6. **Highlight**: `v` shows a text cursor, `w` moves it word by word, `v`
+6. **Highlight.** `v` shows a text cursor, `w` moves it word by word, `v`
    starts selecting, move to the end, then `C` (yellow) or `c` to write a
    comment.
-7. **See everything you marked**: `\l` opens the panel; its Highlights tab
+7. **See everything you marked.** `\l` opens the panel, and its Highlights tab
    lists every highlight and comment.
-8. **Stuck?** `\c` shows every key. `Esc` always takes you back.
+8. **Stuck?** Type `\c` and a menu with every key appears. `Esc` always takes you back.
 
 ## The leader key
 
-Many commands start with `\`, the *leader* key: `\c` help, `\l` panel,
-`\g` page grid, `\o` recent files, `\f` find a PDF, `\/` search all PDFs,
-`\n` search all comments, `\T` themes, `\a` about, `\ma` set mark *a*.
-It can be changed to `,`, `;` or space with `leader =` in the
+The backslash `\` is the **leader key**. On its own it does nothing, but it
+starts many different functions, depending on the key you press after it.
+`\c` opens the help, `\l` the panel, `\g` the page grid, `\o` the recent
+files, `\f` the finder for any PDF, `\/` the search across all PDFs, `\n` the
+search across all comments, `\T` the themes, `\a` the about screen, and `\ma`
+sets mark *a*.
+
+When you do not remember a key, type `\c`. A menu appears with every key of
+the mode you are in, in tabs, with a search box, and `Esc` closes it. It is
+the quickest way to learn the program.
+
+The leader key can be changed to `,`, `;` or space with `leader =` in the
 [configuration](Configuration.md).
 
 ## Modes
 
 Like vim, Nomadys-PDF has modes. A small badge in the bottom-left corner
-shows which one you are in:
+shows which one you are in.
 
 | Badge | Mode | How you get there |
 |---|---|---|
@@ -67,7 +75,7 @@ shows which one you are in:
 
 ## The help screen
 
-`\c` opens the help: every key of every mode, grouped, drawn as keycaps,
+`\c` opens the help, with every key of every mode, grouped, drawn as keycaps,
 in tabs (Reading, Text cursor, Free cursor, Comments, Panel, Preview,
 Commands, Forms, Move/resize, Crop, Pages, Present). It opens on the tab of
 the mode you are in, and each tab starts with *How to get here*.
@@ -81,13 +89,13 @@ out of date.
 
 ## Counts
 
-A number before a key repeats it: `5j` scrolls five times, `3n` goes to the
-third next match, `3>` in the page grid moves a page three places.
+A number before a key repeats it. `5j` scrolls five times, `3n` goes to the
+third next match, and `3>` in the page grid moves a page three places.
 
 ## The command line
 
-`:` opens the command line: `:w` saves, `:q` closes the tab, `:42` goes to
-page 42, `:e file.pdf` opens a file. `Tab` completes command names and file
+`:` opens the command line, where `:w` saves, `:q` closes the tab, `:42` goes to
+page 42 and `:e file.pdf` opens a file. `Tab` completes command names and file
 paths; `:` followed by `Tab` lists every command. See [Commands](Commands.md).
 
 ## Saving

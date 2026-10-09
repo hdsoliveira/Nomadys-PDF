@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nomadys-PDF · the keyboard-driven PDF reader for research</title>
-<meta name="description" content="For people who read PDFs for hours: a fast, minimal PDF reader for Linux, driven by vim-style keys: highlights and comments with LaTeX equations, search across every PDF you own, reference previews, version comparison, SyncTeX. Open source.">
+<meta name="description" content="For people who read PDFs for hours, a fast, minimal PDF reader for Linux driven by vim-style keys, with highlights and comments with LaTeX equations, search across every PDF you own, reference previews, version comparison and SyncTeX. Open source.">
 <meta name="theme-color" content="#1c2143">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Nomadys-PDF: the keyboard-driven PDF reader for research">
+<meta property="og:title" content="Nomadys-PDF, the keyboard-driven PDF reader for research">
 <meta property="og:description" content="Highlights and comments with LaTeX equations, pictures and text on the page, search across every PDF you own, version comparison. Minimal, fast, free and open source, for Linux.">
 <meta property="og:image" content="assets/demos/highlight.jpg">
 <meta name="twitter:card" content="summary_large_image">
@@ -36,8 +36,8 @@
 <div class="hero"><div class="wrap">
   <img class="icon" src="assets/icon.svg" alt="The Nomadys-PDF icon: a tent at dawn, a trail towards the mountain, a page lit in the doorway">
   <h1>For people who read PDFs<br><span>for hours on end.</span></h1>
-  <p class="lead">If you spend your days inside papers, books and reports, you know the choice:
-    readers bloated with toolbars, side panels, accounts and cloud sync, or bare viewers that
+  <p class="lead">If you spend your days inside papers, books and reports, you know the choice between
+    readers bloated with toolbars, side panels, accounts and cloud sync, and bare viewers that
     leave you alone with the page. Nomadys-PDF sits in between. It is minimal (the page gets the
     whole window, and everything is a key away), but it brings the quality-of-life tools that
     make long reading sessions easier.</p>
@@ -61,16 +61,16 @@
   <div class="qol">
     <p class="eyebrow">Little things that add up</p>
     <ul>
-      <li><b>Reopens where you left off</b>: each file keeps its page, zoom and dark mode; <code>npdf</code> alone brings back your last session</li>
-      <li><b>Never lose your place</b>: <kbd>Ctrl-o</kbd> jumps back after any jump, <kbd>F</kbd> previews a reference without leaving the page</li>
-      <li><b>Every link by its letters</b>: <kbd>f</kbd> then the letters shown on the link, like Vimium in a browser</li>
-      <li><b>Find any paper</b>: <kbd>\f</kbd> by name, <kbd>\/</kbd> by its text, <kbd>\o</kbd> the recent ones</li>
-      <li><b>Notes that travel</b>: highlights and comments saved in the PDF, shown by every other reader</li>
-      <li><b>A to-do list in your papers</b>: <kbd>t</kbd> puts a highlight on it, <kbd>d</kbd> ticks it; <code>:tasks</code> shows what is left in all of them</li>
-      <li><b>Pictures and text on the page</b>: place a signature, turn and mirror it, write a note anywhere; with the keyboard or the mouse</li>
-      <li><b>Undo anything</b>: highlights, comments, images, text, deleted pages</li>
-      <li><b>Easy on the eyes</b>: a dark mode that keeps photographs, fifteen themes, menus always in the theme's dark side, any system font</li>
-      <li><b>No learning wall</b>: <kbd>\c</kbd> shows every key of the mode you are in, and messages say what the next key does</li>
+      <li><b>Reopens where you left off.</b> Each file keeps its page, zoom and dark mode, and <code>npdf</code> alone brings back your last session.</li>
+      <li><b>Never lose your place.</b> <kbd>Ctrl-o</kbd> jumps back after any jump, and <kbd>F</kbd> previews a reference without leaving the page.</li>
+      <li><b>Every link by its letters.</b> Press <kbd>f</kbd>, then the letters shown on the link, like Vimium in a browser.</li>
+      <li><b>Find any paper.</b> <kbd>\f</kbd> searches by name, <kbd>\/</kbd> by text, and <kbd>\o</kbd> opens the recent ones.</li>
+      <li><b>Notes that travel.</b> Highlights and comments are saved in the PDF and shown by every other reader.</li>
+      <li><b>A to-do list in your papers.</b> <kbd>t</kbd> puts a highlight on it, <kbd>d</kbd> ticks it, and <code>:tasks</code> shows what is left in all of them.</li>
+      <li><b>Pictures and text on the page.</b> Place a signature, turn and mirror it, and write a note anywhere, with the keyboard or the mouse.</li>
+      <li><b>Undo anything.</b> Highlights, comments, images, text and deleted pages all come back.</li>
+      <li><b>Easy on the eyes.</b> A dark mode that keeps photographs, fifteen themes, menus always in the theme's dark side, and any system font.</li>
+      <li><b>No learning wall.</b> The <kbd>\</kbd> leader key opens many functions, <kbd>\c</kbd> shows a menu with every key of the mode you are in, and messages say what the next key does.</li>
     </ul>
   </div>
 </div></div>
@@ -79,8 +79,11 @@
   <p class="eyebrow">What it does</p>
   <h2>Everything you do with a paper, one or two keys away</h2>
   <p class="intro">No toolbars, no menus, no sidebars. If you know vim, you already know how
-    to move; if you do not, the help screen (<kbd>\c</kbd>) shows every key, and
-    <kbd>Esc</kbd> always brings you back.</p>
+    to move. If you do not, there is one key to remember. The backslash <kbd>\</kbd> is the
+    <b>leader key</b>, and it starts many functions, such as <kbd>\f</kbd> to find a file,
+    <kbd>\l</kbd> for the panel and <kbd>\g</kbd> for the page grid. Type <kbd>\c</kbd> at any moment
+    and a menu with every key of the mode you are in appears to help you. <kbd>Esc</kbd> always
+    brings you back.</p>
 
   <div class="feature">
     <div class="media window">
@@ -93,11 +96,11 @@
         open next to the highlight, and anything between <code>$…$</code> is typeset by LaTeX as
         you write.</p>
       <ul>
-        <li>Stored in the PDF as standard annotations: Acrobat, Okular, Zotero show them</li>
+        <li>Stored in the PDF as standard annotations, so Acrobat, Okular and Zotero show them</li>
         <li>Undo and redo everything, 200 steps deep</li>
         <li>Filter by colour, export to Markdown for Obsidian</li>
         <li>Merge a co-author's notes without duplicates</li>
-        <li>Answer the reviewers: <kbd>r</kbd> replies to their comments in the PDF, <code>:response</code> writes the response letter</li>
+        <li>Answer the reviewers with <kbd>r</kbd>, which replies to their comments in the PDF, while <code>:response</code> writes the response letter</li>
       </ul>
       <p class="keys"><a href="docs/Highlights-and-Comments.html">How it works →</a> · <a class="gif" href="assets/demos/highlight.gif">GIF</a></p>
     </div>
@@ -110,16 +113,16 @@
     </div>
     <div>
       <h3>Turn highlights into tasks, and tick them off</h3>
-      <p>Answering reviewers, going through a co-author's draft, checking claims: press
+      <p>When you answer reviewers, go through a co-author's draft or check claims, press
         <kbd>t</kbd> on a highlight and it goes on your task list, with a check box in the
-        margin; <kbd>d</kbd> marks it done. The panel's <em>Tasks</em> tab lists what is left,
+        margin. <kbd>d</kbd> marks it done. The panel's <em>Tasks</em> tab lists what is left,
         then what is done and when.</p>
       <ul>
         <li><code>:tasks</code> lists what is still to do in <em>all</em> your PDFs</li>
         <li>Exported to Markdown as <code>- [ ]</code> / <code>- [x]</code>, ready for Obsidian</li>
         <li>Stored in the PDF; Acrobat's check marks count too</li>
       </ul>
-      <p class="keys"><a href="docs/Highlights-and-Comments.html#tasks-tick-your-highlights-off">How it works →</a> · <a class="gif" href="assets/demos/tasks.gif">GIF</a></p>
+      <p class="keys"><a href="docs/Highlights-and-Comments.html#tasks-ticking-your-highlights-off">How it works →</a> · <a class="gif" href="assets/demos/tasks.gif">GIF</a></p>
     </div>
   </div>
 
@@ -129,16 +132,16 @@
       <video autoplay muted loop playsinline preload="metadata" poster="assets/demos/images.jpg" aria-label="A stamp placed on a page, moved, resized and turned with the mouse, then mirrored with a key"><source src="assets/demos/images.mp4" type="video/mp4"></video>
     </div>
     <div>
-      <h3>Signatures and pictures: place them, turn them, mirror them</h3>
-      <p>A signature, a stamp, a screenshot: <code>:image file.png</code>, or paste one. Then
-        <b>drag it with the mouse</b>: the picture to move it, a corner to resize it, the knob
+      <h3>Place signatures and pictures, turn them and mirror them</h3>
+      <p>For a signature, a stamp or a screenshot, use <code>:image file.png</code> or paste one. Then
+        <b>drag it with the mouse</b>. Drag the picture to move it, a corner to resize it and the knob
         above it to turn it to any angle. Prefer the keyboard? <kbd>hjkl</kbd> move,
         <kbd>+</kbd> <kbd>-</kbd> resize, <kbd>o</kbd> turns it, <kbd>f</kbd> and <kbd>F</kbd>
         mirror it.</p>
       <ul>
         <li>Follows the mouse at once, even on a heavy page</li>
-        <li>Never re-encoded: crop, turn and mirror can be undone at any time, without loss</li>
-        <li>Standard annotations: every other reader shows them</li>
+        <li>Never re-encoded, so crop, turn and mirror can be undone at any time without loss</li>
+        <li>Standard annotations, so every other reader shows them</li>
       </ul>
       <p class="keys"><a href="docs/Images-and-Regions.html">How it works →</a> · <a class="gif" href="assets/demos/images.gif">GIF</a></p>
     </div>
@@ -146,17 +149,17 @@
 
   <div class="feature flip">
     <div class="media window">
-      <div class="bar"><i></i><i></i><i></i><span>Writing a note on the page: the box grows with the text</span></div>
+      <div class="bar"><i></i><i></i><i></i><span>Writing a note on the page while the box grows with the text</span></div>
       <video autoplay muted loop playsinline preload="metadata" poster="assets/demos/text.jpg" aria-label="Text written on a page: the box grows with the text, the letters get bigger, the box is made wider"><source src="assets/demos/text.mp4" type="video/mp4"></video>
     </div>
     <div>
       <h3>Write anywhere on the page</h3>
-      <p>Fill in a line a form has no field for, label a figure, leave a note in the margin:
-        press <kbd>T</kbd>, write, and the <b>box grows with the text</b>. <kbd>Ctrl-=</kbd> and
-        <kbd>Ctrl--</kbd> change the letters; later <kbd>e</kbd> moves the box or changes its width, and
+      <p>To fill in a line a form has no field for, label a figure or leave a note in the margin,
+        press <kbd>T</kbd> and write, and the <b>box grows with the text</b>. <kbd>Ctrl-=</kbd> and
+        <kbd>Ctrl--</kbd> change the letters, and later <kbd>e</kbd> moves the box or changes its width, and
         <kbd>i</kbd> writes in it again.</p>
       <ul>
-        <li>Real text in a standard font: a few bytes a letter, sharp at any zoom, and other readers can select and search it</li>
+        <li>Real text in a standard font that takes a few bytes a letter, stays sharp at any zoom, and can be selected and searched in other readers</li>
         <li>Accents and the usual signs work; other alphabets are coming</li>
         <li>Undo, redo and delete like everything else</li>
       </ul>
@@ -171,9 +174,9 @@
     </div>
     <div>
       <h3>See a reference without losing your place</h3>
-      <p>Press <kbd>F</kbd>: every citation, figure, equation and section reference on screen
-        gets a letter. Type it, and the target opens in a window right there: the bibliography
-        entry, the figure on page 7, the equation from the appendix.</p>
+      <p>Press <kbd>F</kbd> and every citation, figure, equation and section reference on screen
+        gets a letter. Type it, and the target opens in a window right there, be it the bibliography
+        entry, the figure on page 7 or the equation from the appendix.</p>
       <ul>
         <li><kbd>f</kbd> follows the link instead; <kbd>Ctrl-o</kbd> always comes back</li>
         <li>Marks and a jump history, like in vim</li>
@@ -194,7 +197,7 @@
         folders as you type, and opens the right one at the right page, with the words
         highlighted. <kbd>\n</kbd> does the same with every comment you ever wrote.</p>
       <ul>
-        <li>An index built in the background, at low priority: about 16 ms per PDF, once</li>
+        <li>An index built in the background at low priority, which takes about 16 ms per PDF, once</li>
         <li>Afterwards only new and changed files are read again</li>
         <li><kbd>\f</kbd> finds any PDF by its name, fuzzy</li>
       </ul>
@@ -209,15 +212,15 @@
     </div>
     <div>
       <h3>What changed since the submitted version?</h3>
-      <p><code>:diff old.pdf</code> compares two versions word by word: new text in green,
-        changes in amber, deletions marked in red. <kbd>]c</kbd> goes to the next change and
-        tells you what it was: <em>changed, was "3.2"</em>.</p>
+      <p><code>:diff old.pdf</code> compares two versions word by word, with new text in green,
+        changes in amber and deletions marked in red. <kbd>]c</kbd> goes to the next change and
+        tells you what it was, such as <em>changed, was "3.2"</em>.</p>
       <ul>
-        <li><b>Notes too</b>: new, changed and removed highlights, comments and text boxes are framed in the same colours</li>
-        <li>Ignores what is not a change: hyphenation, ligatures, page breaks</li>
-        <li>Updated every time LaTeX recompiles: answering reviewers becomes easy</li>
+        <li><b>Notes too.</b> New, changed and removed highlights, comments and text boxes are framed in the same colours</li>
+        <li>Ignores what is not a change, such as hyphenation, ligatures and page breaks</li>
+        <li>Updated every time LaTeX recompiles, which makes answering reviewers easy</li>
       </ul>
-      <p class="keys"><a href="docs/Searching.html#comparing-two-versions-diff">How it works →</a> · <a class="gif" href="assets/demos/diff.gif">GIF</a></p>
+      <p class="keys"><a href="docs/Searching.html#comparing-two-versions-with-diff">How it works →</a> · <a class="gif" href="assets/demos/diff.gif">GIF</a></p>
     </div>
   </div>
 
@@ -232,7 +235,7 @@
         discusses it, or open another paper next to it. Each pane has its own place, zoom and
         search.</p>
       <ul>
-        <li><kbd>Ctrl-w v</kbd>, <kbd>Ctrl-w s</kbd>, <kbd>Ctrl-w w</kbd>: the keys of vim</li>
+        <li><kbd>Ctrl-w v</kbd>, <kbd>Ctrl-w s</kbd> and <kbd>Ctrl-w w</kbd> are the keys of vim</li>
         <li>Tabs, several windows, and your session restored on the next start</li>
       </ul>
       <p class="keys"><a href="docs/Tabs-Windows-and-Split-View.html">How it works →</a> · <a class="gif" href="assets/demos/split.gif">GIF</a></p>
@@ -246,13 +249,13 @@
     </div>
     <div>
       <h3>A dark mode that understands figures</h3>
-      <p>Press <kbd>i</kbd>: text and plots are recoloured for the night, with firm, readable
+      <p>Press <kbd>i</kbd> and text and plots are recoloured for the night, with firm, readable
         letters, while photographs and the pictures you placed keep their colours.
-        Highlights stay readable too: the paper takes their colour, the letters keep the ink.</p>
+        Highlights stay readable too, because the paper takes their colour and the letters keep the ink.</p>
       <ul>
         <li>Figures trimmed in LaTeX leave no light frame behind</li>
         <li>Each file remembers its zoom, dark mode and page</li>
-        <li>Heavy pages render in slices: scrolling never freezes</li>
+        <li>Heavy pages render in slices, so scrolling never freezes</li>
       </ul>
       <p class="keys"><a href="docs/Themes-and-Dark-Mode.html">How it works →</a> · <a class="gif" href="assets/demos/reading.gif">GIF</a></p>
     </div>
@@ -280,7 +283,7 @@
 <section class="soft" id="themes"><div class="wrap">
   <p class="eyebrow">Themes</p>
   <h2>Fifteen themes, each with a light and a dark side</h2>
-  <p class="intro">Built from the official palettes and checked for contrast: the ink of dark
+  <p class="intro">Built from the official palettes and checked for contrast, with the ink of dark
     pages at least 11:1 against the paper. <kbd>\T</kbd> tries them live on your PDF,
     <kbd>i</kbd> switches sides, <code>:theme new</code> starts your own.</p>
   <div class="feature">
@@ -320,7 +323,7 @@
     <div class="card"><span class="k">:merge co-author.pdf</span><h4>Co-authors' notes</h4>
       <p>Bring the highlights and comments of a colleague's copy into yours, without duplicates.</p></div>
     <div class="card"><span class="k">T</span><h4>Text anywhere on a page</h4>
-      <p>Write a note, a label or a line a form has no field for: the box grows with the text, and you can write in it again later.</p></div>
+      <p>Write a note, a label or a line a form has no field for. The box grows with the text, and you can write in it again later.</p></div>
     <div class="card"><span class="k">Ctrl-v · y</span><h4>Figures for slides</h4>
       <p>Mark a region and copy it as a 300 dpi image, or place a picture or a signature on a page.</p></div>
     <div class="card"><span class="k">F5</span><h4>Presentations</h4>
@@ -328,7 +331,7 @@
     <div class="card"><span class="k">Ctrl-j</span><h4>Forms and signatures</h4>
       <p>Fill in forms from the keyboard; signed PDFs keep their signatures valid.</p></div>
     <div class="card"><span class="k">f · F</span><h4>Links by their letters</h4>
-      <p>Every link gets a few letters: type them to follow it, or preview where it goes.</p></div>
+      <p>Every link gets a few letters. Type them to follow it, or preview where it goes.</p></div>
     <div class="card"><span class="k">Ctrl-w v · t</span><h4>Tabs, panes, sessions</h4>
       <p>Several papers in tabs, two in split view, and everything reopens as you left it.</p></div>
     <div class="card"><span class="k">u · Ctrl-r</span><h4>Undo everything</h4>
@@ -336,7 +339,7 @@
     <div class="card"><span class="k">:print</span><h4>Printing</h4>
       <p>Through CUPS, with page ranges, copies and both sides, from the command line.</p></div>
     <div class="card"><span class="k">\ma · ma</span><h4>Marks and jumps</h4>
-      <p>Marks in each paper and a jump list: <kbd>Ctrl-o</kbd> takes you back.</p></div>
+      <p>Marks in each paper and a jump list, with <kbd>Ctrl-o</kbd> to take you back.</p></div>
     <div class="card"><span class="k">local</span><h4>Private by design</h4>
       <p>No accounts, no cloud, no telemetry. Your files and notes never leave your computer.</p></div>
   </div>
@@ -351,20 +354,20 @@
   <div class="downloads">
     <div class="dl">
       <h3>Debian, Ubuntu, Linux Mint, Pop!_OS</h3>
-      <p>The <code>.deb</code> package: double-click it, or</p>
+      <p>The <code>.deb</code> package. Double-click it, or</p>
 <pre>sudo apt install ./nomadys-pdf_0.5.0_amd64.deb</pre>
       <a class="btn primary" href="https://github.com/hdsoliveira/Nomadys-PDF/releases/latest">Get the .deb</a>
     </div>
     <div class="dl">
       <h3>Any distribution</h3>
-      <p>The AppImage: nothing to install.</p>
+      <p>The AppImage needs nothing installed.</p>
 <pre>chmod +x Nomadys-PDF-0.5.0-x86_64.AppImage
 ./Nomadys-PDF-0.5.0-x86_64.AppImage</pre>
       <a class="btn primary" href="https://github.com/hdsoliveira/Nomadys-PDF/releases/latest">Get the AppImage</a>
     </div>
     <div class="dl">
       <h3>Arch Linux</h3>
-      <p>From the AUR, with your helper of choice:</p>
+      <p>From the AUR, with your helper of choice.</p>
 <pre>yay -S nomadys-pdf</pre>
       <a class="btn" href="https://aur.archlinux.org/packages/nomadys-pdf">nomadys-pdf on the AUR</a>
     </div>
@@ -384,14 +387,14 @@ make && make install</pre>
     </div>
     <div>
       <h3>Open a paper</h3>
-<pre>npdf paper.pdf          <span class="c"># or several: one tab each</span>
+<pre>npdf paper.pdf          <span class="c"># or several files, one tab each</span>
 npdf                    <span class="c"># your last session</span></pre>
       <h3>Learn the keys as you go</h3>
       <p><kbd>\c</kbd> shows every key of the mode you are in. The
         <a href="docs/Getting-Started.html">getting started guide</a> takes five minutes, and the
         <a href="docs/Keyboard-Reference.html">keyboard reference</a> lists everything.</p>
-      <p>Optional: TeX Live for equations in comments and SyncTeX, <code>curl</code> for BibTeX,
-        CUPS for printing.</p>
+      <p>TeX Live is optional, for equations in comments and SyncTeX, and so are <code>curl</code> for BibTeX
+        and CUPS for printing.</p>
     </div>
   </div>
 </div></section>
@@ -402,16 +405,16 @@ npdf                    <span class="c"># your last session</span></pre>
   <ul class="limits">
     <li><b>Linux only</b>, for now (Wayland and X11).</li>
     <li><b>Text on the page</b> uses the Latin alphabet with accents; Chinese, Japanese, Korean, Greek and Cyrillic, bold, italic and equations are planned.</li>
-    <li><b>Autosave</b> is on: the open file is saved by itself, and the file as it was before the first save of a session is kept next to it as <code>name.pdf.bak</code>. <code>:w name.pdf</code> saves a copy; set <code>autosave = false</code> to keep an original untouched.</li>
+    <li><b>Autosave</b> is on, so the open file is saved by itself, and the file as it was before the first save of a session is kept next to it as <code>name.pdf.bak</code>. <code>:w name.pdf</code> saves a copy, and <code>autosave = false</code> keeps an original untouched.</li>
     <li><b>:diff</b> compares text and notes, not figures.</li>
-    <li><b>No OCR</b>: scanned pages are shown, not read.</li>
+    <li><b>No OCR.</b> Scanned pages are shown, not read.</li>
   </ul>
 </div></section>
 
 <section id="support"><div class="wrap support">
   <p class="eyebrow">Free, and it stays free</p>
   <h2>Enjoying it? Help it grow</h2>
-  <p class="intro">Nomadys-PDF has no ads, no accounts and no paid version: I build it in my free
+  <p class="intro">Nomadys-PDF has no ads, no accounts and no paid version. I build it in my free
     time and share it with everyone. A star on GitHub helps others find it, and every bug report
     or idea makes it better. If it saves you time, you can also buy me a coffee.</p>
   <div class="buttons">

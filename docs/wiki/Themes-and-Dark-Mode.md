@@ -3,8 +3,8 @@
 ## Fifteen themes, each light and dark
 
 Built from the official palettes, each with a light and a dark mode (`i`
-switches between them while reading). Every one keeps its text readable:
-the ink of dark pages at least 11:1 against the paper, the text of the
+switches between them while reading). Every one keeps its text readable,
+with the ink of dark pages at least 11:1 against the paper, the text of the
 interface at least 7:1, its dim text at least 4.5:1.
 
 | Theme | Light / dark |
@@ -18,7 +18,7 @@ interface at least 7:1, its dim text at least 4.5:1.
 | **dracula** | Alucard / Dracula |
 | **nord** | light / dark |
 | **solarized** | light / dark |
-| **flexoki** | light / dark (made for reading: warm paper, soft ink) |
+| **flexoki** | light / dark (made for reading, with warm paper and soft ink) |
 | **github** | light / dark |
 | **one** | One Light / One Dark |
 | **ayu** | light / dark |
@@ -29,7 +29,7 @@ interface at least 7:1, its dim text at least 4.5:1.
 
 The menus and bars (tab bar, status line, help, panel, library, page grid,
 the theme list) are **always** in the dark mode of your theme, whatever the
-pages show. Only the pages change with `i`: the paper stays light until you
+pages show. Only the pages change with `i`, and the paper stays light until you
 switch to dark mode.
 
 ## Choosing one
@@ -40,7 +40,7 @@ switch to dark mode.
 |---|---|
 | `j` `k` (`↓` `↑`, `Tab`) | move; each theme is **applied at once**, so you see it on your PDF |
 | `i` | show the other mode (light / dark) |
-| `Enter` | keep it: writes `include = NAME` in your configuration (the rest of the file is left as it is) |
+| `Enter` | keep it, and write `include = NAME` in your configuration (the rest of the file is left as it is) |
 | `Esc`, `q` | go back to the theme you had |
 
 `:theme NAME` switches directly (`Tab` completes the names).
@@ -48,7 +48,7 @@ switch to dark mode.
 ## Your own theme
 
 `:theme new NAME` writes `~/.config/nomadys-pdf/themes/NAME.conf`, started
-from the theme in use, with every colour explained on its line:
+from the theme in use, with every colour explained on its line, like this.
 
 ```ini
 # Around the pages
@@ -58,7 +58,7 @@ page_bg = #282828            # dark mode: the paper of the pages
 search_match = #fabd2f       # search matches, link letters (f), the crop frame
 ```
 
-Change any `#rrggbb` and save: the open window shows it **immediately**. A
+Change any `#rrggbb` and save, and the open window shows it **immediately**. A
 wrong value is reported with its line, and the rest still works. Your
 themes appear in the `\T` list marked "yours".
 
@@ -71,11 +71,11 @@ also be changed in the [configuration](Configuration.md#colours), in
 | Name | Paints |
 |---|---|
 | `background` | the window behind and between the pages |
-| `page_bg`, `page_fg` | dark mode: the paper and the ink of the pages |
+| `page_bg`, `page_fg` | in dark mode, the paper and the ink of the pages |
 | `shadow` | the soft shadow around pages |
 | `tab_bg`, `tab_fg` | the tab bar |
 | `tab_active_bg`, `tab_active_fg` | the current tab |
-| `tab_accent` | accents: the current tab, the frame of the focused pane, selected rows, matches in lists, the link letters |
+| `tab_accent` | accents such as the current tab, the frame of the focused pane, selected rows, matches in lists, the link letters |
 | `bar_bg`, `bar_fg`, `bar_cursor` | the `:` and `/` line, and its cursor |
 | `message_bg`, `message_fg` | messages in the corner |
 | `panel_bg`, `panel_fg`, `panel_header` | the panel, help, lists; its dim text |
@@ -84,16 +84,16 @@ also be changed in the [configuration](Configuration.md#colours), in
 | `comment_marker` | the dot on highlights that have a comment |
 | `selection` | text being selected |
 | `search_match` | search matches, the crop frame, the preview marks |
-| `hint_bg`, `hint_fg` | the link letters (`f`, `F`): their badge and their letters. Left out, the badge takes `tab_accent` and the letters the theme's light ink (or its dark ink on a light accent) |
+| `hint_bg`, `hint_fg` | the link letters (`f`, `F`), their badge and their letters. Left out, the badge takes `tab_accent` and the letters the theme's light ink (or its dark ink on a light accent) |
 | `caret` | the text cursor and the free cursor |
 | `form_focus` | the form field being filled |
 | `mode_normal`, `mode_cursor`, `mode_visual`, `mode_area`, `mode_insert`, `mode_command` | the mode badge |
 
 ## Dark mode
 
-Dark mode recolours the pages: what has no colour (the paper, text, lines,
+Dark mode recolours the pages. What has no colour (the paper, text, lines,
 greys) is inverted, with the theme's `page_bg` and `page_fg` as paper and
-ink. **Coloured areas keep their colours**: the shapes of a diagram, bars,
+ink. **Coloured areas keep their colours**, such as the shapes of a diagram, bars and
 panels (a pale face stays pale instead of turning brown); a dark one is only
 lightened. Coloured text and lines keep their hue and become light, so red
 text, a blue link or the curves of a plot stay readable on the dark paper
@@ -103,12 +103,12 @@ letters and thin lines on dark paper look as firm as dark ones on white;
 higher is bolder).
 
 Images are taken apart (`dark_images = smart`, the default), since a figure
-often holds photos, renders and plots side by side, or on light panels:
+often holds photos, renders and plots side by side, or on light panels. Each piece gets its own treatment.
 
 - their **light paper** (the white around and between the pictures, a light
   panel, the corners of rounded photos, the holes of a render that show the
   panel behind it, and whatever is see-through) becomes the page's paper, so
-  no white block glares. Only the part of a figure that shows counts: one trimmed in
+  no white block glares. Only the part of a figure that shows counts, so one trimmed in
   LaTeX leaves no light frame around it;
 - what is **drawn** on that paper (plots, lines, labels, markers) is
   recoloured with the page, like the text;
@@ -119,7 +119,7 @@ often holds photos, renders and plots side by side, or on light panels:
   background keeps the colours of what it draws, and the page shows through
   it in dark mode.
 
-**Highlights** stay readable: the text under them keeps the theme's ink and
+**Highlights** stay readable, because the text under them keeps the theme's ink and
 only the paper around the letters takes the highlight's colour, lighter on
 an area (`Ctrl-v`, then `C` `V` `B` `N` `M`) than on text, so a figure under
 an area highlight keeps its colours.
@@ -133,7 +133,7 @@ Dark mode is remembered per file.
 ## Fonts
 
 The interface font is any font installed on your system, Nerd Fonts
-included (`fc-list : family` lists them):
+included (`fc-list : family` lists them), set like this.
 
 ```ini
 font = CaskaydiaCove NF

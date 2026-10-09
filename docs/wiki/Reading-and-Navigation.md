@@ -13,7 +13,7 @@
 | `42G`, `42gg` or `:42` | page 42 |
 | mouse wheel | scroll |
 
-A number repeats a key: `5j`, `3J`.
+A number repeats a key, as in `5j` or `3J`.
 
 ## Zoom and layout
 
@@ -23,7 +23,7 @@ A number repeats a key: `5j`, `3J`.
 | `=` | fit the width of the window |
 | `z` | fit the whole page |
 | `:zoom 150` | a zoom in percent |
-| `d` | two pages side by side (again: one page) |
+| `d` | two pages side by side (press it again for one page) |
 | `r` / `R` | turn the view 90° clockwise / counter-clockwise |
 | `:rotate 90`, `:rotate -90`, `:rotate 180` | the same, by an angle |
 | `i` | dark mode on / off (also `:dark`, `:light`) |
@@ -39,19 +39,19 @@ with `remember_view = false` (and `restore_position = false` for the page).
 
 Pages are drawn at the exact resolution of your screen (HiDPI included),
 never stretched. Very heavy pages (thousands of vector lines, dense plots)
-are drawn a little at a time, so scrolling and zooming never freeze: while
+are drawn a little at a time, so scrolling and zooming never freeze. While
 such a page is being drawn, it shows how it looked at the previous zoom.
 
 ## Dark mode
 
 `i` switches between the light and dark versions of the current
 [theme](Themes-and-Dark-Mode.md). In dark mode the pages are recoloured,
-keeping hues (red stays red). Images are judged one by one: photos keep
+keeping hues (red stays red). Images are judged one by one, so photos keep
 their colours, while figures drawn on white (plots, diagrams) are
 recoloured with the page so no white blocks glare. `dark_images` in the
 configuration changes this. Dark mode is remembered per file.
 
-## All pages at once: the page grid
+## All pages at once, the page grid
 
 `\g` (or `:pages`) shows every page as a thumbnail.
 
@@ -65,21 +65,21 @@ configuration changes this. Dark mode is remembered per file.
 | `Esc`, `q`, `\g` | close |
 
 The grid is also where pages are deleted, turned, moved, extracted and
-inserted: see [Changing pages](Changing-Pages.md).
+inserted, as described in [Changing pages](Changing-Pages.md).
 
 ## Marks and jumps
 
-For going back and forth between places: the text, a figure, an equation,
-the references.
+For going back and forth between places, such as the text, a figure, an equation
+or the references.
 
 | Key | Action |
 |---|---|
 | `\ma`, `\mb`, … `\mz` | remember this place as mark *a*, *b*, … |
 | `ma`, `mb`, … | jump to that mark |
-| `mm` | back to where you were before the last jump (again: return) |
+| `mm` | back to where you were before the last jump (press it again to return) |
 | `Ctrl-o` / `Ctrl-i` | older / newer place in the jump history |
 
-Every big move is a *jump* and goes into the history: `gg`, `G`, `42G`, a
+Every big move is a *jump* and goes into the history, such as `gg`, `G`, `42G`, a
 search, a mark, a link, a contents entry, a page chosen in the grid. So
 `Ctrl-o` always brings you back.
 
@@ -90,7 +90,7 @@ moved in the page grid, marks follow their pages.
 
 ## The panel
 
-`\l` (or `:marks`, `:notes`) opens a panel with five tabs:
+`\l` (or `:marks`, `:notes`) opens a panel with five tabs, described below.
 
 | Tab | Shows |
 |---|---|
@@ -98,7 +98,7 @@ moved in the page grid, marks follow their pages.
 | **Summary** | the PDF's table of contents, as a tree |
 | **Marks** | your marks with their names |
 | **Highlights** | every highlight with its colour, comment and highlighted text, and every image |
-| **Tasks** | the highlights you put on the task list (`t`): to do first, then done ([more](Highlights-and-Comments.md#tasks-tick-your-highlights-off)) |
+| **Tasks** | the highlights you put on the task list (`t`), to do first and then done ([more](Highlights-and-Comments.md#tasks-ticking-your-highlights-off)) |
 
 | Key | Action |
 |---|---|
@@ -106,13 +106,13 @@ moved in the page grid, marks follow their pages.
 | `j` `k`, `gg` `G` | move |
 | `Enter` | go there |
 | `r` | rename the mark / edit the comment |
-| `d` | delete only the comment (Tasks tab: done / to do) |
+| `d` | delete only the comment (in the Tasks tab, done / to do) |
 | `x` | delete the highlight (with its comment) or the mark |
-| `t` | Highlights, Tasks: on / off the task list |
-| `Space`, `D` | Tasks tab: done / to do; hide / show the done ones |
-| `C` `V` `B` `N` `M` | Highlights tab: show or hide a colour |
-| `c` / `a` | Highlights tab: only those with a comment / all again |
-| `e` | Highlights tab: export what is shown to Markdown |
+| `t` | in Highlights and Tasks, on / off the task list |
+| `Space`, `D` | in the Tasks tab, done / to do, and hide / show the done ones |
+| `C` `V` `B` `N` `M` | in the Highlights tab, show or hide a colour |
+| `c` / `a` | in the Highlights tab, only those with a comment / all again |
+| `e` | in the Highlights tab, export what is shown to Markdown |
 | `Esc`, `q` | close |
 
 ## Links, references and previews
@@ -123,13 +123,13 @@ moved in the page grid, marks follow their pages.
 | `F` | the same letters, but the target is **previewed** in a window, without leaving the page |
 | click | a plain click on a link follows it |
 
-The letters go on every link of the PDF on screen: citations, references
+The letters go on every link of the PDF on screen, including citations, references
 to figures, tables, equations and sections (papers made with LaTeX and
 `hyperref`, and most journal PDFs, have them), entries of a table of
 contents, and web links. Web addresses and DOIs written in the text as plain
 words get letters too. Following a link inside the PDF is a jump, so
 `Ctrl-o` comes back. Web links (`http`, `https`, `www.`, `mailto:`, `doi:`)
-open in your browser; links to local files or programs are never run: they
+open in your browser; links to local files or programs are never run, and they
 are shown and copied to the clipboard instead.
 
 The **preview** (`F`) shows the target of a link inside the PDF (the
@@ -153,7 +153,7 @@ nothing else on screen.
 | `j` `l` `Space` `→` `↓` `Enter` `PageDown`, left click | next slide |
 | `k` `h` `←` `↑` `Backspace` `PageUp`, right click | previous slide |
 | `gg` `G` `12G` | first, last, slide 12 |
-| `.` or `b` | black screen (again: back) |
+| `.` or `b` | black screen (press it again to go back) |
 | `Esc`, `q`, `F5` | stop; reading continues at that slide |
 
 The next slide is prepared while you talk, so moving forward is instant,

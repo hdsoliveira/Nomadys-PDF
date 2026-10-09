@@ -2,8 +2,8 @@
 
 ## Tabs
 
-Each PDF opens in a tab of the same window: `npdf a.pdf b.pdf c.pdf`, or
-`:e file.pdf`, `\o`, `\f` from inside.
+Each PDF opens in a tab of the same window, using `npdf a.pdf b.pdf c.pdf` or, from
+inside, `:e file.pdf`, `\o` or `\f`.
 
 | Key | Action |
 |---|---|
@@ -11,7 +11,7 @@ Each PDF opens in a tab of the same window: `npdf a.pdf b.pdf c.pdf`, or
 | `t` | show / hide the tab bar |
 | `:e file.pdf` | open in a new tab (`Tab` completes the path) |
 | `:q` | close the tab (`:q!` discarding unsaved changes; `:wq`, `:x` save first) |
-| `\l`, then the **Tabs** tab | all open files: `Enter` switches, `x` closes |
+| `\l`, then the **Tabs** tab | all open files, where `Enter` switches and `x` closes |
 
 The tab bar is hidden by default, to leave the whole window to the page; it
 shows for a moment when you switch tabs. `show_tabs = true` in the
@@ -27,7 +27,7 @@ shows for a moment when you switch tabs. `show_tabs = true` in the
 ## Split view
 
 Two panes in one window, each with its own place, zoom, dark mode and
-search: the figure and the text that discusses it, the paper and its
+search, for example the figure and the text that discusses it, the paper and its
 supplementary material, or two papers side by side.
 
 | Key | Action |
@@ -41,11 +41,11 @@ supplementary material, or two papers side by side.
 | `Ctrl-w q`, `Ctrl-w c`, `:close` | close this pane |
 | `Ctrl-w o`, `:only` | keep only this pane |
 
-Keys act on the **focused** pane: it is framed in the theme's accent colour
-and its name has a dot; the other pane is shown as it is, not dimmed. Each
+Keys act on the **focused** pane, which is framed in the theme's accent colour
+and has a dot in its name, while the other pane is shown as it is, not dimmed. Each
 pane shows its file name in a small label at the top right. A click or the
-mouse wheel over a pane focuses it. Search, marks, highlighting, zoom:
-everything works in each pane as in a whole window.
+mouse wheel over a pane focuses it. Search, marks, highlighting and zoom
+all work in each pane as in a whole window.
 
 The first pane shows the current tab; switching tabs changes it, and the
 second pane stays.

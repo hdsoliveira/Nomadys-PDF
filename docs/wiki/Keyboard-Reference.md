@@ -1,8 +1,10 @@
 # Keyboard reference
 
-Every key, by mode. `\` is the leader key (configurable). `Ctrl-x` means
-holding Control. A number before a key repeats it (`5j`). The same list is
-always one key away in the program: `\c`.
+Every key, by mode. The backslash `\` is the leader key, which starts many
+functions (`\c`, `\l`, `\g`, `\f` and more) and can be changed in the
+configuration. `Ctrl-x` means holding Control. A number before a key repeats it
+(`5j`). The same list is always one key away in the program. Type `\c` and a
+menu with the keys of the mode you are in appears.
 
 ## Reading (NORMAL)
 
@@ -57,7 +59,7 @@ always one key away in the program: `\c`.
 | Key | Action |
 |---|---|
 | `:` | command line |
-| `\l` | panel: tabs, summary, marks, highlights |
+| `\l` | the panel, with tabs, summary, marks and highlights |
 | `\g` | page grid |
 | `\o` | recent files |
 | `\f` | find a PDF in your folders |
@@ -89,13 +91,13 @@ always one key away in the program: `\c`.
 
 | Action | Effect |
 |---|---|
-| wheel | scroll (`Ctrl` + wheel: zoom) |
+| wheel | scroll (`Ctrl` + wheel zooms) |
 | click on a link | follow it |
 | drag over text | select it and copy it (then `C` `V` `B` `N` `M`, `c`, `Y` work on it) |
 | click on a form field | fill it |
 | double click, `Ctrl` + click | open that spot in the LaTeX source |
 | click on a pane | focus it |
-| click on a picture, or the edge of a framed area | select it: [move, resize, turn](Images-and-Regions.md#with-the-mouse) |
+| click on a picture, or the edge of a framed area | select it, then [move, resize or turn it](Images-and-Regions.md#with-the-mouse) |
 
 ## Text cursor (CURSOR / VISUAL)
 
@@ -106,15 +108,15 @@ always one key away in the program: `\c`.
 | `e` | end of the word |
 | `0` / `$` | start / end of the line |
 | `v` | start / stop selecting |
-| `C` `V` `B` `N` `M` | highlight: yellow, red, green, pink, blue |
+| `C` `V` `B` `N` `M` | highlight in yellow, red, green, pink or blue |
 | `c` | highlight with a comment, or edit the comment under the cursor |
 | `y` | copy the selected text |
 | `Y` | copy it as a quotation with the page |
 | `x` | delete the highlight under the cursor |
-| `t` | the highlight under the cursor: on / off the task list |
-| `d` | the task under the cursor: done / to do |
+| `t` | put the highlight under the cursor on the task list, or take it off |
+| `d` | mark the task under the cursor as done, or as to do again |
 | `r` | reply to the comment under the cursor (a reviewer's), or change the reply |
-| `Enter` | LaTeX: open this spot in the editor |
+| `Enter` | open this spot in the LaTeX editor |
 | `Ctrl-v` | switch to the free cursor |
 | `Esc` | cancel the selection, then leave |
 
@@ -133,12 +135,12 @@ Scrolling, marks, jumps, undo, `\l` and `\c` work here too.
 | `I` | put an image file here |
 | `P` | paste an image from the clipboard here |
 | `e` | move / resize the image, text or area under the cross |
-| `T` | write text here: at the cross, or with the width marked by `v` |
+| `T` | write text here, at the cross or with the width marked by `v` |
 | `x` | delete the highlight under the cross |
-| `t` | the highlight under the cross: on / off the task list |
-| `d` | the task under the cross: done / to do |
+| `t` | put the highlight under the cross on the task list, or take it off |
+| `d` | mark the task under the cross as done, or as to do again |
 | `r` | reply to the comment under the cross, or change the reply |
-| `Enter` | LaTeX: open this spot in the editor |
+| `Enter` | open this spot in the LaTeX editor |
 | `Ctrl-v` | back to the text cursor |
 | `Esc` | cancel / leave |
 
@@ -154,19 +156,19 @@ Scrolling, marks, jumps, undo, `\l` and `\c` work here too.
 | `Ctrl-v` | paste |
 | `Esc` | done |
 
-Afterwards `e` on the box moves it (`H` `L`: width, `+` `-`: letters) and `i`
+Afterwards `e` on the box moves it (`H` `L` change the width and `+` `-` the letters) and `i`
 writes in it again.
 
 ## Moving and resizing (MOVE / IMAGE)
 
 | Key | Action |
 |---|---|
-| `h` `j` `k` `l` (`Ctrl`: faster) | move |
+| `h` `j` `k` `l` (`Ctrl` for faster) | move |
 | `+` / `-` | bigger / smaller, keeping the proportions |
 | `H` / `L` | narrower / wider |
 | `K` / `J` | shorter / taller |
 | `=` | an image back to its own proportions |
-| `i` | a text box: write in it again |
+| `i` | write in a text box again |
 | `r` / `R` | turn an image 90° |
 | `o` | turn an image to any angle (below) |
 | `f` / `F` | mirror an image left-right / top-bottom |
@@ -175,21 +177,21 @@ writes in it again.
 | `Enter` | done |
 | `Esc` | put it back where it was |
 
-With the mouse: drag the picture to move it, a corner to resize it (`Shift`:
-freely), a side to stretch it (past the opposite side it mirrors), the
+With the mouse, drag the picture to move it, a corner to resize it (`Shift`
+resizes it freely), a side to stretch it (past the opposite side it mirrors) and the
 round knob above it to turn it.
 
 ## Turning freely (ROTATE)
 
 | Key | Action |
 |---|---|
-| `h` / `l` | 1° counter-clockwise / clockwise (a count multiplies: `45l`) |
+| `h` / `l` | 1° counter-clockwise / clockwise (a count multiplies, as in `45l`) |
 | `H` / `L` | 15° |
 | `Ctrl-h` / `Ctrl-l` | 5° |
 | `u` | upright again |
 | `r` / `R` | turn 90° |
 | `f` / `F` | mirror left-right / top-bottom |
-| mouse | drag anywhere: it turns around its centre (`Shift`: steps of 15°) |
+| mouse | drag anywhere and it turns around its centre (`Shift` gives steps of 15°) |
 | `Enter` | back to moving and resizing |
 | `Esc` | cancel this turning |
 
@@ -197,7 +199,7 @@ round knob above it to turn it.
 
 | Key | Action |
 |---|---|
-| `h` `j` `k` `l` (`Ctrl`: faster) | cut the left / bottom / top / right side |
+| `h` `j` `k` `l` (`Ctrl` for faster) | cut the left / bottom / top / right side |
 | `H` `J` `K` `L` | give that side back |
 | `u` | the whole picture again |
 | `Enter` | back to moving and resizing |
@@ -234,14 +236,14 @@ round knob above it to turn it.
 | `j` `k`, `gg` `G` | move |
 | `Enter` | go there |
 | `r` | rename the mark / edit the comment |
-| `d` | Highlights: delete only the comment; Tasks: done / to do |
-| `x` | delete the highlight or mark (in Tabs: close the file) |
-| `C` `V` `B` `N` `M` | Highlights: show / hide a colour |
-| `c` / `a` | Highlights: only commented / all |
-| `t` | Highlights, Tasks: on / off the task list |
-| `Space` | Tasks: done / to do |
-| `D` | Tasks: hide / show the done ones |
-| `e` | Highlights: export what is shown |
+| `d` | in Highlights, delete only the comment, and in Tasks, done / to do |
+| `x` | delete the highlight or mark (in Tabs, close the file) |
+| `C` `V` `B` `N` `M` | in Highlights, show / hide a colour |
+| `c` / `a` | in Highlights, only commented / all |
+| `t` | in Highlights and Tasks, on / off the task list |
+| `Space` | in Tasks, done / to do |
+| `D` | in Tasks, hide / show the done ones |
+| `e` | in Highlights, export what is shown |
 | `Esc`, `q` | close |
 
 ## Page grid (PAGES)
@@ -274,15 +276,15 @@ round knob above it to turn it.
 | `.`, `b` | black screen |
 | `Esc`, `q`, `F5` | stop |
 
-## Lists: recent files, finder, library (OPEN / LIBRARY)
+## Lists of recent files, the finder and the library (OPEN / LIBRARY)
 
 | Key | Action |
 |---|---|
 | typing, `Backspace` | filter / search |
 | `Ctrl-u` | clear |
 | `Ctrl-j` `Ctrl-k`, `Ctrl-n` `Ctrl-p`, `↓` `↑` | move |
-| `Tab` | recent / finder: move; library: text ⇄ comments |
-| `Ctrl-t` | library: every comment ⇄ the tasks to do |
+| `Tab` | in the recent files and the finder, move; in the library, switch between text and comments |
+| `Ctrl-t` | in the library, switch between every comment and the tasks to do |
 | `Enter` | open |
 | `Esc` | close |
 
@@ -312,7 +314,7 @@ round knob above it to turn it.
 | `Tab` / `Shift-Tab` | complete a command or path; cycle through the options |
 | `Enter` | run |
 | `Esc` | cancel |
-| `Ctrl-t` | search: match case exactly |
+| `Ctrl-t` | in search, match case exactly |
 | `Backspace` | delete a character |
 | `Ctrl-u` | delete everything |
 

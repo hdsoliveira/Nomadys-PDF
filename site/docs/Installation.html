@@ -18,8 +18,8 @@
 <p>Nomadys-PDF runs on Linux, on Wayland and X11. The command is <code>npdf</code>.</p>
 <h2 id="dependencies">Dependencies<a class="anchor" href="#dependencies">#</a></h2>
 <pre><code>sudo apt install build-essential pkg-config libsdl3-dev libfreetype-dev libfontconfig-dev zlib1g-dev</code></pre>
-<p>PDFium (the PDF engine) is <strong>downloaded automatically</strong> by the first <code>make</code>: a pinned release (<code>chromium/8066</code> from <a href="https://github.com/bblanchon/pdfium-binaries">bblanchon/pdfium-binaries</a>), checked against its SHA-256. It is not stored in the repository.</p>
-<p>Optional, for extra features:</p>
+<p>PDFium (the PDF engine) is <strong>downloaded automatically</strong> by the first <code>make</code>. It is a pinned release (<code>chromium/8066</code> from <a href="https://github.com/bblanchon/pdfium-binaries">bblanchon/pdfium-binaries</a>), checked against its SHA-256. It is not stored in the repository.</p>
+<p>These programs are optional and add extra features.</p>
 <table><thead><tr><th>Program</th><th>Used for</th></tr></thead><tbody><tr><td><code>pdflatex</code> (TeX Live) with <code>amsmath</code>, <code>amssymb</code></td><td>equations in comments (<a href="Highlights-and-Comments.html">Highlights and comments</a>)</td></tr><tr><td><code>synctex</code> (comes with TeX Live)</td><td>jumping between the PDF and the LaTeX source (<a href="LaTeX-and-VimTeX.html">LaTeX and VimTeX</a>)</td></tr><tr><td><code>curl</code></td><td><code>:bibtex</code> (<a href="Quoting-and-Citing.html">Quoting and citing</a>)</td></tr><tr><td>CUPS (<code>lp</code>, <code>lpstat</code>)</td><td>printing</td></tr><tr><td><code>xdg-open</code></td><td>opening web links in the browser</td></tr></tbody></table>
 <p>Everything else works without them.</p>
 <h2 id="building-and-installing">Building and installing<a class="anchor" href="#building-and-installing">#</a></h2>
@@ -27,7 +27,7 @@
 cd Nomadys-PDF
 make              # builds ./npdf
 make install      # installs for your user</code></pre>
-<p><code>make install</code> puts, under <code>~/.local</code>:</p>
+<p><code>make install</code> puts these files under <code>~/.local</code>.</p>
 <ul><li><code>bin/npdf</code>, the program</li><li><code>lib/nomadys-pdf/libpdfium.so</code>, the PDF engine</li><li><code>share/nomadys-pdf/themes/</code>, the colour themes</li><li><code>share/applications/npdf.desktop</code> and the icons, so it appears in your application menu and can be chosen as the program for PDFs</li></ul>
 <p>Make sure <code>~/.local/bin</code> is in your <code>PATH</code>.</p>
 <p><code>make uninstall</code> removes all of it. Your settings (<code>~/.config/nomadys-pdf</code>) and data (marks, recent files, the search index) are left alone; see <a href="Files-Memory-and-Speed.html">Files, memory and speed</a> to remove those too.</p>
@@ -38,7 +38,7 @@ make install      # installs for your user</code></pre>
 <h2 id="checking-the-installation">Checking the installation<a class="anchor" href="#checking-the-installation">#</a></h2>
 <pre><code>npdf --version      # Nomadys-PDF (npdf) 0.5.0
 npdf --help         # a short list of keys and options</code></pre>
-<p>Next: <a href="Getting-Started.html">Getting started</a>.</p>
+<p>The next page is <a href="Getting-Started.html">Getting started</a>.</p>
 <nav class="pager"><a href="index.html"><small>Previous</small>Home</a><a class="next" href="Getting-Started.html"><small>Next</small>Getting started</a></nav>
 </main>
 </div>

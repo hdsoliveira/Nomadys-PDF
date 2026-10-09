@@ -8,12 +8,12 @@ Nomadys-PDF runs on Linux, on Wayland and X11. The command is `npdf`.
 sudo apt install build-essential pkg-config libsdl3-dev libfreetype-dev libfontconfig-dev zlib1g-dev
 ```
 
-PDFium (the PDF engine) is **downloaded automatically** by the first `make`:
-a pinned release (`chromium/8066` from
+PDFium (the PDF engine) is **downloaded automatically** by the first `make`.
+It is a pinned release (`chromium/8066` from
 [bblanchon/pdfium-binaries](https://github.com/bblanchon/pdfium-binaries)),
 checked against its SHA-256. It is not stored in the repository.
 
-Optional, for extra features:
+These programs are optional and add extra features.
 
 | Program | Used for |
 |---|---|
@@ -34,7 +34,7 @@ make              # builds ./npdf
 make install      # installs for your user
 ```
 
-`make install` puts, under `~/.local`:
+`make install` puts these files under `~/.local`.
 
 - `bin/npdf`, the program
 - `lib/nomadys-pdf/libpdfium.so`, the PDF engine
@@ -67,4 +67,4 @@ npdf --version      # Nomadys-PDF (npdf) 0.5.0
 npdf --help         # a short list of keys and options
 ```
 
-Next: [Getting started](Getting-Started.md).
+The next page is [Getting started](Getting-Started.md).

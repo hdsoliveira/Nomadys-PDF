@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tabs, windows and split view · Nomadys-PDF documentation</title>
-<meta name="description" content="Each PDF opens in a tab of the same window: npdf a.pdf b.pdf c.pdf, or :e file.pdf, \o, \f from inside.">
+<meta name="description" content="Each PDF opens in a tab of the same window, using npdf a.pdf b.pdf c.pdf or, from inside, :e file.pdf, \o or \f.">
 <link rel="icon" href="../assets/icon.svg"><link rel="stylesheet" href="../assets/style.css">
 </head><body>
 <header class="top"><div class="wrap">
@@ -16,16 +16,16 @@
 <main class="doc">
 <h1 id="tabs-windows-and-split-view">Tabs, windows and split view</h1>
 <h2 id="tabs">Tabs<a class="anchor" href="#tabs">#</a></h2>
-<p>Each PDF opens in a tab of the same window: <code>npdf a.pdf b.pdf c.pdf</code>, or <code>:e file.pdf</code>, <code>\o</code>, <code>\f</code> from inside.</p>
-<table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>Ctrl-,</code> / <code>Ctrl-.</code></td><td>previous / next tab</td></tr><tr><td><code>t</code></td><td>show / hide the tab bar</td></tr><tr><td><code>:e file.pdf</code></td><td>open in a new tab (<code>Tab</code> completes the path)</td></tr><tr><td><code>:q</code></td><td>close the tab (<code>:q!</code> discarding unsaved changes; <code>:wq</code>, <code>:x</code> save first)</td></tr><tr><td><code>\l</code>, then the <strong>Tabs</strong> tab</td><td>all open files: <code>Enter</code> switches, <code>x</code> closes</td></tr></tbody></table>
+<p>Each PDF opens in a tab of the same window, using <code>npdf a.pdf b.pdf c.pdf</code> or, from inside, <code>:e file.pdf</code>, <code>\o</code> or <code>\f</code>.</p>
+<table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>Ctrl-,</code> / <code>Ctrl-.</code></td><td>previous / next tab</td></tr><tr><td><code>t</code></td><td>show / hide the tab bar</td></tr><tr><td><code>:e file.pdf</code></td><td>open in a new tab (<code>Tab</code> completes the path)</td></tr><tr><td><code>:q</code></td><td>close the tab (<code>:q!</code> discarding unsaved changes; <code>:wq</code>, <code>:x</code> save first)</td></tr><tr><td><code>\l</code>, then the <strong>Tabs</strong> tab</td><td>all open files, where <code>Enter</code> switches and <code>x</code> closes</td></tr></tbody></table>
 <p>The tab bar is hidden by default, to leave the whole window to the page; it shows for a moment when you switch tabs. <code>show_tabs = true</code> in the <a href="Configuration.html">configuration</a> keeps it visible.</p>
 <h2 id="windows">Windows<a class="anchor" href="#windows">#</a></h2>
 <table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>Ctrl-n</code></td><td>a new window on the same PDF (edits are shared)</td></tr><tr><td><code>q</code></td><td>close the window</td></tr></tbody></table>
 <h2 id="split-view">Split view<a class="anchor" href="#split-view">#</a></h2>
 <figure class="demo"><div class="window"><div class="bar"><i></i><i></i><i></i><span>Two panes, then another paper</span></div><video autoplay muted loop playsinline preload="metadata" poster="../assets/demos/split.jpg"><source src="../assets/demos/split.mp4" type="video/mp4"></video></div></figure>
-<p>Two panes in one window, each with its own place, zoom, dark mode and search: the figure and the text that discusses it, the paper and its supplementary material, or two papers side by side.</p>
+<p>Two panes in one window, each with its own place, zoom, dark mode and search, for example the figure and the text that discusses it, the paper and its supplementary material, or two papers side by side.</p>
 <table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>Ctrl-w v</code></td><td>split side by side, on the same PDF</td></tr><tr><td><code>Ctrl-w s</code></td><td>split one above the other</td></tr><tr><td><code>:vsplit other.pdf</code> / <code>:split other.pdf</code></td><td>the same, with another PDF in the new pane</td></tr><tr><td><code>Ctrl-w w</code>, <code>Ctrl-w Ctrl-w</code></td><td>go to the other pane</td></tr><tr><td><code>Ctrl-w h</code> <code>j</code> <code>k</code> <code>l</code></td><td>go to the pane to the left / below / above / right</td></tr><tr><td><code>Ctrl-w x</code></td><td>the panes change places</td></tr><tr><td><code>Ctrl-w q</code>, <code>Ctrl-w c</code>, <code>:close</code></td><td>close this pane</td></tr><tr><td><code>Ctrl-w o</code>, <code>:only</code></td><td>keep only this pane</td></tr></tbody></table>
-<p>Keys act on the <strong>focused</strong> pane: it is framed in the theme's accent colour and its name has a dot; the other pane is shown as it is, not dimmed. Each pane shows its file name in a small label at the top right. A click or the mouse wheel over a pane focuses it. Search, marks, highlighting, zoom: everything works in each pane as in a whole window.</p>
+<p>Keys act on the <strong>focused</strong> pane, which is framed in the theme's accent colour and has a dot in its name, while the other pane is shown as it is, not dimmed. Each pane shows its file name in a small label at the top right. A click or the mouse wheel over a pane focuses it. Search, marks, highlighting and zoom all work in each pane as in a whole window.</p>
 <p>The first pane shows the current tab; switching tabs changes it, and the second pane stays.</p>
 <h2 id="sessions">Sessions<a class="anchor" href="#sessions">#</a></h2>
 <p>The open tabs are remembered as they change, even if the program is killed. <code>npdf</code> with no file reopens them (so does <code>:session</code> from inside). Each file opens where you stopped reading.</p>

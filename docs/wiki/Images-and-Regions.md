@@ -1,12 +1,12 @@
 # Images and regions
 
-All of this starts in the **free cursor** (`Ctrl-v`): a thin cross that can
+All of this starts in the **free cursor** (`Ctrl-v`), a thin cross that can
 go anywhere on the page. `h` `j` `k` `l` move it; `w` `b` `J` `K` (or
 `Ctrl-h/j/k/l`) move it faster; `v` starts a rectangle.
 
 ## Copying a region as an image
 
-For slides, a report, a message: mark a rectangle with `v`, then
+For slides, a report or a message, mark a rectangle with `v` and then use one of these keys.
 
 | Key | Action |
 |---|---|
@@ -19,7 +19,7 @@ message says its size and resolution.
 
 ## Putting a picture on a page
 
-A signature, a screenshot, a figure, a stamp:
+To put a signature, a screenshot, a figure or a stamp on the page, use one of these.
 
 | How | Action |
 |---|---|
@@ -33,7 +33,7 @@ A signature, a screenshot, a figure, a stamp:
 - Transparent PNGs stay transparent.
 - Right after it is placed, it can be moved and resized (below).
 
-Pictures are standard stamp annotations: other readers show them, the
+Pictures are standard stamp annotations, so other readers show them, the
 panel lists them, `x` deletes them and `u` undoes.
 
 **Quality.** Pictures stay sharp when you zoom in. Small ones (a signature,
@@ -47,12 +47,12 @@ longer side. A 24-megapixel photo goes in in under a second and adds about
 ## Writing text on a page
 
 For a note in the margin, a label on a figure, a line in a form that has no
-field: in the free cursor (`Ctrl-v`) put the cross where the text goes, or
+field, go to the free cursor (`Ctrl-v`), put the cross where the text goes, or
 mark its **width** with `v` (a rectangle works too), and press `T`.
 
 | Key | Action |
 |---|---|
-| (type) | write: the box **grows with the text**, which wraps at the box's width |
+| (type) | write, and the box **grows with the text**, which wraps at the box's width |
 | `Enter` | new line |
 | `Ctrl-=` / `Ctrl--` | bigger / smaller letters (`Ctrl` + wheel too); 12 pt to start with |
 | arrows, `Home`, `End` | move in the text |
@@ -61,7 +61,7 @@ mark its **width** with `v` (a rectangle works too), and press `T`.
 | `Esc` | done (`u` undoes the whole box) |
 
 The box is then like a picture. Put the cross on it (or **click** it) and
-press `e`:
+press `e`, then use these keys.
 
 | Key | Action |
 |---|---|
@@ -72,10 +72,10 @@ press `e`:
 | `x` | delete it |
 | `Enter` / `Esc` | keep / put it back |
 
-With the mouse: drag the box to move it, a side or corner to change its width.
+With the mouse, drag the box to move it, and a side or corner to change its width.
 
 The text is **real text** in Helvetica, one of the fonts every PDF reader
-has, so nothing is embedded: a paragraph adds only a few bytes a letter to the
+has, so nothing is embedded, and a paragraph adds only a few bytes a letter to the
 file, and other readers show it sharp at any zoom and can select, copy and
 search it. They can also move or delete the box; to *edit* it, use
 Nomadys-PDF (the text, the size and the width are kept in the box).
@@ -87,11 +87,11 @@ planned.
 ## Moving, resizing, turning
 
 Put the cross on a picture or a highlighted area and press `e` (or click
-the picture with the mouse: see [below](#with-the-mouse)):
+the picture with the mouse, as explained [below](#with-the-mouse)).
 
 | Key | Action |
 |---|---|
-| `h` `j` `k` `l` (with `Ctrl`: faster) | move |
+| `h` `j` `k` `l` (with `Ctrl`, faster) | move |
 | `+` / `-` | bigger / smaller, keeping the proportions |
 | `H` / `L` | narrower / wider |
 | `K` / `J` | shorter / taller |
@@ -102,17 +102,17 @@ the picture with the mouse: see [below](#with-the-mouse)):
 | `c` | crop a picture (below) |
 | `x` | delete it |
 | `Enter` | done |
-| `Esc` | cancel: back where it was |
+| `Esc` | cancel and put it back where it was |
 
 Highlighted *text* stays with its words; only areas and pictures move.
 
 ## Turning to any angle
 
-`o` while moving a picture starts the turning mode:
+`o` while moving a picture starts the turning mode, with these keys.
 
 | Key | Action |
 |---|---|
-| `h` / `l` | 1° counter-clockwise / clockwise (a count multiplies: `45l` turns 45°) |
+| `h` / `l` | 1° counter-clockwise / clockwise (a count multiplies, so `45l` turns 45°) |
 | `H` / `L` | 15° |
 | `Ctrl-h` / `Ctrl-l` | 5° |
 | `u` | upright again |
@@ -123,7 +123,7 @@ Highlighted *text* stays with its words; only areas and pictures move.
 The picture turns around its centre and every reader shows it turned. A
 mirror (`f` left-right, `F` top-bottom) is as seen on screen, so it also
 reverses the direction of the angle. Like the 90° turns, the angle and the
-mirror are kept in the PDF without touching the picture: they can be undone
+mirror are kept in the PDF without touching the picture, so they can be undone
 at any time, with no loss of quality.
 
 A cropped picture cannot be turned to a free angle (uncrop it first with `c`
@@ -133,17 +133,17 @@ upright with `o` then `u`).
 ## With the mouse
 
 Everything above can be done with the mouse too; the keys and the mouse mix
-freely. **Click** a picture (or the edge of a framed area) to select it: a
+freely. **Click** a picture (or the edge of a framed area) to select it, and a
 frame with handles appears, and the keys above work on it. Click anywhere
 else to finish.
 
 | Drag | Effect |
 |---|---|
 | the picture | move it |
-| a corner | resize it, keeping the proportions (`Shift`: freely) |
+| a corner | resize it, keeping the proportions (`Shift` makes it free) |
 | a side | stretch it one way |
 | a side or corner **past the opposite one** | mirror it |
-| the round knob above it | turn it (`Shift`: steps of 15°) |
+| the round knob above it | turn it (`Shift` gives steps of 15°) |
 | anywhere, in the turning mode (`o`) | turn it around its centre |
 
 The pointer changes shape over a handle. While you drag, the picture is
@@ -153,7 +153,7 @@ back.
 
 ## Cropping
 
-`c` while moving a picture:
+`c` while moving a picture starts cropping, with these keys.
 
 | Key | Action |
 |---|---|
@@ -163,6 +163,6 @@ back.
 | `Enter` | back to moving and resizing |
 | `Esc` | cancel this cropping |
 
-The picture itself is never cut or re-encoded: the PDF keeps it whole and
-only shows a part of it. So a crop, or a turn, can be undone at any time,
+The picture itself is never cut or re-encoded. The PDF keeps it whole and
+only shows a part of it, so a crop, or a turn, can be undone at any time,
 even after the file was closed and opened again, with no loss of quality.

@@ -1,14 +1,15 @@
 # FAQ and troubleshooting
 
 **Where are all the buttons?**
-There are none, on purpose: the page gets the whole window. `\c` lists
-every key; `:` and `Tab` list every command.
+There are none, on purpose, because the page gets the whole window. The leader
+key `\` starts many functions, and `\c` opens a menu that lists every key. `:`
+and `Tab` list every command.
 
 **How do I get out of whatever I am in?**
 `Esc`, once or twice, always goes back to reading.
 
 **Will other programs see my highlights and comments?**
-Yes. They are standard PDF annotations, stored in the file itself: Acrobat,
+Yes. They are standard PDF annotations, stored in the file itself, so Acrobat,
 Okular, Evince, Preview, Zotero and others show them. Equations in comments
 appear there as the LaTeX you typed (`$\sigma = E\varepsilon$`).
 
@@ -21,7 +22,7 @@ gone. Annotate the final version, or a copy of it. Marks survive, since
 they are kept outside the PDF.
 
 **`\/` finds nothing.**
-The first time, the index is still being built: the top right corner shows
+The first time, the index is still being built, and the top right corner shows
 the progress. Check that `pdf_dirs` in the configuration includes the
 folders with your PDFs. Scanned PDFs without a text layer and
 password-protected PDFs cannot be searched. Letters with accents must be

@@ -2,14 +2,14 @@
 
 ## Copying text
 
-In the text cursor (`v`), select with `v`, then:
+In the text cursor (`v`), select with `v`, then use these keys.
 
 | Key | Copies |
 |---|---|
 | `y` | the text, as it is |
-| `Y` | the text **as a quotation with its page**: `“the snap-through instability” (p. 5)` |
+| `Y` | the text **as a quotation with its page**, like `“the snap-through instability” (p. 5)` |
 
-Quotations are made for pasting into your own writing:
+Quotations are made for pasting into your own writing, so they follow a few rules.
 
 - line breaks and repeated spaces become single spaces, and words broken
   with a hyphen at the end of a line are joined again;
@@ -20,7 +20,7 @@ Quotations are made for pasting into your own writing:
 
 The format is `cite_format` in the [configuration](Configuration.md), with
 `%t` for the text and `%p` for the page(s). The default is
-`“%t” (p. %p)`; for example:
+`“%t” (p. %p)`, and these are examples of other formats.
 
 ```ini
 cite_format = "%t" [p. %p]
@@ -30,18 +30,18 @@ cite_format = > %t (p. %p)
 ## BibTeX for the paper you are reading
 
 `:bibtex` copies the paper's BibTeX entry to the clipboard, ready to paste
-into your `.bib` file:
+into your `.bib` file. It works in four steps.
 
-1. it finds the paper's **DOI**: in the PDF's metadata first, then in the
+1. it finds the paper's **DOI**, in the PDF's metadata first and then in the
    text of its first two pages (a DOI printed as `doi:`, `DOI:` or
    `doi.org/` is preferred over one that is only mentioned);
 2. without a DOI, it looks for an **arXiv** number (`arXiv:1602.03837`);
 3. it fetches the entry from `doi.org` (or `arxiv.org`) in the background,
    so you keep reading meanwhile;
-4. the message shows the citation key: "BibTeX copied: Abbott_2016".
+4. the message shows the citation key, as in "BibTeX copied: Abbott_2016".
 
 It needs `curl` and an internet connection. When nothing is found it says
-so: "no DOI or arXiv number found on the first pages", "no connection",
+so, for example "no DOI or arXiv number found on the first pages", "no connection",
 "timed out" or "not found".
 
 ## Copying a figure
