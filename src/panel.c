@@ -111,7 +111,7 @@ static PanelItem *note_item(Window *w, Doc *d, int page, int i, int *cap)
     it->color = s->notes[i].color;
     it->task = s->notes[i].task;
     it->pos = (Pos){page, SDL_max(0.0f, 1 - s->notes[i].r.t / d->ph[page] - 0.05f)};
-    bool image = s->notes[i].subtype == FPDF_ANNOT_STAMP;
+    bool image = s->notes[i].subtype == FPDF_ANNOT_STAMP && !s->notes[i].textbox;
     char *c = note_comment(d, page, i), *t = image ? xstrdup("(image)") : covered_text(d, page, &s->notes[i]);
     if (c) {
         snprintf(it->text, sizeof it->text, "%s", c);
@@ -647,7 +647,7 @@ static const char *footer(Window *w)
 
 void panel_draw(Window *w)
 {
-    const Theme *t = wtheme(w);
+    const Theme *t = uitheme(w);
     Box b = {w, t, 0, 0, 0, (int)(12 * w->density), font_height(w->font) + (int)(4 * w->density)};
     b.bw = (float)SDL_min(w->W - 2 * b.pad, (int)(820 * w->density));
     float bh = (w->H - top_of(w) - ui_bar_height(w)) * 0.8f;

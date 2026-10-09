@@ -44,9 +44,50 @@ for byte); only very large ones are reduced, never below 4096 pixels on the
 longer side. A 24-megapixel photo goes in in under a second and adds about
 2 MB to the file. Pictures over 120 megapixels are refused.
 
+## Writing text on a page
+
+For a note in the margin, a label on a figure, a line in a form that has no
+field: in the free cursor (`Ctrl-v`) put the cross where the text goes, or
+mark its **width** with `v` (a rectangle works too), and press `T`.
+
+| Key | Action |
+|---|---|
+| (type) | write: the box **grows with the text**, which wraps at the box's width |
+| `Enter` | new line |
+| `Ctrl-=` / `Ctrl--` | bigger / smaller letters (`Ctrl` + wheel too); 12 pt to start with |
+| arrows, `Home`, `End` | move in the text |
+| `Ctrl-w`, `Backspace`, `Delete` | erase |
+| `Ctrl-v` | paste |
+| `Esc` | done (`u` undoes the whole box) |
+
+The box is then like a picture. Put the cross on it (or **click** it) and
+press `e`:
+
+| Key | Action |
+|---|---|
+| `h` `j` `k` `l` | move it |
+| `H` / `L` | narrower / wider (the text wraps again) |
+| `+` / `-` | bigger / smaller letters |
+| `i` | write in it again (a double click too) |
+| `x` | delete it |
+| `Enter` / `Esc` | keep / put it back |
+
+With the mouse: drag the box to move it, a side or corner to change its width.
+
+The text is **real text** in Helvetica, one of the fonts every PDF reader
+has, so nothing is embedded: a paragraph adds only a few bytes a letter to the
+file, and other readers show it sharp at any zoom and can select, copy and
+search it. They can also move or delete the box; to *edit* it, use
+Nomadys-PDF (the text, the size and the width are kept in the box).
+Accents and the usual signs (quotes, dashes, the euro) work; letters outside
+the Latin alphabet (Chinese, Japanese, Korean, Greek, Cyrillic) show as `?` for
+now, and the text you wrote is kept in the box. Bold, italic and equations are
+planned.
+
 ## Moving, resizing, turning
 
-Put the cross on a picture or a highlighted area and press `e`:
+Put the cross on a picture or a highlighted area and press `e` (or click
+the picture with the mouse: see [below](#with-the-mouse)):
 
 | Key | Action |
 |---|---|
@@ -56,12 +97,59 @@ Put the cross on a picture or a highlighted area and press `e`:
 | `K` / `J` | shorter / taller |
 | `=` | a picture back to its own proportions |
 | `r` / `R` | turn a picture 90° clockwise / counter-clockwise |
+| `o` | turn a picture to any angle (below) |
+| `f` / `F` | mirror a picture left-right / top-bottom |
 | `c` | crop a picture (below) |
 | `x` | delete it |
 | `Enter` | done |
 | `Esc` | cancel: back where it was |
 
 Highlighted *text* stays with its words; only areas and pictures move.
+
+## Turning to any angle
+
+`o` while moving a picture starts the turning mode:
+
+| Key | Action |
+|---|---|
+| `h` / `l` | 1° counter-clockwise / clockwise (a count multiplies: `45l` turns 45°) |
+| `H` / `L` | 15° |
+| `Ctrl-h` / `Ctrl-l` | 5° |
+| `u` | upright again |
+| `r` / `R`, `f` / `F` | 90° turns and mirrors work here too |
+| `Enter` | back to moving and resizing |
+| `Esc` | cancel this turning |
+
+The picture turns around its centre and every reader shows it turned. A
+mirror (`f` left-right, `F` top-bottom) is as seen on screen, so it also
+reverses the direction of the angle. Like the 90° turns, the angle and the
+mirror are kept in the PDF without touching the picture: they can be undone
+at any time, with no loss of quality.
+
+A cropped picture cannot be turned to a free angle (uncrop it first with `c`
+then `u`), and a picture turned to a free angle cannot be cropped (make it
+upright with `o` then `u`).
+
+## With the mouse
+
+Everything above can be done with the mouse too; the keys and the mouse mix
+freely. **Click** a picture (or the edge of a framed area) to select it: a
+frame with handles appears, and the keys above work on it. Click anywhere
+else to finish.
+
+| Drag | Effect |
+|---|---|
+| the picture | move it |
+| a corner | resize it, keeping the proportions (`Shift`: freely) |
+| a side | stretch it one way |
+| a side or corner **past the opposite one** | mirror it |
+| the round knob above it | turn it (`Shift`: steps of 15°) |
+| anywhere, in the turning mode (`o`) | turn it around its centre |
+
+The pointer changes shape over a handle. While you drag, the picture is
+drawn straight from its pixels, so it follows the mouse at once even on a
+heavy page; the PDF is changed when you let go, and `Esc` or `u` puts it
+back.
 
 ## Cropping
 

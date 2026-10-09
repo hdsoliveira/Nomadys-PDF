@@ -83,7 +83,7 @@ bool pane_enter_at(Window *w, float *x, float *y)
 /* The file name of a pane, in a small pill at its top right. */
 static void pane_label(Window *w, SDL_Rect r, View *v, bool focused)
 {
-    const Theme *t = wtheme(w);
+    const Theme *t = uitheme(w);
     float d = w->density, pad = 8 * d, dot = focused ? 7 * d : 0;
     const char *path = v->doc->path, *slash = strrchr(path, '/');
     char name[200];
@@ -112,7 +112,7 @@ void split_draw_frame(Window *w)
 {
     if (!w->split)
         return;
-    const Theme *t = wtheme(w);
+    const Theme *t = uitheme(w);
     SDL_Rect a = pane_rect(w, false), b = pane_rect(w, true), f = w->split_focus ? b : a;
     float d = w->density, line = SDL_max(2.0f, SDL_roundf(2 * d));
     uint32_t gutter = t->tab_bg, grip = rgb_mix(t->tab_bg, t->panel_header, 0.7f);

@@ -548,17 +548,13 @@ bool pdf_write(FPDF_DOCUMENT pdf, const char *path, char *err, size_t errlen)
 }
 
 /* Save to a temporary file, then atomic rename over the original. */
-bool doc_save(Doc *d, char *err, size_t errlen)
+/* The document as it is now, written to a file (atomically: a temporary
+ * file next to it, renamed over it at the end). */
+static bool write_to(Doc *d, const char *path, char *err, size_t errlen)
 {
-    render_cancel(d, -1);
-    /* the atomic rename below would replace even a read-only file */
-    if (access(d->path, W_OK) != 0 && errno != ENOENT) {
-        snprintf(err, errlen, "save failed: %s is read-only", strrchr(d->path, '/') + 1);
-        return false;
-    }
-    size_t n = strlen(d->path) + 32;
+    size_t n = strlen(path) + 32;
     char *tmp = xmalloc(n);
-    snprintf(tmp, n, "%s.nomadys-XXXXXX", d->path);
+    snprintf(tmp, n, "%s.nomadys-XXXXXX", path);
     int fd = mkstemp(tmp);
     if (fd < 0) {
         snprintf(err, errlen, "save failed: %s", strerror(errno));
@@ -568,7 +564,6 @@ bool doc_save(Doc *d, char *err, size_t errlen)
     struct stat st;
     if (stat(d->path, &st) == 0)
         fchmod(fd, st.st_mode & 07777);
-    uint64_t t0 = SDL_GetTicks();
     FdWriter w = {{1, write_block}, fd, false};
     /* A full rewrite keeps the file compact: an incremental save appends
      * every object PDFium has loaded (the page's photos included), so each
@@ -579,7 +574,7 @@ bool doc_save(Doc *d, char *err, size_t errlen)
     ok = ok && pdf_link_replies(fd, d->replies, d->nreplies); /* the /IRT PDFium cannot write */
     ok = ok && fsync(fd) == 0;
     ok = (close(fd) == 0) && ok;
-    if (ok && rename(tmp, d->path) != 0)
+    if (ok && rename(tmp, path) != 0)
         ok = false;
     if (!ok) {
         snprintf(err, errlen, "save failed: %s", strerror(errno ? errno : EIO));
@@ -588,6 +583,35 @@ bool doc_save(Doc *d, char *err, size_t errlen)
         return false;
     }
     free(tmp);
+    return true;
+}
+
+/* :w file.pdf: a copy under another name (the document stays the one open). */
+bool doc_save_copy(Doc *d, const char *path, bool overwrite, char *err, size_t errlen)
+{
+    render_cancel(d, -1);
+    struct stat a, b;
+    if (stat(path, &a) == 0 && stat(d->path, &b) == 0 && a.st_dev == b.st_dev && a.st_ino == b.st_ino)
+        return doc_save(d, err, errlen); /* the same file: an ordinary save */
+    if (!overwrite && access(path, F_OK) == 0) {
+        snprintf(err, errlen, "%s exists: :w! %s replaces it", strrchr(path, '/') ? strrchr(path, '/') + 1 : path,
+                 strrchr(path, '/') ? strrchr(path, '/') + 1 : path);
+        return false;
+    }
+    return write_to(d, path, err, errlen);
+}
+
+bool doc_save(Doc *d, char *err, size_t errlen)
+{
+    render_cancel(d, -1);
+    /* the atomic rename below would replace even a read-only file */
+    if (access(d->path, W_OK) != 0 && errno != ENOENT) {
+        snprintf(err, errlen, "save failed: %s is read-only", strrchr(d->path, '/') + 1);
+        return false;
+    }
+    uint64_t t0 = SDL_GetTicks();
+    if (!write_to(d, d->path, err, errlen))
+        return false;
     d->modified = false;
     d->save_ms = (int)(SDL_GetTicks() - t0);
     d->saved_mtime_ns = file_mtime_ns(d->path); /* our write: do not reload */

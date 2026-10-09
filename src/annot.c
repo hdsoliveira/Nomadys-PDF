@@ -1,5 +1,6 @@
 /* Markup annotations: highlights with optional comments ("notes").
  * They are standard PDF annotations, so other readers show them too. */
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -132,6 +133,8 @@ void notes_page(Doc *d, int page)
             nt->area = type == FPDF_ANNOT_HIGHLIGHT &&
                        ((get_string(a, "NomadysArea", mark, sizeof mark) && mark[0] == '1') ||
                         (nt->nquads == 1 && nt->quads[0].t - nt->quads[0].b > 40));
+            char box[8];
+            nt->textbox = type == FPDF_ANNOT_STAMP && get_string(a, "NomadysText", box, sizeof box) && box[0];
             char task[32];
             if (get_string(a, "NomadysTask", task, sizeof task) && task[0]) {
                 nt->task = !strncmp(task, "done", 4) ? TASK_DONE : TASK_OPEN;
@@ -172,6 +175,32 @@ int note_at(Doc *d, int page, float x, float y)
             if (x >= r.l - 1 && x <= r.r + 1 && y <= r.t + 1 && y >= r.b - 1)
                 return i;
         }
+    return -1;
+}
+
+/* The picture or area a mouse click at (x, y) means, or -1: a picture
+ * anywhere inside it; a frame or an area highlight only near its edge
+ * (inside, the click belongs to the text underneath). tol: points. */
+int note_pick(Doc *d, int page, float x, float y, float tol)
+{
+    if (!doc_page_ok(d, page))
+        return -1;
+    notes_page(d, page);
+    PageSlot *s = &d->slots[page];
+    for (int i = s->nnotes - 1; i >= 0; i--) {
+        const Note *n = &s->notes[i];
+        PRect r = n->r;
+        if (n->subtype == FPDF_ANNOT_STAMP) {
+            if (x >= r.l - 1 && x <= r.r + 1 && y <= r.t + 1 && y >= r.b - 1)
+                return i;
+        } else if (n->subtype == FPDF_ANNOT_SQUARE || n->subtype == FPDF_ANNOT_CIRCLE ||
+                   (n->subtype == FPDF_ANNOT_HIGHLIGHT && n->area)) {
+            bool outer = x >= r.l - tol && x <= r.r + tol && y <= r.t + tol && y >= r.b - tol;
+            bool inner = x > r.l + tol && x < r.r - tol && y < r.t - tol && y > r.b + tol;
+            if (outer && !inner)
+                return i;
+        }
+    }
     return -1;
 }
 
@@ -387,6 +416,15 @@ static bool apply(Doc *d, Undo *u, bool redo)
     }
     case U_PAGES:
         return false; /* above */
+    case U_TEXTBOX: {
+        TextBox b;
+        const char *s = redo ? u->text_after : u->text_before;
+        if (idx < 0 || !s || !textbox_decode(s, &b))
+            return false;
+        bool ok = note_text_update(d, u->page, idx, &b) >= 0;
+        textbox_free(&b);
+        return ok;
+    }
     case U_EDIT:
         if (idx < 0)
             return false;
@@ -406,6 +444,7 @@ static const char *what(const Undo *u)
     case U_EDIT: return u->has_view ? "image change" : "move / resize";
     case U_PAGES: return "page change";
     case U_TASK: return "task";
+    case U_TEXTBOX: return "text";
     }
     return "change";
 }
@@ -568,6 +607,111 @@ int note_create_image(Doc *d, int page, PRect r, FPDF_PAGEOBJECT image)
     return FPDFPage_GetAnnotCount(p) - 1;
 }
 
+/* ---------- free texts (textbox.c) ---------- */
+/* A text box: a stamp whose appearance is the text (real text, Helvetica);
+ * its text, size and width are kept in it. keep_name: the same annotation
+ * again; otherwise a new one, which undo can hide. Returns the annotation
+ * index, or -1. */
+static int text_write(Doc *d, int page, const TextBox *b, const char *keep_name, const char *author)
+{
+    FPDF_PAGE p = doc_page(d, page);
+    FPDF_ANNOTATION a = p ? FPDFPage_CreateAnnot(p, FPDF_ANNOT_STAMP) : NULL;
+    if (!a)
+        return -1;
+    FS_RECTF rect = {b->left, b->top, b->left + b->width, b->top - textbox_height(b)};
+    FPDFAnnot_SetRect(a, &rect); /* the appearance's box is the rectangle at the time the text goes in */
+    if (!textbox_objects(d, a, b)) {
+        FPDFPage_CloseAnnot(a);
+        FPDFPage_RemoveAnnot(p, FPDFPage_GetAnnotCount(p) - 1);
+        return -1;
+    }
+    FPDFAnnot_SetFlags(a, FPDF_ANNOT_FLAG_PRINT);
+    set_string(a, "Name", "Text");
+    char spec[64];
+    snprintf(spec, sizeof spec, "%g %g", b->size, b->width);
+    set_string(a, "NomadysText", spec);
+    set_string(a, "Contents", b->text); /* other readers list it */
+    if (keep_name)
+        set_string(a, "NM", keep_name);
+    else
+        record(d, U_CREATE, page, a);
+    set_string(a, "T", author && author[0] ? author : note_user());
+    FPDFPage_CloseAnnot(a);
+    doc_mark_changed(d, page);
+    return FPDFPage_GetAnnotCount(p) - 1;
+}
+
+int note_text_create(Doc *d, int page, const TextBox *b) { return text_write(d, page, b, NULL, NULL); }
+
+/* The same text box, as it is written now: made again under the same name
+ * (the appearance's box cannot change in place), so the new index. */
+int note_text_update(Doc *d, int page, int annot, const TextBox *b)
+{
+    FPDF_PAGE p = doc_page(d, page);
+    FPDF_ANNOTATION a = p ? FPDFPage_GetAnnot(p, annot) : NULL;
+    if (!a)
+        return -1;
+    char nm[64], author[128] = "";
+    annot_name(a, nm, sizeof nm);
+    get_string(a, "T", author, sizeof author);
+    int flags = FPDFAnnot_GetFlags(a);
+    FPDFPage_CloseAnnot(a);
+    if (d->focus_page == page)
+        doc_kill_focus(d);
+    if (!FPDFPage_RemoveAnnot(p, annot))
+        return -1;
+    forget_widgets(&d->slots[page]);
+    int idx = text_write(d, page, b, nm, author);
+    if (idx >= 0 && (flags & FPDF_ANNOT_FLAG_HIDDEN)) { /* a deleted box stays deleted */
+        FPDF_ANNOTATION n = FPDFPage_GetAnnot(p, idx);
+        if (n) {
+            FPDFAnnot_SetFlags(n, FPDFAnnot_GetFlags(n) | FPDF_ANNOT_FLAG_HIDDEN);
+            FPDFPage_CloseAnnot(n);
+        }
+    }
+    return idx;
+}
+
+bool note_text_get(Doc *d, int page, int annot, TextBox *b)
+{
+    FPDF_PAGE p = doc_page(d, page);
+    FPDF_ANNOTATION a = p ? FPDFPage_GetAnnot(p, annot) : NULL;
+    if (!a)
+        return false;
+    char spec[64];
+    float size, width;
+    FS_RECTF r;
+    bool ok = FPDFAnnot_GetSubtype(a) == FPDF_ANNOT_STAMP && get_string(a, "NomadysText", spec, sizeof spec) &&
+              sscanf(spec, "%f %f", &size, &width) == 2 && size > 0 && width > 0 && FPDFAnnot_GetRect(a, &r);
+    if (ok) {
+        unsigned long bytes = FPDFAnnot_GetStringValue(a, "Contents", NULL, 0);
+        char *text = NULL;
+        if (bytes > 2) {
+            unsigned short *u = xmalloc(bytes);
+            FPDFAnnot_GetStringValue(a, "Contents", u, bytes);
+            text = utf16_to_utf8(u, (int)(bytes / 2) - 1);
+            free(u);
+        }
+        *b = (TextBox){text ? text : xstrdup(""), size, width, SDL_min(r.left, r.right), SDL_max(r.top, r.bottom)};
+    }
+    FPDFPage_CloseAnnot(a);
+    return ok;
+}
+
+/* The writing of a text box, from start to end, as one step. */
+void undo_textbox(Doc *d, int page, int annot, const char *before, const char *after)
+{
+    FPDF_PAGE p = doc_page(d, page);
+    FPDF_ANNOTATION a = p ? FPDFPage_GetAnnot(p, annot) : NULL;
+    if (!a)
+        return;
+    Undo u = {.kind = U_TEXTBOX, .page = page, .text_before = xstrdup(before), .text_after = xstrdup(after),
+              .group = d->undo_group_open};
+    annot_name(a, u.nm, sizeof u.nm);
+    FPDFPage_CloseAnnot(a);
+    push(d, u);
+}
+
 /* The note (index into slots[page].notes) of an annotation, or -1. */
 int note_of_annot(Doc *d, int page, int annot)
 {
@@ -670,22 +814,29 @@ bool note_image_view(Doc *d, int page, int annot, ImageView *iv, int *pxw, int *
     FPDF_PAGEOBJECT o = FPDFAnnot_GetSubtype(a) == FPDF_ANNOT_STAMP ? stamp_image(a) : NULL;
     unsigned int w = 0, h = 0;
     bool ok = o && FPDFImageObj_GetImagePixelSize(o, &w, &h) && w && h;
-    char buf[256] = "";
+    char buf[512] = "";
     unsigned long n = ok ? FPDFAnnot_GetStringValue(a, VIEW_KEY, NULL, 0) : 0;
-    if (n > 2 && n < sizeof buf) {
-        unsigned short u[128];
+    unsigned short u[512];
+    if (n > 2 && n < sizeof u) {
         FPDFAnnot_GetStringValue(a, VIEW_KEY, u, sizeof u);
         char *s = utf16_to_utf8(u, (int)(n / 2) - 1);
         snprintf(buf, sizeof buf, "%s", s);
         free(s);
     }
     if (ok && buf[0]) {
-        ok = sscanf(buf, "%f %f %f %f %f %f %f %f %d", &iv->box[0], &iv->box[1], &iv->box[2], &iv->box[3], &iv->u0,
-                    &iv->v0, &iv->u1, &iv->v1, &iv->turns) == 9;
+        int fh = 0, fv = 0;
+        *iv = (ImageView){0};
+        int got = sscanf(buf, "%f %f %f %f %f %f %f %f %d %d %d %f %f %f", &iv->box[0], &iv->box[1], &iv->box[2],
+                         &iv->box[3], &iv->u0, &iv->v0, &iv->u1, &iv->v1, &iv->turns, &fh, &fv, &iv->angle, &iv->rw,
+                         &iv->rh); /* the last five came later: older files stop at the turns */
+        ok = got == 9 || got == 14;
+        iv->flip_h = fh != 0, iv->flip_v = fv != 0;
+        if (got == 9 || !(iv->rw > 0 && iv->rh > 0) || !isfinite(iv->angle))
+            iv->angle = 0;
     } else if (ok) {
         FS_MATRIX m;
         ok = FPDFPageObj_GetMatrix(o, &m) && m.b == 0 && m.c == 0 && m.a > 0 && m.d > 0;
-        *iv = (ImageView){{m.e, m.f, m.e + m.a, m.f + m.d}, 0, 0, 1, 1, 0};
+        *iv = (ImageView){.box = {m.e, m.f, m.e + m.a, m.f + m.d}, .u1 = 1, .v1 = 1};
     }
     ok = ok && iv->u1 > iv->u0 && iv->v1 > iv->v0 && iv->box[2] > iv->box[0] && iv->box[3] > iv->box[1];
     iv->turns = ((iv->turns % 4) + 4) % 4;
@@ -694,13 +845,14 @@ bool note_image_view(Doc *d, int page, int annot, ImageView *iv, int *pxw, int *
     return ok;
 }
 
-/* The image matrix for a view: the part shown fills the box, turned. */
-static FS_MATRIX view_matrix(const ImageView *iv)
+/* Where the picture's (u, v) lands in the box, as fractions of it (0-1,
+ * v up) after the crop, the turns and the mirror: u'' = f0 u + f1 v + f2,
+ * v'' = f3 u + f4 v + f5. */
+void note_view_unit(const ImageView *iv, float f[6])
 {
     float cw = iv->u1 - iv->u0, ch = iv->v1 - iv->v0;
     /* u' = pu*u + r0, v' = qv*v + s0: the part shown becomes 0..1 */
     float pu = 1 / cw, r0 = -iv->u0 / cw, qv = 1 / ch, s0 = -iv->v0 / ch;
-    /* u'' = A*u + B*v + C, v'' = D*u + E*v + F after the turn */
     float A, B, C, D, E, F;
     switch (iv->turns) {
     case 1: A = 0, B = qv, C = s0, D = -pu, E = 0, F = 1 - r0; break;       /* (v', 1 - u') */
@@ -708,8 +860,90 @@ static FS_MATRIX view_matrix(const ImageView *iv)
     case 3: A = 0, B = -qv, C = 1 - s0, D = pu, E = 0, F = r0; break;       /* (1 - v', u') */
     default: A = pu, B = 0, C = r0, D = 0, E = qv, F = s0; break;
     }
+    if (iv->flip_h)
+        A = -A, B = -B, C = 1 - C;
+    if (iv->flip_v)
+        D = -D, E = -E, F = 1 - F;
+    f[0] = A, f[1] = B, f[2] = C, f[3] = D, f[4] = E, f[5] = F;
+}
+
+/* The image matrix for a view: the part shown fills the box, turned and
+ * mirrored; with a free angle it is turned around the centre of the box,
+ * as a rw x rh picture (always inside the box). */
+static FS_MATRIX view_matrix(const ImageView *iv)
+{
+    float f[6];
+    note_view_unit(iv, f);
+    float A = f[0], B = f[1], C = f[2], D = f[3], E = f[4], F = f[5];
     float bw = iv->box[2] - iv->box[0], bh = iv->box[3] - iv->box[1];
-    return (FS_MATRIX){bw * A, bh * D, bw * B, bh * E, iv->box[0] + bw * C, iv->box[1] + bh * F};
+    float cx = (iv->box[0] + iv->box[2]) / 2, cy = (iv->box[1] + iv->box[3]) / 2;
+    float rw = bw, rh = bh, ca = 1, sa = 0;
+    if (iv->angle != 0 && iv->rw > 0 && iv->rh > 0) {
+        float rad = iv->angle * (float)M_PI / 180;
+        rw = iv->rw, rh = iv->rh, ca = cosf(rad), sa = sinf(rad);
+    }
+    /* x = cx + ca*rw*(u''-.5) + sa*rh*(v''-.5), y = cy - sa*rw*(u''-.5) + ca*rh*(v''-.5) */
+    return (FS_MATRIX){ca * rw * A + sa * rh * D, -sa * rw * A + ca * rh * D,
+                       ca * rw * B + sa * rh * E, -sa * rw * B + ca * rh * E,
+                       cx + ca * rw * (C - 0.5f) + sa * rh * (F - 0.5f),
+                       cy - sa * rw * (C - 0.5f) + ca * rh * (F - 0.5f)};
+}
+
+/* The whole picture of an image, as BGRA pixels (malloc'ed; at most
+ * `side` pixels the long way), for showing it while it is dragged. */
+bool note_image_pixels(Doc *d, int page, int annot, int side, uint8_t **bgra, int *wd, int *ht)
+{
+    FPDF_PAGE p = doc_page(d, page);
+    FPDF_ANNOTATION a = p ? FPDFPage_GetAnnot(p, annot) : NULL;
+    FPDF_PAGEOBJECT o = a ? stamp_image(a) : NULL;
+    FS_MATRIX m;
+    unsigned int pw = 0, ph = 0;
+    FPDF_BITMAP bmp = NULL;
+    if (o && FPDFPageObj_GetMatrix(o, &m) && FPDFImageObj_GetImagePixelSize(o, &pw, &ph) && pw && ph &&
+        (uint64_t)pw * ph <= 64u << 20) {
+        /* drawn at its own pixel size: the soft mask comes too */
+        FPDFImageObj_SetMatrix(o, pw, 0, 0, ph, 0, 0);
+        bmp = FPDFImageObj_GetRenderedBitmap(d->pdf, p, o);
+        FPDFImageObj_SetMatrix(o, m.a, m.b, m.c, m.d, m.e, m.f);
+    }
+    if (a)
+        FPDFPage_CloseAnnot(a);
+    if (!bmp)
+        return false;
+    int bw = FPDFBitmap_GetWidth(bmp), bh = FPDFBitmap_GetHeight(bmp), stride = FPDFBitmap_GetStride(bmp);
+    const uint8_t *px = FPDFBitmap_GetBuffer(bmp);
+    bool alpha = FPDFBitmap_GetFormat(bmp) == FPDFBitmap_BGRA;
+    float k = SDL_min(1.0f, (float)side / (float)SDL_max(bw, bh));
+    int ow = SDL_max(1, (int)(bw * k)), oh = SDL_max(1, (int)(bh * k));
+    if (!px || bw < 1 || bh < 1) {
+        FPDFBitmap_Destroy(bmp);
+        return false;
+    }
+    uint8_t *out = xmalloc((size_t)ow * oh * 4);
+    for (int y = 0; y < oh; y++)
+        for (int x = 0; x < ow; x++) {
+            const uint8_t *q = px + (size_t)(y * bh / oh) * stride + 4 * (size_t)(x * bw / ow);
+            uint8_t *o4 = out + ((size_t)y * ow + x) * 4;
+            o4[0] = q[0], o4[1] = q[1], o4[2] = q[2], o4[3] = alpha ? q[3] : 255;
+        }
+    FPDFBitmap_Destroy(bmp);
+    *bgra = out, *wd = ow, *ht = oh;
+    return true;
+}
+
+/* Hides or shows an annotation for the time of a drag: only the flag, so
+ * the page can be drawn without it; not an edit, and not undone. */
+void note_set_shown(Doc *d, int page, int annot, bool shown)
+{
+    FPDF_PAGE p = doc_page(d, page);
+    FPDF_ANNOTATION a = p ? FPDFPage_GetAnnot(p, annot) : NULL;
+    if (!a)
+        return;
+    int flags = FPDFAnnot_GetFlags(a);
+    FPDFAnnot_SetFlags(a, shown ? flags & ~FPDF_ANNOT_FLAG_HIDDEN : flags | FPDF_ANNOT_FLAG_HIDDEN);
+    FPDFPage_CloseAnnot(a);
+    doc_reload_page(d, page);
+    doc_mark_changed(d, page);
 }
 
 bool note_image_apply(Doc *d, int page, int annot, const ImageView *iv, PRect r)
@@ -727,9 +961,9 @@ bool note_image_apply(Doc *d, int page, int annot, const ImageView *iv, PRect r)
     FPDFAnnot_UpdateObject(a, o);
     FS_RECTF rect = {r.l, r.t, r.r, r.b};
     FPDFAnnot_SetRect(a, &rect);
-    char buf[256];
-    snprintf(buf, sizeof buf, "%g %g %g %g %g %g %g %g %d", iv->box[0], iv->box[1], iv->box[2], iv->box[3], iv->u0,
-             iv->v0, iv->u1, iv->v1, iv->turns);
+    char buf[512];
+    snprintf(buf, sizeof buf, "%g %g %g %g %g %g %g %g %d %d %d %g %g %g", iv->box[0], iv->box[1], iv->box[2], iv->box[3],
+             iv->u0, iv->v0, iv->u1, iv->v1, iv->turns, iv->flip_h, iv->flip_v, iv->angle, iv->rw, iv->rh);
     set_string(a, VIEW_KEY, buf);
     FPDFPage_CloseAnnot(a);
     doc_reload_page(d, page);
@@ -1121,7 +1355,7 @@ static bool copy_stamp(Doc *d, FPDF_PAGE to, FPDF_DOCUMENT src_doc, FPDF_PAGE sr
     }
     if (!ok && img)
         FPDFPageObj_Destroy(img);
-    char view[256];
+    char view[512];
     if (ok && get_string(src, VIEW_KEY, view, sizeof view))
         set_string(dst, VIEW_KEY, view);
     return ok;

@@ -275,7 +275,9 @@ int export_write(Doc *d, FILE *f, int *ncomments, const NoteFilter *only)
             char *text = note_text(d, page, n), *comment = note_comment(d, page, o[i].note);
             /* a task is a check box (Obsidian, GitHub): - [ ] to do, - [x] done */
             const char *item = n->task == TASK_DONE ? "- [x]" : n->task == TASK_OPEN ? "- [ ]" : "-";
-            if (n->subtype == FPDF_ANNOT_STAMP)
+            if (n->textbox)
+                fprintf(f, "%s *(text written on the page)* %s\n\n", item, comment ? comment : "");
+            else if (n->subtype == FPDF_ANNOT_STAMP)
                 fprintf(f, "%s *(image)* placed on the page\n\n", item);
             else if (n->subtype == FPDF_ANNOT_TEXT)
                 fprintf(f, "%s *(note)*\n\n", item);

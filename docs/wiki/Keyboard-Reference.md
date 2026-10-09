@@ -95,6 +95,7 @@ always one key away in the program: `\c`.
 | click on a form field | fill it |
 | double click, `Ctrl` + click | open that spot in the LaTeX source |
 | click on a pane | focus it |
+| click on a picture, or the edge of a framed area | select it: [move, resize, turn](Images-and-Regions.md#with-the-mouse) |
 
 ## Text cursor (CURSOR / VISUAL)
 
@@ -131,7 +132,8 @@ Scrolling, marks, jumps, undo, `\l` and `\c` work here too.
 | `y` / `Y` | copy the rectangle as an image / save it as a PNG |
 | `I` | put an image file here |
 | `P` | paste an image from the clipboard here |
-| `e` | move / resize the image or area under the cross |
+| `e` | move / resize the image, text or area under the cross |
+| `T` | write text here: at the cross, or with the width marked by `v` |
 | `x` | delete the highlight under the cross |
 | `t` | the highlight under the cross: on / off the task list |
 | `d` | the task under the cross: done / to do |
@@ -139,6 +141,21 @@ Scrolling, marks, jumps, undo, `\l` and `\c` work here too.
 | `Enter` | LaTeX: open this spot in the editor |
 | `Ctrl-v` | back to the text cursor |
 | `Esc` | cancel / leave |
+
+## Writing text (TEXT)
+
+| Key | Action |
+|---|---|
+| (type) | write; the box grows with the text |
+| `Enter` | new line |
+| `Ctrl-=` / `Ctrl--` | bigger / smaller letters |
+| arrows, `Home`, `End` | move in the text |
+| `Backspace`, `Delete`, `Ctrl-w` | erase a letter, the next one, the word before |
+| `Ctrl-v` | paste |
+| `Esc` | done |
+
+Afterwards `e` on the box moves it (`H` `L`: width, `+` `-`: letters) and `i`
+writes in it again.
 
 ## Moving and resizing (MOVE / IMAGE)
 
@@ -149,11 +166,32 @@ Scrolling, marks, jumps, undo, `\l` and `\c` work here too.
 | `H` / `L` | narrower / wider |
 | `K` / `J` | shorter / taller |
 | `=` | an image back to its own proportions |
+| `i` | a text box: write in it again |
 | `r` / `R` | turn an image 90° |
+| `o` | turn an image to any angle (below) |
+| `f` / `F` | mirror an image left-right / top-bottom |
 | `c` | crop an image |
 | `x` | delete it |
 | `Enter` | done |
 | `Esc` | put it back where it was |
+
+With the mouse: drag the picture to move it, a corner to resize it (`Shift`:
+freely), a side to stretch it (past the opposite side it mirrors), the
+round knob above it to turn it.
+
+## Turning freely (ROTATE)
+
+| Key | Action |
+|---|---|
+| `h` / `l` | 1° counter-clockwise / clockwise (a count multiplies: `45l`) |
+| `H` / `L` | 15° |
+| `Ctrl-h` / `Ctrl-l` | 5° |
+| `u` | upright again |
+| `r` / `R` | turn 90° |
+| `f` / `F` | mirror left-right / top-bottom |
+| mouse | drag anywhere: it turns around its centre (`Shift`: steps of 15°) |
+| `Enter` | back to moving and resizing |
+| `Esc` | cancel this turning |
 
 ## Cropping (CROP)
 

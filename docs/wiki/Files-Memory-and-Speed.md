@@ -36,6 +36,9 @@ rm -rf ~/.config/nomadys-pdf ~/.local/share/nomadys-pdf ~/.cache/nomadys-pdf
   when you leave a form field and when you close the file. With
   `autosave = false`, save with `Ctrl-s` or `:w`; closing with unsaved
   changes then asks first.
+- `:w name.pdf` saves a copy under another name. With `autosave` on, the
+  open file is saved by itself as well, so to keep the original untouched
+  set `autosave = false` before you start.
 - The file is written to a temporary file and then renamed over the
   original, so a crash or a full disk never leaves half a PDF.
 - The file is **rewritten compactly**: saving never makes a PDF grow beyond

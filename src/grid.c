@@ -259,7 +259,7 @@ bool grid_work(void)
 void grid_draw(Window *w)
 {
     View *v = cur_view(w);
-    const Theme *t = wtheme(w);
+    const Theme *t = uitheme(w);
     Layout L = layout(w, v);
     int n = v->doc->npages, current = view_top_page(v);
     float th = SDL_max(1.0f, w->density);

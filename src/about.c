@@ -70,7 +70,7 @@ static float centred(Window *w, float x, float bw, float y, const char *text, ui
 /* The text below the icon; returns its height, drawing it when draw is true. */
 static float body(Window *w, float x, float bw, float y, bool draw)
 {
-    const Theme *t = wtheme(w);
+    const Theme *t = uitheme(w);
     float y0 = y, gap = font_height(w->font) * 0.6f;
     y = centred(w, x, bw, y, "Nomadys-PDF", t->panel_fg, draw);
     y = centred(w, x, bw, y, "version " NOMADYS_VERSION "   \u00b7   the command is npdf", t->panel_header, draw);
@@ -97,7 +97,7 @@ static float body(Window *w, float x, float bw, float y, bool draw)
 
 void about_draw(Window *w)
 {
-    const Theme *t = wtheme(w);
+    const Theme *t = uitheme(w);
     float pad = 18 * w->density;
     float icon = SDL_min(160 * w->density, (w->H - top_of(w)) * 0.28f);
     float bw = (float)SDL_min(w->W - 2 * (int)pad, (int)(600 * w->density)), inner = bw - 2 * pad;

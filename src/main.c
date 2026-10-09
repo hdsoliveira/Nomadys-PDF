@@ -25,6 +25,14 @@ View *cur_view(Window *w)
 /* In a pane (split.c) the pages start at its top; the tab bar is above it. */
 int top_of(Window *w) { return w->in_pane ? 0 : ui_tabbar_height(w); }
 
+/* The colours of the menus and bars: always the dark mode of the theme, whatever
+ * the pages are showing. */
+const Theme *uitheme(Window *w)
+{
+    (void)w;
+    return theme_of(true);
+}
+
 /* The colours: of the pane being drawn, or of the focused one. */
 const Theme *wtheme(Window *w)
 {
@@ -131,6 +139,7 @@ static void window_destroy(Window *w)
     if (w->preview.tex)
         SDL_DestroyTexture(w->preview.tex);
     math_forget_renderer(w->ren);
+    textbox_forget_renderer(w->ren);
     SDL_DestroyRenderer(w->ren);
     SDL_DestroyWindow(w->win);
     for (int i = 0; i < nwindows; i++) {
@@ -216,6 +225,7 @@ void close_tab(Window *w, int i)
 
 void close_window(Window *w)
 {
+    textbox_abort(w); /* a text box hidden while it is written must show again */
     for (int i = 0; i < w->ntabs; i++)
         discard_if_manual(w->tabs[i]);
     bool last = nwindows == 1;
@@ -333,6 +343,7 @@ static void draw_pages(Window *w, View *v, uint64_t now)
         return;
     cursor_draw(w, v, top);
     object_draw(w, v, top);
+    textbox_draw(w, v, top);
     if (w->mode == MODE_FORM)
         form_draw_focus(w, v, top);
 }
@@ -341,7 +352,7 @@ static void draw(Window *w, uint64_t now)
 {
     View *v = cur_view(w);
     update_size(w);
-    uint32_t bg = wtheme(w)->background;
+    uint32_t bg = (w->mode == MODE_GRID ? uitheme(w) : wtheme(w))->background; /* the page grid is a menu */
     SDL_SetRenderDrawColor(w->ren, bg >> 16, (bg >> 8) & 0xFF, bg & 0xFF, 255);
     SDL_RenderClear(w->ren);
     if (w->mode == MODE_PRESENT) { /* a slide on black, nothing else */
@@ -570,6 +581,17 @@ static void handle_event(SDL_Event *e)
         }
         return;
     case SDL_EVENT_MOUSE_MOTION:
+        if ((w = window_by_id(e->motion.windowID)) && w->ntabs &&
+            (w->mode == MODE_OBJECT || w->mode == MODE_ROTATE || object_mouse_active(w))) {
+            float x = e->motion.x * w->density, y = e->motion.y * w->density;
+            bool pane = pane_enter_focused(w); /* the pane where the picture is */
+            if (pane)
+                x -= w->pane_x, y -= w->pane_y;
+            object_mouse_motion(w, x, y);
+            if (pane && alive(w))
+                pane_leave(w);
+            return;
+        }
         if ((e->motion.state & SDL_BUTTON_LMASK) && (w = window_by_id(e->motion.windowID)) && w->ntabs &&
             (w->mode == MODE_NORMAL || w->mode == MODE_CARET)) {
             float x = e->motion.x * w->density, y = e->motion.y * w->density;
@@ -587,6 +609,28 @@ static void handle_event(SDL_Event *e)
         if (e->type == SDL_EVENT_MOUSE_BUTTON_DOWN && (w = window_by_id(e->button.windowID)) && w->mode == MODE_PRESENT) {
             present_step(w, e->button.button == SDL_BUTTON_RIGHT ? -1 : 1);
             return;
+        }
+        /* pictures and areas: a press selects, dragging moves, resizes or turns */
+        if ((w = window_by_id(e->button.windowID)) && w->ntabs && e->button.button == SDL_BUTTON_LEFT &&
+            (w->mode == MODE_NORMAL || w->mode == MODE_AREA || w->mode == MODE_OBJECT || w->mode == MODE_ROTATE)) {
+            float x = e->button.x * w->density, y = e->button.y * w->density;
+            bool down = e->type == SDL_EVENT_MOUSE_BUTTON_DOWN, pane, used;
+            if (down) {
+                pane = pane_enter_at(w, &x, &y);
+                used = object_mouse_down(w, x, y, e->button.clicks);
+            } else {
+                pane = object_mouse_active(w) && pane_enter_focused(w); /* where the drag began */
+                if (pane)
+                    x -= w->pane_x, y -= w->pane_y;
+                used = object_mouse_up(w, x, y);
+            }
+            if (pane && alive(w))
+                pane_leave(w);
+            if (used) {
+                if (alive(w))
+                    w->redraw = true;
+                return;
+            }
         }
         /* double click or Ctrl+click: go to the LaTeX source (SyncTeX) */
         if (e->type == SDL_EVENT_MOUSE_BUTTON_DOWN && (w = window_by_id(e->button.windowID)) &&
@@ -632,6 +676,16 @@ static void handle_event(SDL_Event *e)
     }
 }
 
+static void mouse_flush(Window *w)
+{
+    if (!w->obj_drag.pending)
+        return;
+    bool pane = pane_enter_focused(w);
+    object_mouse_flush(w);
+    if (pane && alive(w))
+        pane_leave(w);
+}
+
 static void autosave(uint64_t now, int *wait)
 {
     if (!cfg.autosave)
@@ -639,6 +693,12 @@ static void autosave(uint64_t now, int *wait)
     for (int i = 0; i < ndocs; i++) {
         Doc *d = docs[i];
         if (!d->modified || d->save_failed || d->focus_page >= 0)
+            continue;
+        bool dragging = false; /* a picture hidden for the drag must not be saved so */
+        for (int k = 0; k < nwindows; k++)
+            dragging |= (windows[k]->obj_drag.live || windows[k]->text_hidden) && windows[k]->ntabs &&
+                        cur_view(windows[k])->doc == d;
+        if (dragging)
             continue;
         /* a big file waits a little longer, so saving never gets in the way */
         uint64_t due = d->changed_at + (uint64_t)SDL_max(cfg.autosave_delay_ms, 4 * d->save_ms);
@@ -770,21 +830,60 @@ static bool script_step(void)
         w->redraw = true;
     } else if (!strncmp(tok, "<drag:", 6)) { /* the left button, from one point to another (window points) */
         float x0, y0, x1, y1;
-        if (sscanf(tok + 6, "%f,%f,%f,%f", &x0, &y0, &x1, &y1) == 4) {
+        int frames = 0; /* with a fifth number: that many frames, each drawn, and the time they took */
+        int got = sscanf(tok + 6, "%f,%f,%f,%f,%d", &x0, &y0, &x1, &y1, &frames);
+        if (got >= 4) {
             SDL_WindowID id = SDL_GetWindowID(w->win);
             SDL_Event e = {0};
             e.button = (SDL_MouseButtonEvent){.type = SDL_EVENT_MOUSE_BUTTON_DOWN, .windowID = id,
                                               .button = SDL_BUTTON_LEFT, .down = true, .clicks = 1, .x = x0, .y = y0};
             handle_event(&e);
-            for (int k = 1; k <= 8 && alive(w); k++) {
+            int steps = got == 5 && frames > 0 ? frames : 8;
+            uint64_t t0 = SDL_GetPerformanceCounter(), worst = 0, flush_ticks = 0;
+            for (int k = 1; k <= steps && alive(w); k++) {
                 e.motion = (SDL_MouseMotionEvent){.type = SDL_EVENT_MOUSE_MOTION, .windowID = id, .state = SDL_BUTTON_LMASK,
-                                                  .x = x0 + (x1 - x0) * k / 8, .y = y0 + (y1 - y0) * k / 8};
+                                                  .x = x0 + (x1 - x0) * k / steps, .y = y0 + (y1 - y0) * k / steps};
                 handle_event(&e);
+                if (got == 5 && alive(w)) { /* what a frame does: apply the pointer, then draw */
+                    uint64_t f0 = SDL_GetPerformanceCounter();
+                    mouse_flush(w);
+                    uint64_t f1 = SDL_GetPerformanceCounter();
+                    draw(w, SDL_GetTicks());
+                    uint64_t f2 = SDL_GetPerformanceCounter();
+                    worst = SDL_max(worst, f2 - f0);
+                    flush_ticks += f1 - f0;
+                }
+            }
+            if (got == 5) {
+                double ms = 1000.0 / (double)SDL_GetPerformanceFrequency();
+                fprintf(stderr, "drag: %d frames, %.1f ms each on average (%.1f applying), worst %.1f ms\n", steps,
+                        (double)(SDL_GetPerformanceCounter() - t0) * ms / steps, (double)flush_ticks * ms / steps,
+                        (double)worst * ms);
             }
             e.button = (SDL_MouseButtonEvent){.type = SDL_EVENT_MOUSE_BUTTON_UP, .windowID = id,
                                               .button = SDL_BUTTON_LEFT, .clicks = 1, .x = x1, .y = y1};
             if (alive(w))
                 handle_event(&e);
+        }
+    } else if (!strncmp(tok, "<down:", 6) || !strncmp(tok, "<move:", 6) || !strncmp(tok, "<up:", 4)) {
+        /* the left button pressed, moved (a frame is drawn) and released, one step at a time */
+        float x, y;
+        bool up = tok[1] == 'u';
+        if (sscanf(tok + (up ? 4 : 6), "%f,%f", &x, &y) == 2) {
+            SDL_WindowID id = SDL_GetWindowID(w->win);
+            SDL_Event e = {0};
+            if (tok[1] == 'd')
+                e.button = (SDL_MouseButtonEvent){.type = SDL_EVENT_MOUSE_BUTTON_DOWN, .windowID = id,
+                                                  .button = SDL_BUTTON_LEFT, .down = true, .clicks = 1, .x = x, .y = y};
+            else if (up)
+                e.button = (SDL_MouseButtonEvent){.type = SDL_EVENT_MOUSE_BUTTON_UP, .windowID = id,
+                                                  .button = SDL_BUTTON_LEFT, .clicks = 1, .x = x, .y = y};
+            else
+                e.motion = (SDL_MouseMotionEvent){.type = SDL_EVENT_MOUSE_MOTION, .windowID = id,
+                                                  .state = SDL_BUTTON_LMASK, .x = x, .y = y};
+            handle_event(&e);
+            if (alive(w))
+                mouse_flush(w);
         }
     } else if (!strncmp(tok, "<wait:", 6)) {
         uint64_t until = SDL_GetTicks() + (uint64_t)atoi(tok + 6);
@@ -1023,6 +1122,8 @@ int main(int argc, char **argv)
         int keys = input_wait_ms(now);
         if (keys >= 0)
             wait = wait < 0 ? keys : SDL_min(wait, keys);
+        for (int i = 0; i < nwindows; i++) /* the mouse moved a picture: once per frame, not once per event */
+            mouse_flush(windows[i]);
         for (int i = 0; i < nwindows; i++)
             if (windows[i]->redraw || need_redraw_all) {
                 render_incomplete = false;
@@ -1064,6 +1165,7 @@ int main(int argc, char **argv)
     library_shutdown();
     recent_shutdown();
     math_shutdown();
+    textbox_shutdown();
     font_shutdown();
     SDL_Quit();
     FPDF_DestroyLibrary();

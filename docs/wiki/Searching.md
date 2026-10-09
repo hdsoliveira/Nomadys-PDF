@@ -125,6 +125,18 @@ word by word:
 old text was: "change 3 of 9: changed, was “0.47”". `:nodiff` hides it.
 Nothing is written into the PDF.
 
+**The notes are compared too**: highlights, comments (and their replies),
+text boxes, pictures and drawings. A frame is drawn round each one that is
+**new** (green), **changed** (amber: its comment or text is different) or
+**removed** (red, where it was), and `]c` takes you through them together with
+the changes in the text: "new highlight “check this value”", "text box
+changed, was “Hello”, now “Hello world”". A note is the same one in both
+versions when it has the same name inside the PDF or, without one, the same
+kind in the same place. If nothing differs the message says "no change in the
+text or the notes".
+
+What is *not* compared: figures and anything that is not text or a note.
+
 The comparison ignores what is not a real change: words hyphenated at the
 end of a line, ligatures (ﬁ, ﬂ) and page numbers, so text that only moved to
 another page does not show up. When LaTeX recompiles the PDF, the comparison

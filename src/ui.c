@@ -30,6 +30,12 @@ static void message(Window *w, int ms, const char *fmt, va_list ap)
     vsnprintf(w->msg, sizeof w->msg, fmt, ap);
     w->msg_until = SDL_GetTicks() + ms;
     w->redraw = true;
+    const char *log = getenv("NPDF_MESSAGES"); /* tests: every message, one a line, in this file */
+    FILE *f = log ? fopen(log, "a") : NULL;
+    if (f) {
+        fprintf(f, "%s\n", w->msg);
+        fclose(f);
+    }
 }
 
 void ui_message(Window *w, const char *fmt, ...)
@@ -53,7 +59,7 @@ int ui_tabbar_height(Window *w) { return w->show_tabs ? ui_bar_height(w) : 0; }
 
 static void draw_tabbar(Window *w)
 {
-    const Theme *t = wtheme(w);
+    const Theme *t = uitheme(w);
     int h = ui_bar_height(w), p = pad(w) + (int)(4 * w->density);
     ui_fill(w, 0, 0, (float)w->W, (float)h, t->tab_bg, 255);
     float x = 0;
@@ -87,7 +93,7 @@ static const char *option_label(const char *s)
 /* Completion options above the prompt, the current one highlighted. */
 static void draw_wildmenu(Window *w)
 {
-    const Theme *t = wtheme(w);
+    const Theme *t = uitheme(w);
     int h = ui_bar_height(w), p = pad(w), gap = 2 * p;
     float y = (float)(w->H - 2 * h);
     ui_fill(w, 0, y, (float)w->W, (float)h, t->panel_bg, 250);
@@ -115,7 +121,7 @@ static void draw_wildmenu(Window *w)
 
 static void draw_prompt(Window *w)
 {
-    const Theme *t = wtheme(w);
+    const Theme *t = uitheme(w);
     int h = ui_bar_height(w), p = pad(w);
     if (w->ncomp > 1)
         draw_wildmenu(w);
@@ -148,7 +154,7 @@ static void draw_prompt(Window *w)
 
 static void draw_message(Window *w)
 {
-    const Theme *t = wtheme(w);
+    const Theme *t = uitheme(w);
     int h = ui_bar_height(w), p = pad(w);
     char text[sizeof w->msg + 4];
     snprintf(text, sizeof w->msg, "%s", w->msg);
@@ -161,7 +167,7 @@ static void draw_message(Window *w)
 /* The current mode, as a small coloured badge in the bottom-left corner. */
 static void draw_mode(Window *w)
 {
-    const Theme *t = wtheme(w);
+    const Theme *t = uitheme(w);
     View *v = cur_view(w);
     const char *label = "NORMAL";
     uint32_t color = t->mode_normal;
@@ -182,6 +188,8 @@ static void draw_mode(Window *w)
     case MODE_PREVIEW: label = "PREVIEW", color = t->search_match; break;
     case MODE_OBJECT: label = w->obj_image ? "IMAGE" : "MOVE", color = t->mode_visual; break;
     case MODE_CROP: label = "CROP", color = t->search_match; break;
+    case MODE_ROTATE: label = "ROTATE", color = t->search_match; break;
+    case MODE_TEXT: label = "TEXT", color = t->mode_insert; break;
     case MODE_PICKER: label = "OPEN", color = t->tab_accent; break;
     case MODE_LIBRARY: label = "LIBRARY", color = t->tab_accent; break;
     case MODE_GRID: label = "PAGES", color = t->tab_accent; break;
@@ -404,7 +412,7 @@ void ui_draw_notes(Window *w, View *v, int top)
                 ui_task_box(w, page_left_screen(v, page) + 12 * w->density, cy, box, s->notes[i].task == TASK_DONE,
                             wtheme(w)->tab_accent, v->dark ? theme_of(true)->page_bg : 0xFFFFFF);
             }
-            if (!s->notes[i].has_comment)
+            if (!s->notes[i].has_comment || s->notes[i].textbox) /* a text box is its own text */
                 continue;
             page_to_screen(v, page, r.r, r.t, &x, &y, top);
             ui_fill(w, x - size / 2, y - size / 2, size, size, wtheme(w)->comment_marker, 255);

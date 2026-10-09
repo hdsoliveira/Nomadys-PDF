@@ -1101,7 +1101,7 @@ static void draw_snippet(Window *w, float x, float y, float maxw, const Hit *h, 
 
 void library_draw(Window *w)
 {
-    const Theme *t = wtheme(w);
+    const Theme *t = uitheme(w);
     int pad = (int)(12 * w->density), lh = font_height(w->font), row = lh * 2 + (int)(8 * w->density);
     float bw = (float)SDL_min(w->W - 2 * pad, (int)(900 * w->density));
     float bh = (w->H - top_of(w) - ui_bar_height(w)) * 0.85f;

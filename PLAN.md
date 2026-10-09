@@ -131,10 +131,14 @@ More ambitious:
 
 - Comments with LaTeX equations, edited in a box next to the highlight
   (src/comment.c, src/math.c: pdflatex in the background, cached).
-- Images on the page (`I`, `P`, `:image`), moved, resized, cropped and turned
-  without re-encoding (src/image.c, src/object.c); resolution chosen so they
+- Images on the page (`I`, `P`, `:image`), moved, resized, cropped, turned (90°
+  or any angle) and mirrored, by keys or by the mouse, without re-encoding (src/image.c, src/object.c); resolution chosen so they
   stay sharp (PDFium enlarges without smoothing).
 - Area highlights can be moved and resized (`e`).
+- Free text (`T`, src/textbox.c): real Helvetica text in a stamp annotation, the
+  box grows with the text, letters resizable, written again with `i`; the PDF
+  is written once at the end of the editing (the text is drawn over the page
+  meanwhile), so the file does not fill with old copies.
 - Help screen in tabs with keycaps, search and "How to get here" (src/help.c).
 - Cursors steady, found by closing rings; thinner outlined cross.
 - Memory and speed: texture budget, global page cap, document compaction,

@@ -8,7 +8,13 @@
  * and running heads and page numbers (the top and bottom 4% of a page) are
  * left out, so page breaks do not look like changes. The comparison is a
  * patience diff: words found once in both versions anchor it, the gaps
- * between anchors are compared again, small gaps word by word. */
+ * between anchors are compared again, small gaps word by word.
+ *
+ * The notes are compared too: highlights, comments, text boxes, pictures,
+ * drawings. A note is the same one in both versions when it has the same name
+ * (/NM) or, without one, the same kind in the same place; one that is only in
+ * the new version is "new", in the old one "removed", and one whose text
+ * changed "changed". */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,11 +37,18 @@ typedef struct {
     size_t tlen, tcap;
 } Words;
 
+enum { H_TEXT, H_NOTE_NEW, H_NOTE_CHANGED, H_NOTE_GONE };
+
 typedef struct {
     int b0, b1;              /* new words [b0, b1): added or changed */
-    char *was;               /* the old words, "" when only added */
+    char *was;               /* the old words, "" when only added (a note: its old text) */
     int page;                /* where it is, for ]c [c */
     float y;
+    int kind;                /* H_TEXT, or a note that is new, changed or gone */
+    PRect r;                 /* a note: where it is (was), on the page */
+    int subtype;             /* a note: what it is */
+    bool textbox;
+    char *now;               /* a note: its text now */
 } Hunk;
 
 struct Diff {
@@ -379,12 +392,150 @@ static char *join(const Words *a, int from, int to)
     return s;
 }
 
+/* ---------- the notes ---------- */
+typedef struct {
+    int page, subtype;
+    PRect r;
+    char nm[64];
+    char *text;              /* its comment, malloc'd, "" for none */
+    bool textbox, matched;
+} NoteRec;
+
+typedef struct {
+    NoteRec *n;
+    int count, cap;
+} NoteRecs;
+
+static bool diff_kind(int t)
+{
+    return t == FPDF_ANNOT_TEXT || t == FPDF_ANNOT_FREETEXT || t == FPDF_ANNOT_SQUARE || t == FPDF_ANNOT_CIRCLE ||
+           t == FPDF_ANNOT_HIGHLIGHT || t == FPDF_ANNOT_UNDERLINE || t == FPDF_ANNOT_SQUIGGLY ||
+           t == FPDF_ANNOT_STRIKEOUT || t == FPDF_ANNOT_STAMP || t == FPDF_ANNOT_INK;
+}
+
+static char *annot_string(FPDF_ANNOTATION a, const char *key)
+{
+    unsigned long bytes = FPDFAnnot_GetStringValue(a, key, NULL, 0);
+    if (bytes <= 2)
+        return xstrdup("");
+    unsigned short *u = xmalloc(bytes);
+    FPDFAnnot_GetStringValue(a, key, u, bytes);
+    char *out = utf16_to_utf8(u, (int)(bytes / 2) - 1);
+    free(u);
+    return out;
+}
+
+/* The notes of a page that are shown (not deleted: undo hides them). */
+static void page_notes(FPDF_PAGE p, int page, NoteRecs *out)
+{
+    for (int i = 0, n = FPDFPage_GetAnnotCount(p); i < n; i++) {
+        FPDF_ANNOTATION a = FPDFPage_GetAnnot(p, i);
+        if (!a)
+            continue;
+        int type = FPDFAnnot_GetSubtype(a);
+        FS_RECTF r;
+        if (diff_kind(type) && !(FPDFAnnot_GetFlags(a) & FPDF_ANNOT_FLAG_HIDDEN) && FPDFAnnot_GetRect(a, &r)) {
+            if (out->count == out->cap)
+                out->n = xrealloc(out->n, (size_t)(out->cap = out->cap ? out->cap * 2 : 32) * sizeof *out->n);
+            NoteRec *nr = &out->n[out->count++];
+            *nr = (NoteRec){.page = page, .subtype = type,
+                            .r = {SDL_min(r.left, r.right), SDL_max(r.top, r.bottom), SDL_max(r.left, r.right),
+                                  SDL_min(r.top, r.bottom)}};
+            char *nm = annot_string(a, "NM"), *box = annot_string(a, "NomadysText");
+            snprintf(nr->nm, sizeof nr->nm, "%s", nm);
+            nr->textbox = type == FPDF_ANNOT_STAMP && box[0];
+            nr->text = annot_string(a, "Contents");
+            free(nm);
+            free(box);
+        }
+        FPDFPage_CloseAnnot(a);
+    }
+}
+
+static void free_notes(NoteRecs *ns)
+{
+    for (int i = 0; i < ns->count; i++)
+        free(ns->n[i].text);
+    free(ns->n);
+    *ns = (NoteRecs){0};
+}
+
+static bool same_place(PRect a, PRect b)
+{
+    return SDL_fabsf(a.l - b.l) < 1 && SDL_fabsf(a.r - b.r) < 1 && SDL_fabsf(a.t - b.t) < 1 && SDL_fabsf(a.b - b.b) < 1;
+}
+
+static void add_hunk(Diff *d, int *cap, Hunk h)
+{
+    if (d->nh == *cap)
+        d->h = xrealloc(d->h, (size_t)(*cap = *cap ? *cap * 2 : 64) * sizeof *d->h);
+    d->h[d->nh++] = h;
+}
+
+static int hunk_order(const void *x, const void *y)
+{
+    const Hunk *a = x, *b = y;
+    if (a->page != b->page)
+        return a->page - b->page;
+    return a->y < b->y ? 1 : a->y > b->y ? -1 : 0; /* the top of the page first */
+}
+
+/* The text changes (the first ntext, in reading order, which two columns need) and the notes
+ * (after them, by position) in one list by page; on a page the text comes first. */
+static void merge_hunks(Diff *d, int ntext)
+{
+    int nnote = d->nh - ntext;
+    if (!nnote)
+        return;
+    qsort(d->h + ntext, (size_t)nnote, sizeof *d->h, hunk_order);
+    Hunk *out = xmalloc((size_t)d->nh * sizeof *out);
+    int i = 0, j = ntext, k = 0;
+    while (i < ntext || j < d->nh)
+        out[k++] = j >= d->nh || (i < ntext && d->h[i].page <= d->h[j].page) ? d->h[i++] : d->h[j++];
+    free(d->h);
+    d->h = out;
+}
+
+/* The notes that are new, changed or gone, as changes. */
+static void compare_notes(Diff *d, int *cap, const NoteRecs *a, NoteRecs *b)
+{
+    for (int i = 0; i < b->count; i++) { /* the same one in both: by name, then by kind and place */
+        NoteRec *nb = &b->n[i];
+        for (int pass = 0; pass < 2 && !nb->matched; pass++)
+            for (int k = 0; k < a->count; k++) {
+                NoteRec *na = &a->n[k];
+                if (na->matched || na->page != nb->page || na->subtype != nb->subtype)
+                    continue;
+                bool hit = pass == 0 ? nb->nm[0] && !strcmp(na->nm, nb->nm)
+                                     : (!nb->nm[0] || !na->nm[0]) && same_place(na->r, nb->r);
+                if (!hit)
+                    continue;
+                na->matched = nb->matched = true;
+                if (strcmp(na->text, nb->text) || (pass == 0 && !same_place(na->r, nb->r) && nb->textbox))
+                    add_hunk(d, cap, (Hunk){.kind = H_NOTE_CHANGED, .page = nb->page, .y = nb->r.t, .r = nb->r,
+                                            .subtype = nb->subtype, .textbox = nb->textbox, .was = xstrdup(na->text),
+                                            .now = xstrdup(nb->text)});
+                break;
+            }
+    }
+    for (int i = 0; i < b->count; i++)
+        if (!b->n[i].matched)
+            add_hunk(d, cap, (Hunk){.kind = H_NOTE_NEW, .page = b->n[i].page, .y = b->n[i].r.t, .r = b->n[i].r,
+                                    .subtype = b->n[i].subtype, .textbox = b->n[i].textbox, .was = xstrdup(""),
+                                    .now = xstrdup(b->n[i].text)});
+    for (int k = 0; k < a->count; k++)
+        if (!a->n[k].matched)
+            add_hunk(d, cap, (Hunk){.kind = H_NOTE_GONE, .page = a->n[k].page, .y = a->n[k].r.t, .r = a->n[k].r,
+                                    .subtype = a->n[k].subtype, .textbox = a->n[k].textbox,
+                                    .was = xstrdup(a->n[k].text), .now = xstrdup("")});
+}
+
 void diff_free(Diff *d)
 {
     if (!d)
         return;
     for (int i = 0; i < d->nh; i++)
-        free(d->h[i].was);
+        free(d->h[i].was), free(d->h[i].now);
     free(d->h);
     free_words(&d->b);
     free(d->old_path);
@@ -400,13 +551,23 @@ static Diff *make_diff(View *v, const char *old_path, char *err, size_t cap)
         return NULL;
     }
     Words a = {0}, b = {0};
+    NoteRecs na = {0}, nb = {0};
     doc_words(old, &a);
+    for (int page = 0, n = FPDF_GetPageCount(old); page < n; page++) {
+        FPDF_PAGE p = FPDF_LoadPage(old, page);
+        if (p) {
+            page_notes(p, page, &na);
+            FPDF_ClosePage(p);
+        }
+    }
     FPDF_CloseDocument(old);
     for (int page = 0; page < v->doc->npages; page++) { /* the document shown, through its cache */
         FPDF_PAGE p = doc_page(v->doc, page);
         FPDF_TEXTPAGE tp = doc_text(v->doc, page);
         if (p && tp)
             page_words(p, tp, page, &b);
+        if (p)
+            page_notes(p, page, &nb);
     }
     Cmp c = {a.w, b.w, xcalloc((size_t)a.n + 1, sizeof(bool)), xcalloc((size_t)b.n + 1, sizeof(bool))};
     compare(&c, 0, a.n, 0, b.n, 0);
@@ -433,7 +594,8 @@ static Diff *make_diff(View *v, const char *old_path, char *err, size_t cap)
                 if (tp && FPDFText_GetCharBox(tp, at->start, &l, &r, &bb, &t))
                     y = (float)t;
             }
-            d->h[d->nh++] = (Hunk){j0, j, join(&a, i0, i), at ? at->page : 0, y};
+            d->h[d->nh++] = (Hunk){.b0 = j0, .b1 = j, .was = join(&a, i0, i), .page = at ? at->page : 0, .y = y,
+                                   .now = xstrdup("")};
         } else {
             i++, j++;
         }
@@ -441,6 +603,11 @@ static Diff *make_diff(View *v, const char *old_path, char *err, size_t cap)
     free(c.gone);
     free(c.added);
     free_words(&a);
+    int ntext = d->nh;
+    compare_notes(d, &cap_h, &na, &nb);
+    free_notes(&na);
+    free_notes(&nb);
+    merge_hunks(d, ntext);
     d->b = b;
     memory_freed = true;
     return d;
@@ -463,7 +630,7 @@ void diff_start(Window *w, View *v, const char *old_path)
         ui_message_long(w, 6000, "%d change%s since %s   ]c [c go through them   :nodiff hides them", d->nh,
                         d->nh == 1 ? "" : "s", name);
     else
-        ui_message_long(w, 6000, "no change in the text since %s", name);
+        ui_message_long(w, 6000, "no change in the text or the notes since %s", name);
 }
 
 void diff_stop(Window *w, View *v)
@@ -522,7 +689,31 @@ void diff_step(Window *w, View *v, int dir)
     jump_to(w, v, (Pos){h->page, SDL_clamp(1 - (h->y + 40) / ph, 0.0f, 1.0f)});
     d->cur = pick;
     d->cur_pos = view_pos(v);
-    if (h->b0 == h->b1)
+    if (h->kind != H_TEXT) {
+        const char *what = h->textbox ? "text box" : h->subtype == FPDF_ANNOT_STAMP ? "picture"
+                         : h->subtype == FPDF_ANNOT_TEXT ? "comment" : h->subtype == FPDF_ANNOT_INK ? "drawing"
+                         : h->subtype == FPDF_ANNOT_SQUARE || h->subtype == FPDF_ANNOT_CIRCLE ? "frame" : "highlight";
+        const char *text = h->kind == H_NOTE_GONE ? h->was : h->now;
+        char brief[100];
+        snprintf(brief, sizeof brief, "%.90s%s", text, strlen(text) > 90 ? "…" : "");
+        for (char *c = brief; *c; c++)
+            if (*c == '\n' || *c == '\r')
+                *c = ' ';
+        if (h->kind == H_NOTE_NEW)
+            ui_message_long(w, 8000, "change %d of %d: new %s%s%s%s", pick + 1, d->nh, what, brief[0] ? " “" : "", brief,
+                            brief[0] ? "”" : "");
+        else if (h->kind == H_NOTE_GONE)
+            ui_message_long(w, 8000, "change %d of %d: %s removed%s%s%s", pick + 1, d->nh, what, brief[0] ? " “" : "",
+                            brief, brief[0] ? "”" : "");
+        else {
+            char was[100];
+            snprintf(was, sizeof was, "%.90s%s", h->was, strlen(h->was) > 90 ? "…" : "");
+            for (char *c = was; *c; c++)
+                if (*c == '\n' || *c == '\r')
+                    *c = ' ';
+            ui_message_long(w, 8000, "change %d of %d: %s changed, was “%s”, now “%s”", pick + 1, d->nh, what, was, brief);
+        }
+    } else if (h->b0 == h->b1)
         ui_message_long(w, 8000, "change %d of %d: deleted “%s”", pick + 1, d->nh, h->was);
     else if (h->was[0])
         ui_message_long(w, 8000, "change %d of %d: changed, was “%s”", pick + 1, d->nh, h->was);
@@ -551,6 +742,19 @@ void diff_draw(Window *w, View *v, int top)
         return;
     for (int k = 0; k < d->nh; k++) {
         const Hunk *h = &d->h[k];
+        if (h->kind != H_TEXT) { /* a note: a frame round it, new green, changed amber, gone red */
+            if (h->page < first || h->page > last)
+                continue;
+            float x0, y0, x1, y1;
+            page_to_screen(v, h->page, h->r.l, h->r.t, &x0, &y0, top);
+            page_to_screen(v, h->page, h->r.r, h->r.b, &x1, &y1, top);
+            uint32_t c = h->kind == H_NOTE_NEW ? 0x43A047 : h->kind == H_NOTE_CHANGED ? 0xF9A825 : 0xE53935;
+            float fx = SDL_min(x0, x1) - 2 * w->density, fy = SDL_min(y0, y1) - 2 * w->density;
+            float fw = SDL_fabsf(x1 - x0) + 4 * w->density, fh = SDL_fabsf(y1 - y0) + 4 * w->density;
+            ui_fill(w, fx, fy, fw, fh, c, h->kind == H_NOTE_GONE ? 40 : 55);
+            ui_frame(w, fx, fy, fw, fh, SDL_max(2.0f, 2 * w->density), c);
+            continue;
+        }
         if (h->b0 == h->b1) { /* a deletion: a red bar before the next word */
             if (h->b0 >= d->b.n)
                 continue;

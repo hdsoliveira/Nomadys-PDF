@@ -27,6 +27,11 @@ interface at least 7:1, its dim text at least 4.5:1.
 
 ![the themes](../themes.png)
 
+The menus and bars (tab bar, status line, help, panel, library, page grid,
+the theme list) are **always** in the dark mode of your theme, whatever the
+pages show. Only the pages change with `i`: the paper stays light until you
+switch to dark mode.
+
 ## Choosing one
 
 `\T` (or `:theme`) lists the themes with small samples of both modes.

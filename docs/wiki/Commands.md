@@ -9,6 +9,7 @@ with several options they are listed above the line and `Tab` /
 | Command | Action |
 |---|---|
 | `:w` | save |
+| `:w name.pdf` | save a **copy** under that name, next to this PDF (a folder in the name works; `Tab` completes). It refuses a name that is already there; `:w! name.pdf` replaces it. The PDF you are reading stays the open one |
 | `:q` | close the tab |
 | `:q!` | close it, discarding unsaved changes |
 | `:wq`, `:x` | save and close the tab |
@@ -48,7 +49,7 @@ with several options they are listed above the line and `Tab` /
 | `:library words` | search the text of all your PDFs (`\/`) |
 | `:comments [words]` | search the comments and highlights of all your PDFs (`\n`) |
 | `:tasks [words]` | the tasks still to do in all your PDFs |
-| `:diff old.pdf` | compare with an older version (`]c` `[c` go through the changes) |
+| `:diff old.pdf` | compare with an older version: text and notes (`]c` `[c` go through the changes) |
 | `:nodiff` | hide the comparison |
 
 ## Notes, quotes and references

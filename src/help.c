@@ -113,8 +113,10 @@ static int tab_for_mode(Window *w)
     case MODE_FORM: return 7;
     case MODE_OBJECT: return 8;
     case MODE_CROP: return 9;
-    case MODE_GRID: return 10;
-    case MODE_PRESENT: return 11;
+    case MODE_ROTATE: return 10;
+    case MODE_TEXT: return 11;
+    case MODE_GRID: return 12;
+    case MODE_PRESENT: return 13;
     case MODE_THEMES: return 0;
     case MODE_ABOUT: return 0;
     default: return 0;
@@ -305,7 +307,7 @@ static void draw_tabs(const Box *b, const Help *h)
 
 void help_draw(Window *w)
 {
-    const Theme *t = wtheme(w);
+    const Theme *t = uitheme(w);
     Box b = {w, t, 0, 0, 0, (int)(12 * w->density), font_height(w->font), (int)(5 * w->density)};
     b.bw = (float)SDL_min(w->W - 2 * b.pad, (int)(880 * w->density));
     float bh = (w->H - top_of(w) - ui_bar_height(w)) * 0.86f;

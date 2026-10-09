@@ -185,7 +185,7 @@ void theme_key(Window *w, const char *tok)
 
 void theme_draw(Window *w)
 {
-    const Theme *t = wtheme(w);
+    const Theme *t = uitheme(w);
     int pad = (int)(12 * w->density), lh = font_height(w->font), row = lh + (int)(12 * w->density);
     float bw = (float)SDL_min(w->W - 2 * pad, (int)(620 * w->density));
     float bh = SDL_min((w->H - top_of(w)) * 0.8f, (float)(w->ntheme * row + 3 * lh + 3 * pad));

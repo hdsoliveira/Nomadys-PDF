@@ -130,6 +130,7 @@ typedef struct {
     bool has_comment;
     bool has_reply;          /* someone answered it (a reply, /IRT) */
     bool area;               /* a highlight over an area (a figure), not over text */
+    bool textbox;            /* a free text (textbox.c): a stamp whose letters are shapes */
     int task;                /* TASK_*: not a task, to do, done */
     char done_on[11];        /* the day it was done, "2026-09-29", or "" */
     uint32_t color;          /* 0xRRGGBB, for the panel */
@@ -193,9 +194,47 @@ typedef struct {
     float box[4];            /* appearance box: l, b, r, t */
     float u0, v0, u1, v1;
     int turns;               /* quarter turns clockwise */
+    bool flip_h, flip_v;     /* mirrored on screen, after the turns */
+    float angle;             /* free turn in degrees, clockwise, around the centre of the box */
+    float rw, rh;            /* with an angle: the size of the picture in box units (the box is fixed) */
 } ImageView;
 
-typedef enum { U_CREATE, U_DELETE, U_COMMENT, U_EDIT, U_PAGES, U_TASK } UndoKind;
+/* The mouse working on an image or area (object.c). */
+typedef struct {
+    int kind;                /* 0 none, 1 move, 2 resize, 3 turn */
+    int sx, sy;              /* the handle: -1, 0 or 1 along the picture's x and y */
+    bool pending;            /* the pointer moved since the last frame */
+    float px, py;            /* the pointer when it began, in page points */
+    float cx, cy, W, H;      /* the picture when it began: centre and size in page points */
+    PRect rect0;
+    ImageView view0;
+    float wx, wy, x0, y0;    /* the last and the first pointer position, window pixels */
+    bool live;               /* the PDF is left alone while dragging: the picture shows from a texture */
+    SDL_Texture *tex;        /* the picture, for that (NULL for an area) */
+    uint32_t color;          /* an area's colour */
+    int area_kind;           /* an area: its annotation subtype */
+} ObjDrag;
+
+/* A free text: what is written, how big the letters are, and the box (its
+ * top left corner and width; the height follows the text). */
+typedef struct {
+    char *text;              /* UTF-8, malloc'd */
+    float size;              /* points */
+    float width, left, top;  /* the box, page points */
+} TextBox;
+
+/* The free text being written (textbox.c). */
+typedef struct {
+    int page, annot;
+    TextBox box;
+    int cursor;              /* byte offset into box.text */
+    float want_x;            /* the column kept by Up and Down */
+    bool fresh;              /* created by this editing: Esc on an empty one removes it */
+    char *before;            /* the box as it was (an existing one), for undo */
+    int back;                /* the mode to return to (a Mode) */
+} TextEd;
+
+typedef enum { U_CREATE, U_DELETE, U_COMMENT, U_EDIT, U_PAGES, U_TASK, U_TEXTBOX } UndoKind;
 typedef struct {
     UndoKind kind;
     int page, group;         /* a group is undone at once */
@@ -262,6 +301,7 @@ FPDF_TEXTPAGE doc_text(Doc *d, int i);
 void doc_mark_changed(Doc *d, int page);
 void doc_reload_page(Doc *d, int page);                   /* parse it again (stale appearances) */
 bool doc_save(Doc *d, char *err, size_t errlen);
+bool doc_save_copy(Doc *d, const char *path, bool overwrite, char *err, size_t errlen); /* a copy under another name */
 void doc_page_images(Doc *d, int i);
 void doc_page_widgets(Doc *d, int i);
 void doc_page_chars(Doc *d, int i);
@@ -299,10 +339,19 @@ void notes_tasks(Doc *d, int *open, int *done);            /* the tasks of the w
 void note_task_key(Window *w, Doc *d, int page, int note, char key); /* t: a task or not, d: done or not */
 bool note_delete(Doc *d, int page, int note);
 int note_create_image(Doc *d, int page, PRect r, FPDF_PAGEOBJECT image); /* annotation index, or -1 */
+int note_pick(Doc *d, int page, float x, float y, float tol);
 int note_move(Doc *d, int page, int annot, PRect r);     /* new annotation index, or -1 */
 
 bool note_image_view(Doc *d, int page, int annot, ImageView *iv, int *pxw, int *pxh);
+/* annot.c: free texts */
+int note_text_create(Doc *d, int page, const TextBox *b);                 /* annotation index, or -1 */
+int note_text_update(Doc *d, int page, int annot, const TextBox *b);      /* the same box, as now written: its new index, or -1 */
+bool note_text_get(Doc *d, int page, int annot, TextBox *b);              /* false: not a free text */
+void undo_textbox(Doc *d, int page, int annot, const char *before, const char *after);
 bool note_image_apply(Doc *d, int page, int annot, const ImageView *iv, PRect r);
+void note_view_unit(const ImageView *iv, float f[6]);
+bool note_image_pixels(Doc *d, int page, int annot, int side, uint8_t **bgra, int *wd, int *ht);
+void note_set_shown(Doc *d, int page, int annot, bool shown);
 int note_of_annot(Doc *d, int page, int annot);           /* note index, or -1 */
 const char *doc_undo(Doc *d, bool redo, int *page);       /* what was undone, NULL if nothing */
 void doc_undo_clear(Doc *d);
@@ -341,7 +390,7 @@ typedef struct {
 } CacheEntry;
 
 typedef enum { MODE_NORMAL, MODE_FORM, MODE_CARET, MODE_AREA, MODE_PANEL, MODE_PROMPT, MODE_HELP,
-               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT, MODE_CROP, MODE_PICKER, MODE_LIBRARY, MODE_GRID, MODE_PRESENT, MODE_THEMES, MODE_ABOUT } Mode;
+               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT, MODE_CROP, MODE_ROTATE, MODE_TEXT, MODE_PICKER, MODE_LIBRARY, MODE_GRID, MODE_PRESENT, MODE_THEMES, MODE_ABOUT } Mode;
 
 typedef struct { int page, ch; } TextPos;
 
@@ -523,6 +572,14 @@ struct Window {
     PRect crop_rect;         /* before cropping started, for Esc */
     int obj_pxw, obj_pxh;
     Mode obj_return;
+    ImageView rot_view;      /* before the free turn started, for Esc */
+    PRect rot_rect;
+    bool text_hidden;        /* a free text's annotation is hidden while its letters are drawn by textbox.c */
+    bool obj_text;           /* a free text: moves and resizes by being written again (textbox.c) */
+    TextBox obj_tb;          /* ... and what it says now */
+    char *obj_tx_before;     /* ... as it was, for Esc and undo */
+    ObjDrag obj_drag;        /* the mouse is moving / resizing / turning it (object.c) */
+    TextEd tx;               /* the free text being written (textbox.c) */
     char **comp;             /* completion candidates (commands.c) */
     int ncomp, comp_at, comp_start;
     /* key sequences */
@@ -566,6 +623,7 @@ extern int nwindows;
 View *cur_view(Window *w);
 int top_of(Window *w);
 const Theme *wtheme(Window *w);
+const Theme *uitheme(Window *w);                /* menus and bars: the theme's dark mode, always */
 void window_new_from(Window *w);
 bool open_tab(Window *w, const char *path);
 void ask_password(Window *w, const char *path, bool again);
@@ -682,6 +740,7 @@ void panel_draw(Window *w);
 void panel_filter(Window *w, char key);                    /* C V B N M c a e in the Highlights tab */
 
 /* ---------- UI text (font.c) ---------- */
+char *font_file(const char *family, int *index);            /* the file of a font (malloc'd), or NULL */
 Font *font_open(SDL_Renderer *ren, const char *family, double points, float density);
 extern char font_fallback[160];                             /* set when the config's font is missing */
 void font_close(Font *f);
@@ -752,6 +811,26 @@ void image_insert_file(Window *w, const char *path);
 void image_paste(Window *w);                              /* from the clipboard */
 void image_copy_region(Window *w, View *v, bool to_file); /* y / Y: the marked region as a PNG */
 
+/* textbox.c: free text, its letters drawn as shapes */
+#define TEXT_PAD 3.0f
+#define TEXT_SIZE_MIN 4.0f
+#define TEXT_SIZE_MAX 144.0f
+float textbox_height(const TextBox *b);                    /* the box's height: the text and its padding */
+bool textbox_objects(Doc *d, FPDF_ANNOTATION annot, const TextBox *b); /* the text, put in an annotation */
+void textbox_paint(Window *w, View *v, int top, int page, const TextBox *b); /* the letters over the page */
+void textbox_forget_renderer(SDL_Renderer *ren);
+void textbox_abort(Window *w);
+char *textbox_encode(const TextBox *b);                    /* for undo: malloc'd */
+bool textbox_decode(const char *s, TextBox *b);            /* b->text malloc'd */
+void textbox_free(TextBox *b);
+void textbox_begin(Window *w, View *v);                    /* T in the free cursor: a new one */
+void textbox_edit(Window *w, View *v, int page, int annot, int back); /* write in an existing one */
+bool textbox_key(Window *w, const char *tok);
+void textbox_insert(Window *w, const char *text);
+void textbox_draw(Window *w, View *v, int top);            /* the cursor, in the page */
+void textbox_finish(Window *w);
+void textbox_shutdown(void);
+
 /* object.c: moving and resizing images and areas */
 void object_begin(Window *w, View *v, int page, int annot, float ratio);
 void object_begin_at_cursor(Window *w, View *v);
@@ -766,6 +845,17 @@ void object_crop_begin(Window *w);
 void object_crop(Window *w, int side, float amount);      /* side 0-3: left right top bottom */
 void object_crop_reset(Window *w);
 void object_crop_done(Window *w, bool keep);
+void object_flip(Window *w, bool horizontal);
+void object_text_edit(Window *w);                         /* i: write in the text box again */             /* mirror left-right / top-bottom */
+void object_rotate_begin(Window *w);
+void object_angle(Window *w, float degrees);              /* turn freely: clockwise when positive */
+void object_angle_reset(Window *w);
+void object_rotate_done(Window *w, bool keep);
+bool object_mouse_down(Window *w, float x, float y, int clicks);
+bool object_mouse_motion(Window *w, float x, float y);    /* true while a drag is going on */
+bool object_mouse_up(Window *w, float x, float y);
+void object_mouse_flush(Window *w);                       /* once per frame: applies the last pointer position */
+bool object_mouse_active(const Window *w);
 void object_draw(Window *w, View *v, int top);
 
 /* recent.c: recent files, the session, the picker */

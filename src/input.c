@@ -637,6 +637,15 @@ static void a_about(Window *w, View *v, int c, const char *a) { (void)v, (void)c
 static void a_themes(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; theme_open(w); }
 static void a_image_file(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; prompt_open(w, ":", "image ", command_run, 0); }
 static void a_image_paste(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; image_paste(w); }
+static void a_text_new(Window *w, View *v, int c, const char *a) { (void)c, (void)a; textbox_begin(w, v); }
+static void a_text_edit(Window *w, View *v, int c, const char *a)
+{
+    (void)v, (void)c, (void)a;
+    if (w->obj_text)
+        object_text_edit(w);
+    else
+        ui_message(w, "only a text box can be written again");
+}
 static void a_object_edit(Window *w, View *v, int c, const char *a) { (void)c, (void)a; object_begin_at_cursor(w, v); }
 
 static void a_object_move(Window *w, View *v, int c, const char *a)
@@ -667,6 +676,24 @@ static void a_object_done(Window *w, View *v, int c, const char *a) { (void)v, (
 static void a_object_cancel(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_done(w, false); }
 static void a_object_delete(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_delete(w); }
 static void a_object_turn(Window *w, View *v, int c, const char *a) { (void)v; for (int i = 0; i < n1(c) % 4; i++) object_rotate(w, a[0] == 'r' ? 1 : -1); }
+static void a_mouse(Window *w, View *v, int c, const char *a) { (void)w, (void)v, (void)c, (void)a; } /* only for the help screen */
+static void a_object_flip(Window *w, View *v, int c, const char *a) { (void)v, (void)c; object_flip(w, a[0] == 'f'); }
+static void a_rotate_begin(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_rotate_begin(w); }
+static void a_rotate_done(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_rotate_done(w, true); }
+static void a_rotate_cancel(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_rotate_done(w, false); }
+static void a_rotate_reset(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_angle_reset(w); }
+
+/* h l turn 1 degree counter-clockwise / clockwise, H L 15, Ctrl-h Ctrl-l 5; a count multiplies. */
+static void a_rotate_step(Window *w, View *v, int c, const char *a)
+{
+    (void)v;
+    bool ctrl = !strncmp(a, "<C-", 3);
+    char k = ctrl ? a[3] : a[0];
+    if (!strcmp(a, "<Left>")) k = 'h';
+    if (!strcmp(a, "<Right>")) k = 'l';
+    float step = ctrl ? 5.0f : k == 'H' || k == 'L' ? 15.0f : 1.0f;
+    object_angle(w, (k == 'l' || k == 'L' ? step : -step) * (float)n1(c));
+}
 static void a_crop_begin(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_crop_begin(w); }
 static void a_crop_reset(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_crop_reset(w); }
 static void a_crop_done(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; object_crop_done(w, true); }
@@ -808,7 +835,9 @@ static const Binding area_map[] = {
     GROUP("Images, moving and resizing"),
     {"I", a_image_file, "put an image here (PNG, JPEG): inside the rectangle, or at the cross"},
     {"P", a_image_paste, "paste an image from the clipboard (a screenshot) here"},
-    {"e", a_object_edit, "move / resize the image or highlighted area under the cross"},
+    {"e", a_object_edit, "move / resize the image, text or highlighted area under the cross"},
+    GROUP("Free text"),
+    {"T", a_text_new, "write text here: inside the rectangle (its width), or at the cross"},
     GROUP("Other"),
     {"<C-v>", a_to_caret, "back to the text cursor"}, {"<Esc>", a_leave, "cancel / leave"},
     {":", a_command, "command line: :w save, :q close tab, :e file, :42 page"},
@@ -869,7 +898,16 @@ static const Binding object_map[] = {
     GROUP("Images"),
     {"r", a_object_turn, "turn 90° clockwise / counter-clockwise"},
     {"R", a_object_turn, "turn 90° clockwise / counter-clockwise"},
+    {"i", a_text_edit, "text: write in it again (a double click too)"},
+    {"o", a_rotate_begin, "turn freely, to any angle (the mouse: the knob above it)"},
+    {"f", a_object_flip, "mirror left-right / top-bottom"}, {"F", a_object_flip, "mirror left-right / top-bottom"},
     {"c", a_crop_begin, "crop (the picture is kept whole: cropping can be undone any time)"},
+    GROUP("Mouse"),
+    {"<click>", a_mouse, "a picture, or the edge of an area: select it"},
+    {"<drag>", a_mouse, "move it"},
+    {"<drag corner>", a_mouse, "resize, keeping the proportions (Shift: free)"},
+    {"<drag side>", a_mouse, "resize one way; past the opposite side it mirrors"},
+    {"<drag knob>", a_mouse, "turn it (Shift: steps of 15°)"},
     GROUP("Finishing"),
     {"<Enter>", a_object_done, "done"}, {"<Esc>", a_object_cancel, "undo: put it back where it was"},
     {"x", a_object_delete, "delete it"},
@@ -886,6 +924,20 @@ static const Binding crop_map[] = {
     {"u", a_crop_reset, "uncrop: the whole picture again"},
     GROUP("Finishing"),
     {"<Enter>", a_crop_done, "done (back to moving and resizing)"}, {"<Esc>", a_crop_cancel, "cancel this cropping"},
+};
+
+static const Binding rotate_map[] = {
+    GROUP("Turning"),
+    {"h", a_rotate_step, "1° counter-clockwise / clockwise"}, {"l", a_rotate_step, "1° counter-clockwise / clockwise"},
+    {"<Left>", a_rotate_step, NULL}, {"<Right>", a_rotate_step, NULL},
+    {"H", a_rotate_step, "15° counter-clockwise / clockwise"}, {"L", a_rotate_step, "15° counter-clockwise / clockwise"},
+    {"<C-h>", a_rotate_step, "5° counter-clockwise / clockwise"}, {"<C-l>", a_rotate_step, "5° counter-clockwise / clockwise"},
+    {"u", a_rotate_reset, "upright again"},
+    {"r", a_object_turn, "turn 90° clockwise / counter-clockwise"}, {"R", a_object_turn, "turn 90° clockwise / counter-clockwise"},
+    {"f", a_object_flip, "mirror left-right / top-bottom"}, {"F", a_object_flip, "mirror left-right / top-bottom"},
+    {"<drag>", a_mouse, "turn it around its centre (Shift: steps of 15°)"},
+    GROUP("Finishing"),
+    {"<Enter>", a_rotate_done, "done (back to moving and resizing)"}, {"<Esc>", a_rotate_cancel, "cancel this turning"},
 };
 
 static const Binding grid_map[] = {
@@ -947,6 +999,7 @@ static const Binding *keymap(Mode m, int *n)
     case MODE_PREVIEW: *n = SDL_arraysize(preview_map); return preview_map;
     case MODE_OBJECT: *n = SDL_arraysize(object_map); return object_map;
     case MODE_CROP: *n = SDL_arraysize(crop_map); return crop_map;
+    case MODE_ROTATE: *n = SDL_arraysize(rotate_map); return rotate_map;
     case MODE_GRID: *n = SDL_arraysize(grid_map); return grid_map;
     case MODE_PRESENT: *n = SDL_arraysize(present_map); return present_map;
     default: *n = 0; return NULL;
@@ -1080,6 +1133,10 @@ static void token_run(Window *w, const char *tok)
     }
     if (w->mode == MODE_LIBRARY) { /* typing searches every PDF */
         library_key(w, tok);
+        return;
+    }
+    if (w->mode == MODE_TEXT) { /* writing a free text */
+        textbox_key(w, tok);
         return;
     }
     if (w->mode == MODE_PROMPT && w->prompt_box) { /* the comment box */
@@ -1273,6 +1330,15 @@ int help_lines(HelpLine **out)
         {"Ctrl-j Tab", "next field"}, {"Ctrl-k S-Tab", "previous field"},
         {"Ctrl-a", "select all"}, {"Ctrl-z", "undo"}, {"Ctrl-v", "paste"}, {"Esc", "leave the field"},
     };
+    static const HelpPair freetext[] = {
+        {"Writing", NULL},
+        {"type", "write; the box grows with the text"}, {"Enter", "new line"},
+        {"Ctrl-= Ctrl--", "bigger / smaller letters (Ctrl + wheel too)"},
+        {"arrows Home End", "move in the text"}, {"Ctrl-w", "delete the word before"},
+        {"Ctrl-v", "paste"}, {"Esc", "done (u undoes it)"},
+        {"Afterwards", NULL},
+        {"e", "move the box (H L: width, + -: letters); i writes in it again"},
+    };
     HelpLine *lines = NULL;
     int n = 0, cap = 0;
     help_section(&lines, &n, &cap, "Reading", normal_map, SDL_arraysize(normal_map), false);
@@ -1293,6 +1359,9 @@ int help_lines(HelpLine **out)
     help_static(&lines, &n, &cap, form, SDL_arraysize(form));
     help_section(&lines, &n, &cap, "Move/resize", object_map, SDL_arraysize(object_map), false);
     help_section(&lines, &n, &cap, "Crop", crop_map, SDL_arraysize(crop_map), false);
+    help_section(&lines, &n, &cap, "Rotate", rotate_map, SDL_arraysize(rotate_map), false);
+    help_title(&lines, &n, &cap, "Free text", true);
+    help_static(&lines, &n, &cap, freetext, SDL_arraysize(freetext));
     help_section(&lines, &n, &cap, "Pages", grid_map, SDL_arraysize(grid_map), false);
     help_section(&lines, &n, &cap, "Present", present_map, SDL_arraysize(present_map), false);
     /* "How to get here" at the top of every tab but Reading */
@@ -1304,8 +1373,10 @@ int help_lines(HelpLine **out)
         {"Preview", "F", "then the letters of a link"},
         {"Commands", ":", "from reading or a cursor"},
         {"Forms", "<C-j> <Tab>", "from reading: the next field (or click a field)"},
-        {"Move/resize", "e", "on an image or highlighted area, in the free cursor (a new image starts here)"},
+        {"Move/resize", "e", "on an image or highlighted area, in the free cursor, or click it (a new image starts here)"},
         {"Crop", "c", "on an image, while moving / resizing it"},
+        {"Rotate", "o", "on an image, while moving / resizing it"},
+        {"Free text", "T", "in the free cursor (Ctrl-v): at the cross, or in a rectangle marked with v"},
         {"Pages", "<leader>g :pages", "from reading"},
         {"Present", "<F5> :present", "from reading"},
     };
@@ -1400,6 +1471,10 @@ void input_text_event(Window *w, const char *text)
     }
     if (w->mode == MODE_ABOUT) {
         about_key(w, text);
+        return;
+    }
+    if (w->mode == MODE_TEXT) {
+        textbox_insert(w, text);
         return;
     }
     if (w->mode == MODE_PROMPT && w->prompt_box) {

@@ -4,7 +4,7 @@ seed, n = int(sys.argv[1]), int(sys.argv[2])
 work = sys.argv[3] if len(sys.argv) > 3 else '/tmp/nomadys-qa'
 random.seed(seed)
 src = open(__import__('os').path.expanduser('~/development/Nomadys-PDF/src/input.c')).read()
-keys = set(re.findall(r'\{"((?:[^"\\]|\\.)+)", a_', src))
+keys = set(k for k in re.findall(r'\{"((?:[^"\\]|\\.)+)", a_', src) if not k.startswith(('<drag', '<click')))  # those are only for the help screen
 tokens = []
 for k in keys:
     k = k.replace('\\\\', '\\').replace('<leader>', '\\').replace('*', random.choice('abcxyz'))
@@ -27,8 +27,10 @@ for i in range(n):
         out.append(str(random.randint(1, 30)))
     elif r < 0.97:
         out.append('<resize:%d,%d>' % random.choice([(1, 1), (40, 30), (3000, 2000), (200, 1500), (1500, 120), (900, 1100)]))
-    elif r < 0.98:
+    elif r < 0.975:
         out.append('<drag:%d,%d,%d,%d>' % tuple(random.randint(-50, 1600) for _ in range(4)))
+    elif r < 0.98:  # the mouse, a step at a time: pictures are picked up, dragged, dropped
+        out.append(random.choice(['<down:%d,%d>', '<move:%d,%d>', '<up:%d,%d>']) % (random.randint(-20, 950), random.randint(-20, 1150)))
     else:
         out.append('<wait:%d>' % random.choice([10, 60, 600]))
 s = ''.join(out)

@@ -13,7 +13,7 @@
 
 typedef void (*CommandFn)(Window *w, View *v, const char *arg);
 
-enum { ARG_NONE, ARG_FILE, ARG_NUMBER, ARG_PRINT, ARG_MD, ARG_IMAGE, ARG_THEME, ARG_WORDS };
+enum { ARG_NONE, ARG_FILE, ARG_NUMBER, ARG_PRINT, ARG_MD, ARG_IMAGE, ARG_THEME, ARG_WORDS, ARG_SAVE };
 
 typedef struct {
     const char *name;
@@ -22,7 +22,33 @@ typedef struct {
     const char *help;
 } Command;
 
-static void c_write(Window *w, View *v, const char *a) { (void)a; save(w, v); }
+/* :w saves the file; :w name.pdf writes a copy (next to this PDF unless the name has a folder);
+ * :w! name.pdf replaces a file that is there. */
+static void write_copy(Window *w, View *v, const char *a, bool overwrite)
+{
+    while (*a == ' ')
+        a++;
+    if (!*a) {
+        save(w, v);
+        return;
+    }
+    char *p = expand_home(a);
+    const char *pdf = v->doc->path, *slash = strrchr(pdf, '/');
+    char path[4200], err[512];
+    if (p[0] == '/' || !slash)
+        snprintf(path, sizeof path, "%s", p);
+    else
+        snprintf(path, sizeof path, "%.*s%s", (int)(slash - pdf) + 1, pdf, p);
+    free(p);
+    doc_kill_focus(v->doc);
+    if (doc_save_copy(v->doc, path, overwrite, err, sizeof err))
+        ui_message_long(w, 5000, "saved a copy: %s", path);
+    else
+        ui_message_long(w, 6000, "%s", err);
+}
+
+static void c_write(Window *w, View *v, const char *a) { write_copy(w, v, a, false); }
+static void c_write_force(Window *w, View *v, const char *a) { write_copy(w, v, a, true); }
 
 static void c_quit(Window *w, View *v, const char *a)
 {
@@ -275,7 +301,8 @@ static void c_pages(Window *w, View *v, const char *a) { (void)a; grid_open(w, v
 static void c_page(Window *w, View *v, const char *a) { goto_page(w, v, atoi(a) - 1); }
 
 static const Command commands[] = {
-    {"w", ARG_NONE, c_write, "save"},
+    {"w", ARG_SAVE, c_write, "save; :w name.pdf saves a copy under that name (next to this PDF)"},
+    {"w!", ARG_SAVE, c_write_force, "save a copy, replacing a file of that name"},
     {"q", ARG_NONE, c_quit, "close the tab"},
     {"q!", ARG_NONE, c_quit_force, "close the tab, discarding changes"},
     {"wq", ARG_NONE, c_write_quit, "save and close the tab"},
@@ -327,7 +354,7 @@ void command_describe(int i, char *keys, size_t cap, const char **text)
 {
     const Command *c = &commands[i];
     snprintf(keys, cap, ":%s%s", c->name,
-             c->arg == ARG_FILE ? " file" : c->arg == ARG_MD ? " [file.md]" : c->arg == ARG_IMAGE ? " file.png" : c->arg == ARG_THEME ? " [name]" : c->arg == ARG_NUMBER ? " N" : c->arg == ARG_PRINT ? " [options]" : c->arg == ARG_WORDS ? " [words]" : "");
+             c->arg == ARG_FILE ? " file" : c->arg == ARG_SAVE ? " [file.pdf]" : c->arg == ARG_MD ? " [file.md]" : c->arg == ARG_IMAGE ? " file.png" : c->arg == ARG_THEME ? " [name]" : c->arg == ARG_NUMBER ? " N" : c->arg == ARG_PRINT ? " [options]" : c->arg == ARG_WORDS ? " [words]" : "");
     *text = c->help;
 }
 
@@ -437,14 +464,14 @@ static void build_candidates(Window *w)
         free(yours);
         return;
     }
-    if (!c || (c->arg != ARG_FILE && c->arg != ARG_MD && c->arg != ARG_IMAGE))
+    if (!c || (c->arg != ARG_FILE && c->arg != ARG_MD && c->arg != ARG_IMAGE && c->arg != ARG_SAVE))
         return;
     const char *arg = space + strspn(space, " ");
     w->comp_start = (int)(arg - line);
     char *prefix = expand_home(arg);
     /* :export names are relative to the PDF's folder, not to where we started */
     const char *pdf = cur_view(w)->doc->path, *slash = strrchr(pdf, '/');
-    int dirlen = c->arg == ARG_MD && prefix[0] != '/' && slash ? (int)(slash - pdf) + 1 : 0;
+    int dirlen = (c->arg == ARG_MD || c->arg == ARG_SAVE) && prefix[0] != '/' && slash ? (int)(slash - pdf) + 1 : 0;
     char *pattern = xmalloc(strlen(prefix) + (size_t)dirlen + 2);
     sprintf(pattern, "%.*s%s*", dirlen, pdf, prefix);
     glob_t g;

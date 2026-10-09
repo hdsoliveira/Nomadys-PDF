@@ -69,6 +69,16 @@ static char *find_font(const char *family, int *index)
     return out;
 }
 
+/* The file of the font fontconfig finds for a name ("sans", "serif", "Noto Sans CJK JP"). */
+char *font_file(const char *family, int *index)
+{
+    char saved[sizeof font_fallback];
+    memcpy(saved, font_fallback, sizeof saved); /* asking is no reason to tell the user a font is missing */
+    char *file = find_font(family, index);
+    memcpy(font_fallback, saved, sizeof saved);
+    return file;
+}
+
 Font *font_open(SDL_Renderer *ren, const char *family, double points, float density)
 {
     if (!ft && FT_Init_FreeType(&ft))
