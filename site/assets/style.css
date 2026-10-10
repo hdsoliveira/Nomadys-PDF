@@ -150,12 +150,13 @@ pre {
 pre .c { color: var(--ink-faint); }
 .install { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
 .install h3 { margin: 0 0 10px; font-size: 18px; }
+.install pre { white-space: pre-wrap; overflow-wrap: anywhere; } /* commands are never cut off */
 
-.downloads { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin: 0 0 44px; }
+.downloads { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; margin: 0 0 44px; }
 .dl { min-width: 0; background: var(--bg-card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; display: flex; flex-direction: column; }
 .dl h3 { margin: 0 0 6px; font-size: 18px; }
 .dl p { margin: 0 0 12px; color: var(--ink-soft); font-size: 15px; }
-.dl pre { margin: 0 0 16px; font-size: 12.5px; }
+.dl pre { margin: 0 0 16px; font-size: 13.5px; white-space: pre-wrap; overflow-wrap: anywhere; } /* the whole command is always shown */
 .dl .btn { margin-top: auto; align-self: flex-start; }
 .limits { margin: 0; padding: 0; list-style: none; max-width: 820px; }
 .limits li { padding: 7px 0 7px 26px; position: relative; color: var(--ink-soft); }
