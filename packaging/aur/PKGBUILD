@@ -18,7 +18,7 @@ _pdfium=8086  # tools/fetch_pdfium.sh: the prebuilt PDFium npdf is tested with
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
         "pdfium-$_pdfium.tgz::https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/$_pdfium/pdfium-linux-x64.tgz")
 noextract=("pdfium-$_pdfium.tgz")
-sha256sums=('SKIP'
+sha256sums=('3a911e8b4b72ace006f2af48999b477ad1639dcee0b60bfb88f7dd652eb0d25e'
             '588577cf52dabc1a444988bac841920df54cc2f141801424de97ab04f4fbb935')
 
 prepare() {
