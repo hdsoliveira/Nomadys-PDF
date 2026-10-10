@@ -1,0 +1,19 @@
+# The site (site/) on GitHub Pages. Run it by hand from the Actions tab once the
+# repository is public and Pages is set to "GitHub Actions".
+name: Site
+on: workflow_dispatch
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - uses: actions/deploy-pages@v4
