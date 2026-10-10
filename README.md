@@ -138,7 +138,7 @@ Linux (Wayland or X11). The easiest ways come from the
 |---|---|
 | **Debian, Ubuntu, Linux Mint, Pop!_OS** | `sudo apt install ./nomadys-pdf_0.5.0_amd64.deb` |
 | **Any distribution** | the AppImage, with `chmod +x Nomadys-PDF-0.5.0-x86_64.AppImage` and then run it |
-| **Arch Linux** | `nomadys-pdf` from the AUR |
+| **Arch Linux** | `sudo pacman -U nomadys-pdf-0.5.0-1-x86_64.pkg.tar.zst` (the AUR package comes later) |
 
 Every file there has a SHA-256 in `SHA256SUMS`. Tried on Ubuntu 22.04 and
 24.04, Debian 12 and 13, Fedora, Arch and openSUSE Tumbleweed, under X11 and
@@ -251,7 +251,7 @@ For releases, `tools/package.sh` builds the AppImage and the `.deb` in an Ubuntu
 `tools/distro-test.sh` then tries them on Ubuntu, Debian, Fedora, Arch and
 openSUSE, each in its own container, both without a window and in a real one on
 X11 (Xvfb) and Wayland (headless weston), copying text and following links.
-The AUR package is `packaging/aur/PKGBUILD`, and `tools/aur-build.sh` builds it
+The Arch package is built from `packaging/aur/PKGBUILD` (the file for the AUR), and `tools/aur-build.sh` builds it
 from this tree in an Arch container, with namcap, and `tools/distro-test.sh`
 then tries it too.
 
