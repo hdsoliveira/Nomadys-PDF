@@ -5,7 +5,9 @@
 # root in here is you outside: the files in /out are yours.
 set -eu
 SDL_VERSION=3.4.16
+SDL_SHA256=7322236cd12090c3eb40b9728be4d49c76f66ad17d04369584d4ecad5cf77c68
 APPIMAGETOOL=1.9.1
+APPIMAGETOOL_SHA256=ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0
 CACHE=/out/cache
 export DEBIAN_FRONTEND=noninteractive
 
@@ -21,6 +23,7 @@ apt-get install -y -qq --no-install-recommends \
 [ -f "$CACHE/SDL3-$SDL_VERSION.tar.gz" ] ||
     curl -fsSL -o "$CACHE/SDL3-$SDL_VERSION.tar.gz" \
         "https://github.com/libsdl-org/SDL/releases/download/release-$SDL_VERSION/SDL3-$SDL_VERSION.tar.gz"
+echo "$SDL_SHA256  $CACHE/SDL3-$SDL_VERSION.tar.gz" | sha256sum -c - # what was downloaded is what was published
 tar -xzf "$CACHE/SDL3-$SDL_VERSION.tar.gz" -C /tmp
 cmake -S /tmp/SDL3-$SDL_VERSION -B /tmp/sdl-build -G Ninja -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/opt/sdl3 -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF -DSDL_STATIC=OFF \
@@ -60,6 +63,7 @@ chmod 755 "$APPDIR/AppRun"
         "https://github.com/AppImage/appimagetool/releases/download/$APPIMAGETOOL/appimagetool-x86_64.AppImage"
     chmod 755 "$CACHE/appimagetool-$APPIMAGETOOL"
 }
+echo "$APPIMAGETOOL_SHA256  $CACHE/appimagetool-$APPIMAGETOOL" | sha256sum -c -
 APPIMAGE=/out/Nomadys-PDF-$VERSION-x86_64.AppImage
 # written under another name and then renamed over the old one: an AppImage that is
 # running ("Text file busy") cannot be written to, but its name can be taken over
