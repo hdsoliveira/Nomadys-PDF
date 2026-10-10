@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/inotify.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/un.h>
@@ -107,8 +108,14 @@ static int loop(void *unused)
         }
         if (fds[0].revents & POLLIN) {
             int c = accept4(server_fd, NULL, NULL, SOCK_CLOEXEC);
-            if (c >= 0)
-                read_request(c);
+            if (c >= 0) {
+                struct ucred cred;
+                socklen_t len = sizeof cred;
+                if (getsockopt(c, SOL_SOCKET, SO_PEERCRED, &cred, &len) == 0 && cred.uid == geteuid())
+                    read_request(c); /* only requests from you */
+                else
+                    close(c);
+            }
         }
         if (fds[1].revents & POLLIN)
             read_notify();
@@ -122,7 +129,10 @@ void ipc_start(void)
     struct sockaddr_un a;
     socket_path(&a);
     server_fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
-    if (server_fd >= 0 && bind(server_fd, (struct sockaddr *)&a, sizeof a) != 0) {
+    mode_t old_umask = umask(0077); /* the socket file is for you alone (it can sit in /tmp) */
+    bool bound = server_fd >= 0 && bind(server_fd, (struct sockaddr *)&a, sizeof a) == 0;
+    umask(old_umask);
+    if (server_fd >= 0 && !bound) {
         /* the name is taken: by a running instance (it serves), or left over
          * from a crash (remove it and take over) */
         int probe = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);

@@ -18,7 +18,7 @@
 <p>Nomadys-PDF runs on Linux, on Wayland and X11. The command is <code>npdf</code>.</p>
 <h2 id="dependencies">Dependencies<a class="anchor" href="#dependencies">#</a></h2>
 <pre><code>sudo apt install build-essential pkg-config libsdl3-dev libfreetype-dev libfontconfig-dev zlib1g-dev</code></pre>
-<p>PDFium (the PDF engine) is <strong>downloaded automatically</strong> by the first <code>make</code>. It is a pinned release (<code>chromium/8066</code> from <a href="https://github.com/bblanchon/pdfium-binaries">bblanchon/pdfium-binaries</a>), checked against its SHA-256. It is not stored in the repository.</p>
+<p>PDFium (the PDF engine) is <strong>downloaded automatically</strong> by the first <code>make</code>. It is a pinned release (<code>chromium/8086</code> from <a href="https://github.com/bblanchon/pdfium-binaries">bblanchon/pdfium-binaries</a>), checked against its SHA-256. It is not stored in the repository.</p>
 <p>These programs are optional and add extra features.</p>
 <table><thead><tr><th>Program</th><th>Used for</th></tr></thead><tbody><tr><td><code>pdflatex</code> (TeX Live) with <code>amsmath</code>, <code>amssymb</code></td><td>equations in comments (<a href="Highlights-and-Comments.html">Highlights and comments</a>)</td></tr><tr><td><code>synctex</code> (comes with TeX Live)</td><td>jumping between the PDF and the LaTeX source (<a href="LaTeX-and-VimTeX.html">LaTeX and VimTeX</a>)</td></tr><tr><td><code>curl</code></td><td><code>:bibtex</code> (<a href="Quoting-and-Citing.html">Quoting and citing</a>)</td></tr><tr><td>CUPS (<code>lp</code>, <code>lpstat</code>)</td><td>printing</td></tr><tr><td><code>xdg-open</code></td><td>opening web links in the browser</td></tr></tbody></table>
 <p>Everything else works without them.</p>

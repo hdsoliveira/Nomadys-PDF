@@ -290,6 +290,10 @@ int pages_move(Window *w, Doc *d, int first, int last, int dest)
 /* The pages picked, in their order, as a new PDF at path. */
 bool pages_extract(Window *w, Doc *d, const bool *pick, const char *path)
 {
+    if (access(path, F_OK) == 0) { /* never over a file that is there (the PDF itself, a paper of yours) */
+        ui_message_long(w, 6000, "%s already exists: nothing was written, choose another name", strrchr(path, '/') ? strrchr(path, '/') + 1 : path);
+        return false;
+    }
     FPDF_DOCUMENT out = FPDF_CreateNewDocument();
     int *idx = xmalloc((size_t)SDL_max(1, d->npages) * sizeof *idx), n = 0;
     for (int i = 0; i < d->npages; i++)
@@ -391,4 +395,6 @@ void pages_default_name(Doc *d, const bool *pick, char *out, size_t cap)
             snprintf(pages, sizeof pages, "%d-pages", k);
     }
     snprintf(out, cap, "%.*s-%s.pdf", (int)n, d->path, pages);
+    for (int k = 2; k < 100 && access(out, F_OK) == 0; k++) /* an earlier extraction stays */
+        snprintf(out, cap, "%.*s-%s-%d.pdf", (int)n, d->path, pages, k);
 }

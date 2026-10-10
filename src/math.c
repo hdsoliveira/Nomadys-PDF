@@ -97,6 +97,11 @@ static void init(void)
         snprintf(buf, sizeof buf, "%s/.cache/nomadys-pdf/math", home ? home : "/tmp");
     cache_dir = xstrdup(buf);
     mkdirs(cache_dir);
+    /* the formulas come from the PDF, which may not be yours: pdflatex must not read or write
+     * files outside the TeX trees and its own folder (TeX Live's "paranoid" setting) */
+    setenv("openin_any", "p", 1);
+    setenv("openout_any", "p", 1);
+    setenv("shell_escape", "f", 1);
     const char *cfgdir = getenv("XDG_CONFIG_HOME");
     if (cfgdir && *cfgdir)
         snprintf(buf, sizeof buf, "%s/nomadys-pdf/math.tex", cfgdir);

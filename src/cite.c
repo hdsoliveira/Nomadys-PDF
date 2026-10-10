@@ -183,8 +183,8 @@ static SDL_AtomicInt fetching;
 static int fetch(void *arg)
 {
     Fetch *f = arg;
-    const char *args[] = {"curl", "-sSLf", "--max-time", "20", "-H", "Accept: application/x-bibtex; charset=utf-8",
-                          f->url, NULL};
+    const char *args[] = {"curl", "-sSLf", "--max-time", "20", "--proto", "=https", "--proto-redir", "=https",
+                          "--max-filesize", "2000000", "-H", "Accept: application/x-bibtex; charset=utf-8", f->url, NULL};
     SDL_Process *p = SDL_CreateProcess(args, true);
     size_t size = 0;
     int code = -1;

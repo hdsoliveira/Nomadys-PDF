@@ -126,8 +126,8 @@ static void attach(Doc *d, FPDF_DOCUMENT pdf)
     for (int i = 0; i < d->npages; i++) {
         FS_SIZEF s = {612, 792};
         FPDF_GetPageSizeByIndexF(pdf, i, &s);
-        d->pw[i] = s.width > 1 ? s.width : 612;
-        d->ph[i] = s.height > 1 ? s.height : 792;
+        d->pw[i] = s.width > 1 ? SDL_min(s.width, 60000.0f) : 612; /* a page is at most 14 400 pt (PDF); no more than this */
+        d->ph[i] = s.height > 1 ? SDL_min(s.height, 60000.0f) : 792;
     }
     FPDF_FORMFILLINFO *fi = &d->ffi.info;
     memset(fi, 0, sizeof *fi);

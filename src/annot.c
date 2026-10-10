@@ -108,7 +108,9 @@ void notes_page(Doc *d, int page)
             continue;
         }
         bool hidden = FPDFAnnot_GetFlags(a) & FPDF_ANNOT_FLAG_HIDDEN; /* deleted (undo can bring it back) */
-        if (!hidden && is_markup(type) && FPDFAnnot_GetRect(a, &r)) {
+        if (!hidden && is_markup(type) && FPDFAnnot_GetRect(a, &r) && isfinite(r.left) && isfinite(r.right) &&
+            isfinite(r.top) && isfinite(r.bottom) && SDL_fabsf(r.left) < 1e7f && SDL_fabsf(r.right) < 1e7f &&
+            SDL_fabsf(r.top) < 1e7f && SDL_fabsf(r.bottom) < 1e7f) { /* the rectangle comes from the file */
             Note *nt = &s->notes[s->nnotes++];
             *nt = (Note){.idx = i, .subtype = type, .r = norm(r)};
             size_t nq = FPDFAnnot_CountAttachmentPoints(a);
@@ -683,16 +685,23 @@ bool note_text_get(Doc *d, int page, int annot, TextBox *b)
     FS_RECTF r;
     bool ok = FPDFAnnot_GetSubtype(a) == FPDF_ANNOT_STAMP && get_string(a, "NomadysText", spec, sizeof spec) &&
               sscanf(spec, "%f %f", &size, &width) == 2 && size > 0 && width > 0 && FPDFAnnot_GetRect(a, &r);
+    ok = ok && isfinite(size) && isfinite(width) && isfinite(r.left) && isfinite(r.right) && isfinite(r.top) &&
+         isfinite(r.bottom);
     if (ok) {
+        size = SDL_clamp(size, TEXT_SIZE_MIN, TEXT_SIZE_MAX); /* from the file: kept in range */
+        width = SDL_clamp(width, 3 * size, 100000.0f);
         unsigned long bytes = FPDFAnnot_GetStringValue(a, "Contents", NULL, 0);
         char *text = NULL;
-        if (bytes > 2) {
+        if (bytes > (1ul << 21)) /* a text box that big is not one we made */
+            ok = false;
+        else if (bytes > 2) {
             unsigned short *u = xmalloc(bytes);
             FPDFAnnot_GetStringValue(a, "Contents", u, bytes);
             text = utf16_to_utf8(u, (int)(bytes / 2) - 1);
             free(u);
         }
-        *b = (TextBox){text ? text : xstrdup(""), size, width, SDL_min(r.left, r.right), SDL_max(r.top, r.bottom)};
+        if (ok)
+            *b = (TextBox){text ? text : xstrdup(""), size, width, SDL_min(r.left, r.right), SDL_max(r.top, r.bottom)};
     }
     FPDFPage_CloseAnnot(a);
     return ok;
@@ -838,6 +847,10 @@ bool note_image_view(Doc *d, int page, int annot, ImageView *iv, int *pxw, int *
         ok = FPDFPageObj_GetMatrix(o, &m) && m.b == 0 && m.c == 0 && m.a > 0 && m.d > 0;
         *iv = (ImageView){.box = {m.e, m.f, m.e + m.a, m.f + m.d}, .u1 = 1, .v1 = 1};
     }
+    /* the numbers come from the file: finite and of a size a page can have, or it is not ours */
+    float all[] = {iv->box[0], iv->box[1], iv->box[2], iv->box[3], iv->u0, iv->v0, iv->u1, iv->v1, iv->angle, iv->rw, iv->rh};
+    for (size_t k = 0; ok && k < SDL_arraysize(all); k++)
+        ok = isfinite(all[k]) && SDL_fabsf(all[k]) < 1e6f;
     ok = ok && iv->u1 > iv->u0 && iv->v1 > iv->v0 && iv->box[2] > iv->box[0] && iv->box[3] > iv->box[1];
     iv->turns = ((iv->turns % 4) + 4) % 4;
     *pxw = (int)w, *pxh = (int)h;

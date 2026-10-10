@@ -6,8 +6,8 @@ Minimal, fast PDF reader for Linux (Wayland/sway). Written in C.
 
 - **PDFium** (Chrome's PDF engine, BSD/Apache licence) for rendering, forms,
   text and annotations. Prebuilt binary from bblanchon/pdfium-binaries,
-  release chromium/8066, `third_party/pdfium/` (SHA-256 verified
-  `0b43f405…fed2`). Build without V8: no form JavaScript (field calculations);
+  release chromium/8086, `third_party/pdfium/` (SHA-256 verified
+  `588577cf…b935`). Build without V8: no form JavaScript (field calculations);
   the V8 variant can replace the library later if needed.
 - **SDL3** for windows, keyboard, text input and clipboard (needs
   `sudo apt install libsdl3-dev`).

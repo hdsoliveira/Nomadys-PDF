@@ -26,10 +26,10 @@ pkgbase = nomadys-pdf
 	optdepends = texlive-latexextra: LaTeX equations in comments
 	optdepends = curl: BibTeX of a cited DOI
 	optdepends = cups: printing
-	noextract = pdfium-8066.tgz
+	noextract = pdfium-8086.tgz
 	source = nomadys-pdf-0.5.0.tar.gz::https://github.com/hdsoliveira/Nomadys-PDF/archive/refs/tags/v0.5.0.tar.gz
-	source = pdfium-8066.tgz::https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8066/pdfium-linux-x64.tgz
+	source = pdfium-8086.tgz::https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8086/pdfium-linux-x64.tgz
 	sha256sums = SKIP
-	sha256sums = 0b43f405477cf2cfc4dbff06905093c3309756c6bca1fb9da99234a2ca97fed2
+	sha256sums = 588577cf52dabc1a444988bac841920df54cc2f141801424de97ab04f4fbb935
 
 pkgname = nomadys-pdf

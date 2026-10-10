@@ -465,6 +465,16 @@ void view_goto_page(View *v, int page);
 Pos view_pos(View *v);
 void view_set_pos(View *v, Pos p);
 void view_show_rect(View *v, int page, PRect r, int W, int H, int top);
+/* FPDF_PageToDevice for coordinates that come from a file: a hostile one can ask for 1e30, which turns
+ * into an integer that overflows when the layout adds to it. The inputs are kept within a range any
+ * real page is inside of. */
+static inline void pdev(FPDF_PAGE p, int sx, int sy, int pw, int ph, int rot, double x, double y, int *dx, int *dy)
+{
+    x = x != x ? 0 : x < -1e6 ? -1e6 : x > 1e6 ? 1e6 : x;
+    y = y != y ? 0 : y < -1e6 ? -1e6 : y > 1e6 ? 1e6 : y;
+    FPDF_PageToDevice(p, sx, sy, pw, ph, rot, x, y, dx, dy);
+}
+
 void page_to_screen(View *v, int page, float x, float y, float *sx, float *sy, int top);
 float page_left_screen(View *v, int page);
 bool screen_to_page(View *v, float sx, float sy, int top, int *page, double *x, double *y);

@@ -15,12 +15,20 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/prctl.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 #include <zlib.h>
+#if defined(__linux__)
+#include <linux/filter.h>
+#include <linux/seccomp.h>
+#include <sys/socket.h>
+#endif
 
 #include "fpdf_annot.h"
 #include "fpdf_text.h"
@@ -348,12 +356,99 @@ static int extract(const char *path, const char *gz)
     return n;
 }
 
+/* The worker opens every PDF it finds, whoever made it, so it is shut in before it starts: it
+ * cannot make network connections, start programs or trace others (a seccomp filter), and it
+ * can read files but write only in its own folder (Landlock). If the kernel does not offer
+ * one of them the worker goes on without it. NPDF_NO_SANDBOX=1 turns this off (for debugging);
+ * NPDF_SANDBOX_CHECK=1 makes the worker report what it can still do. */
+#ifndef __NR_landlock_create_ruleset
+#define __NR_landlock_create_ruleset 444
+#define __NR_landlock_add_rule 445
+#define __NR_landlock_restrict_self 446
+#endif
+struct ll_ruleset_attr { unsigned long long handled_access_fs; };
+struct ll_path_beneath { unsigned long long allowed_access; int parent_fd; } __attribute__((packed));
+#define LL_READ 0xCull       /* READ_FILE (1 << 2) | READ_DIR (1 << 3) */
+#define LL_ALL 0x1FFFull     /* every filesystem access of the first Landlock version */
+
+static bool landlock_confine(const char *dir)
+{
+    struct ll_ruleset_attr attr = {LL_ALL};
+    int rs = (int)syscall(__NR_landlock_create_ruleset, &attr, sizeof attr, 0);
+    if (rs < 0)
+        return false;
+    bool ok = true;
+    const struct { const char *path; unsigned long long access; } rules[] = {{"/", LL_READ}, {dir, LL_ALL}};
+    for (size_t i = 0; i < 2; i++) {
+        int fd = open(rules[i].path, O_PATH | O_CLOEXEC);
+        struct ll_path_beneath pb = {rules[i].access, fd};
+        ok = ok && fd >= 0 && syscall(__NR_landlock_add_rule, rs, 1 /* LANDLOCK_RULE_PATH_BENEATH */, &pb, 0) == 0;
+        if (fd >= 0)
+            close(fd);
+    }
+    ok = ok && syscall(__NR_landlock_restrict_self, rs, 0) == 0;
+    close(rs);
+    return ok;
+}
+
+static bool seccomp_confine(void)
+{
+#if defined(__linux__) && defined(__x86_64__)
+    static const int denied[] = {__NR_socket, __NR_connect, __NR_bind, __NR_listen, __NR_execve, __NR_execveat,
+                                 __NR_ptrace, __NR_process_vm_readv, __NR_process_vm_writev, __NR_io_uring_setup,
+                                 __NR_userfaultfd, __NR_bpf};
+    struct sock_filter f[4 + 2 * (sizeof denied / sizeof *denied) + 1];
+    size_t n = 0;
+    f[n++] = (struct sock_filter)BPF_STMT(BPF_LD | BPF_W | BPF_ABS, 4); /* seccomp_data.arch */
+    f[n++] = (struct sock_filter)BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 0xC000003E /* AUDIT_ARCH_X86_64 */, 1, 0);
+    f[n++] = (struct sock_filter)BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW); /* another ABI: not ours to judge */
+    f[n++] = (struct sock_filter)BPF_STMT(BPF_LD | BPF_W | BPF_ABS, 0); /* seccomp_data.nr */
+    for (size_t i = 0; i < sizeof denied / sizeof *denied; i++) {
+        f[n++] = (struct sock_filter)BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, (unsigned)denied[i], 0, 1);
+        f[n++] = (struct sock_filter)BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ERRNO | (EPERM & SECCOMP_RET_DATA));
+    }
+    f[n++] = (struct sock_filter)BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW);
+    struct sock_fprog prog = {(unsigned short)n, f};
+    return prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &prog) == 0;
+#else
+    return false;
+#endif
+}
+
+static void sandbox_worker(const char *dir)
+{
+    const char *off = getenv("NPDF_NO_SANDBOX");
+    if (off && *off == '1')
+        return;
+    bool nnp = prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) == 0;
+    bool fs = nnp && landlock_confine(dir), net = nnp && seccomp_confine();
+    const char *check = getenv("NPDF_SANDBOX_CHECK");
+    if (check && *check == '1') { /* what a hostile PDF could still do */
+        int w = open("/tmp/npdf-sandbox-canary", O_WRONLY | O_CREAT | O_EXCL, 0600);
+        if (w >= 0) {
+            close(w);
+            unlink("/tmp/npdf-sandbox-canary");
+        }
+        const char *probe = getenv("NPDF_SANDBOX_PROBE"); /* an existing file the test made */
+        int e = probe ? open(probe, O_WRONLY) : -1;
+        if (e >= 0)
+            close(e);
+        int s = socket(AF_INET, SOCK_STREAM, 0);
+        if (s >= 0)
+            close(s);
+        printf("S files-confined=%d create-elsewhere=%s write-existing=%s network-closed=%d socket=%s\n", fs,
+               w >= 0 ? "allowed" : "blocked", e >= 0 ? "allowed" : "blocked", net, s >= 0 ? "allowed" : "blocked");
+        fflush(stdout);
+    }
+}
+
 /* npdf --index-worker DIR K: the files whose path hash % WORKERS is K. */
 int library_worker(const char *dir, int part)
 {
     errno = 0;
     (void)!nice(10); /* the reader comes first; failing only means full speed */
     mkdirs(dir);
+    sandbox_worker(dir);
     char manifest[4200], current[4200];
     snprintf(manifest, sizeof manifest, "%s/manifest.%d", dir, part);
     snprintf(current, sizeof current, "%s/current.%d", dir, part);

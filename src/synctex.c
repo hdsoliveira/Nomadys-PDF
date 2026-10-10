@@ -1,6 +1,7 @@
 /* SyncTeX (LaTeX <-> PDF) through TeX Live's `synctex` command:
  * forward search (tex line -> PDF spot) and inverse search (PDF spot -> editor).
  * SyncTeX coordinates are points from the top-left corner of the page. */
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <spawn.h>
@@ -124,6 +125,22 @@ static void editor_command(char *out, size_t cap, const char *file, int line, in
     out[n] = 0;
 }
 
+/* The file name comes out of the SyncTeX data, which sits next to the PDF and may not be
+ * yours, and goes into a command that a shell and an editor read. Only a plain name is
+ * accepted (letters, digits, spaces and . _ / + , = ~ -), not one that starts like an
+ * option, and it must be a file that exists. */
+static bool plain_source(const char *s)
+{
+    size_t n = strlen(s);
+    if (!n || n >= 4096 || !(isalnum((unsigned char)s[0]) || s[0] == '/' || s[0] == '.' || (unsigned char)s[0] >= 0x80))
+        return false;
+    for (const unsigned char *p = (const unsigned char *)s; *p; p++)
+        if (!(isalnum(*p) || *p >= 0x80 || strchr(" ._/+,=~-", *p)))
+            return false;
+    struct stat st;
+    return stat(s, &st) == 0 && S_ISREG(st.st_mode);
+}
+
 bool synctex_inverse(Window *w, View *v, int page, double x, double y)
 {
     Doc *d = v->doc;
@@ -136,7 +153,7 @@ bool synctex_inverse(Window *w, View *v, int page, double x, double y)
         return false;
     /* page space -> points from the top-left corner, as SyncTeX expects */
     int dx, dy, pw = (int)(d->pw[page] * 8), ph = (int)(d->ph[page] * 8);
-    FPDF_PageToDevice(p, 0, 0, pw, ph, 0, x, y, &dx, &dy);
+    pdev(p, 0, 0, pw, ph, 0, x, y, &dx, &dy);
     char spot[4300];
     snprintf(spot, sizeof spot, "%d:%.2f:%.2f:%s", page + 1, dx / 8.0, dy / 8.0, d->path);
     char *out = run_synctex("edit", "-o", spot, NULL, NULL);
@@ -151,6 +168,10 @@ bool synctex_inverse(Window *w, View *v, int page, double x, double y)
     const char *colp = field(out, "Column");
     int ln = atoi(line), col = colp ? atoi(colp) : 0;
     free(out);
+    if (!plain_source(file)) {
+        ui_message_long(w, 6000, "not opened: the SyncTeX data names a file with unusual characters, or one that is not there");
+        return false;
+    }
     char cmd[8192];
     editor_command(cmd, sizeof cmd, file, ln, col);
     spawn_editor(cmd);

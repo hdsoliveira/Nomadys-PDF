@@ -169,7 +169,8 @@ static void open_uri(Window *w, const char *uri)
         snprintf(url, sizeof url, "https://%s", uri);
     else
         snprintf(url, sizeof url, "%s", uri);
-    if (!safe_uri(uri)) {
+    bool attaches = !strncmp(uri, "mailto:", 7) && (strcasestr(uri, "attach") || strcasestr(uri, "file:") || strcasestr(uri, "%2F"));
+    if (!safe_uri(uri) || attaches) { /* a mailto: link can ask the mail program to attach a file */
         /* file: or program links could run anything: only show and copy them */
         SDL_SetClipboardText(uri);
         ui_message_long(w, 5000, "not opened (copied): %s", uri);

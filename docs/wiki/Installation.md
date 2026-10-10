@@ -9,7 +9,7 @@ sudo apt install build-essential pkg-config libsdl3-dev libfreetype-dev libfontc
 ```
 
 PDFium (the PDF engine) is **downloaded automatically** by the first `make`.
-It is a pinned release (`chromium/8066` from
+It is a pinned release (`chromium/8086` from
 [bblanchon/pdfium-binaries](https://github.com/bblanchon/pdfium-binaries)),
 checked against its SHA-256. It is not stored in the repository.
 

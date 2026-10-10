@@ -297,9 +297,9 @@ void page_to_screen(View *v, int page, float x, float y, float *sx, float *sy, i
     int dx = 0, dy = 0;
     FPDF_PAGE p = doc_page(v->doc, page);
     if (p)
-        FPDF_PageToDevice(p, 0, 0, v->pwpx[page], v->phpx[page], v->rotation, x, y, &dx, &dy);
-    *sx = (float)(v->px[page] + dx + offset_x(v, layout_W(v)));
-    *sy = (float)(v->py[page] + dy - v->sy + top);
+        pdev(p, 0, 0, v->pwpx[page], v->phpx[page], v->rotation, x, y, &dx, &dy);
+    *sx = (float)((double)v->px[page] + dx + offset_x(v, layout_W(v)));
+    *sy = (float)((double)v->py[page] + dy - v->sy + top);
 }
 
 /* The left edge of a page on screen. */
@@ -674,9 +674,9 @@ static bool opacity(const Alpha *al, FPDF_PAGE p, int cx, int cy, int pw, int ph
                     const uint8_t *px, int stride, uint8_t *out)
 {
     int ox, oy, ux, uy, vx, vy;
-    FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, al->full.l, al->full.t, &ox, &oy);
-    FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, al->full.r, al->full.t, &ux, &uy);
-    FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, al->full.l, al->full.b, &vx, &vy);
+    pdev(p, -cx, -cy, pw, ph, rot, al->full.l, al->full.t, &ox, &oy);
+    pdev(p, -cx, -cy, pw, ph, rot, al->full.r, al->full.t, &ux, &uy);
+    pdev(p, -cx, -cy, pw, ph, rot, al->full.l, al->full.b, &vx, &vy);
     double ax = ux - ox, ay = uy - oy, bx = vx - ox, by = vy - oy, det = ax * by - ay * bx;
     if (SDL_fabs(det) < 1)
         return false;
@@ -717,8 +717,8 @@ static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w,
     for (int k = 0; k < s->nimages; k++) {
         PRect r = s->images[k];
         int x0, y0, x1, y1;
-        FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, r.l, r.t, &x0, &y0);
-        FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, r.r, r.b, &x1, &y1);
+        pdev(p, -cx, -cy, pw, ph, rot, r.l, r.t, &x0, &y0);
+        pdev(p, -cx, -cy, pw, ph, rot, r.r, r.b, &x1, &y1);
         int l = SDL_max(0, SDL_min(x0, x1)), rr = SDL_min(w, SDL_max(x0, x1) + 1);
         int t = SDL_max(0, SDL_min(y0, y1)), b = SDL_min(h, SDL_max(y0, y1) + 1);
         if (l >= rr || t >= b)
@@ -748,8 +748,8 @@ static uint8_t *image_mask(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w,
                     if (s->line[i] < 0)
                         continue;
                     int gx0, gy0, gx1, gy1;
-                    FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, s->boxes[i].l, s->boxes[i].t, &gx0, &gy0);
-                    FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, s->boxes[i].r, s->boxes[i].b, &gx1, &gy1);
+                    pdev(p, -cx, -cy, pw, ph, rot, s->boxes[i].l, s->boxes[i].t, &gx0, &gy0);
+                    pdev(p, -cx, -cy, pw, ph, rot, s->boxes[i].r, s->boxes[i].b, &gx1, &gy1);
                     glyphs[nglyphs++] = (SDL_Rect){SDL_min(gx0, gx1), SDL_min(gy0, gy1), SDL_abs(gx1 - gx0) + 1,
                                                    SDL_abs(gy1 - gy0) + 1};
                 }
@@ -870,8 +870,8 @@ static int highlight_marks(Doc *d, int page, FPDF_PAGE p, int cx, int cy, int w,
         for (int q = 0; q < nt->nquads; q++) {
             PRect r = nt->quads[q];
             int x0, y0, x1, y1;
-            FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, r.l, r.t, &x0, &y0);
-            FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, r.r, r.b, &x1, &y1);
+            pdev(p, -cx, -cy, pw, ph, rot, r.l, r.t, &x0, &y0);
+            pdev(p, -cx, -cy, pw, ph, rot, r.r, r.b, &x1, &y1);
             Tint m = {SDL_max(0, SDL_min(x0, x1)), SDL_max(0, SDL_min(y0, y1)), SDL_min(w, SDL_max(x0, x1) + 1),
                       SDL_min(h, SDL_max(y0, y1) + 1), nt->color, nt->area};
             if (m.l >= m.r || m.t >= m.b)
@@ -953,8 +953,8 @@ static uint8_t *keep_labels_on_colour(Doc *d, int page, FPDF_PAGE p, int cx, int
         if (s->line[i] < 0)
             continue;
         int x0, y0, x1, y1;
-        FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, s->boxes[i].l, s->boxes[i].t, &x0, &y0);
-        FPDF_PageToDevice(p, -cx, -cy, pw, ph, rot, s->boxes[i].r, s->boxes[i].b, &x1, &y1);
+        pdev(p, -cx, -cy, pw, ph, rot, s->boxes[i].l, s->boxes[i].t, &x0, &y0);
+        pdev(p, -cx, -cy, pw, ph, rot, s->boxes[i].r, s->boxes[i].b, &x1, &y1);
         int l = SDL_max(0, SDL_min(x0, x1) - 1), r = SDL_min(w, SDL_max(x0, x1) + 2);
         int t = SDL_max(0, SDL_min(y0, y1) - 1), b = SDL_min(h, SDL_max(y0, y1) + 2);
         if (l >= r || t >= b)

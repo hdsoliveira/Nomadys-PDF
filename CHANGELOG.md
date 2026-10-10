@@ -47,6 +47,19 @@ people who read papers for hours. Everything below is in this first release.
 - SyncTeX both ways with Vim / Neovim (VimTeX), automatic reload; `Y` quotes
   with the page number; `:bibtex`.
 
+### Safety
+- A PDF, or a file next to it, is never trusted. The file name that SyncTeX
+  gives for an inverse search must be a plain existing file before an editor
+  command sees it, formulas in comments are typeset by LaTeX that cannot read or
+  write other files, the process that indexes your library cannot use the
+  network, start programs or write outside its own folder (Landlock and
+  seccomp), the socket between windows answers only you, and `mailto:` links
+  that ask to attach a file are not opened. Numbers read from annotations are
+  checked before they are used. The PDF engine is PDFium chromium/8086.
+- `:extract` and the page grid never write over a file that is already there.
+- `tests/qa/security.py` and `tests/qa/mutate.py` (400 spoiled files under the
+  sanitizers) keep these checks running.
+
 ### Installing
 - `.deb` (Debian, Ubuntu, Linux Mint, Pop!_OS), AppImage, an Arch package
   (`PKGBUILD` for the AUR) and a build from source. Tried on Ubuntu 22.04 and

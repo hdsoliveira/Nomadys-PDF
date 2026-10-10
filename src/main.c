@@ -871,6 +871,19 @@ static bool script_step(void)
             if (alive(w))
                 handle_event(&e);
         }
+    } else if (!strncmp(tok, "<dclick:", 8)) { /* a double click at a point (window points) */
+        float x, y;
+        if (sscanf(tok + 8, "%f,%f", &x, &y) == 2) {
+            SDL_WindowID id = SDL_GetWindowID(w->win);
+            SDL_Event e = {0};
+            e.button = (SDL_MouseButtonEvent){.type = SDL_EVENT_MOUSE_BUTTON_DOWN, .windowID = id,
+                                              .button = SDL_BUTTON_LEFT, .down = true, .clicks = 2, .x = x, .y = y};
+            handle_event(&e);
+            e.button = (SDL_MouseButtonEvent){.type = SDL_EVENT_MOUSE_BUTTON_UP, .windowID = id,
+                                              .button = SDL_BUTTON_LEFT, .clicks = 2, .x = x, .y = y};
+            if (alive(w))
+                handle_event(&e);
+        }
     } else if (!strncmp(tok, "<down:", 6) || !strncmp(tok, "<move:", 6) || !strncmp(tok, "<up:", 4)) {
         /* the left button pressed, moved (a frame is drawn) and released, one step at a time */
         float x, y;
