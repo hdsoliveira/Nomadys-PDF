@@ -15,6 +15,11 @@ can use it. The mouse scrolls, follows links, selects text and moves, resizes
 and turns pictures. The backslash `\` is the leader key, which starts many
 functions, and typing `\c` opens a menu with every key.
 
+**This is a beta.** The features are all there and it has been tested
+hard, but it has had few eyes on it so far. If something misbehaves, please
+[open an issue](https://github.com/hdsoliveira/Nomadys-PDF/issues/new/choose),
+and attach the PDF if you can.
+
 Free and open source, for everyone. If it saves you time, you can
 buy me a coffee.
 
