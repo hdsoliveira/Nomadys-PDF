@@ -80,7 +80,7 @@ cat > "$DEB/DEBIAN/control" <<EOF
 Package: nomadys-pdf
 Version: $DEBVERSION
 Architecture: amd64
-Maintainer: Hugo de Souza Oliveira <hs.oliveira@mailbox.org>
+Maintainer: Hugo de Souza Oliveira <nomadys-pdf@mailbox.org>
 Installed-Size: $(du -sk "$DEB/usr" | cut -f1)
 Depends: libc6 (>= 2.35), libfontconfig1, libfreetype6, zlib1g
 Recommends: xdg-utils

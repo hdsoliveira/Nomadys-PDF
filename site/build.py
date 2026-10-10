@@ -215,7 +215,7 @@ HEADER = """<header class="top"><div class="wrap">
 
 FOOTER = """<footer><div class="wrap">
 <span>Nomadys-PDF {version} · MIT licence · made by Hugo Oliveira</span>
-<span class="right"><a href="{root}docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:hs.oliveira@mailbox.org">Contact</a><a href="https://ko-fi.com/hugooliveira35800">Buy me a coffee</a></span>
+<span class="right"><a href="{root}docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:nomadys-pdf@mailbox.org">Contact</a><a href="https://ko-fi.com/hugooliveira35800">Buy me a coffee</a></span>
 </div></footer>"""
 
 

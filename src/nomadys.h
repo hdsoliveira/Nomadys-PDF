@@ -35,7 +35,7 @@
 #define LOADED_PAGE_CAP 8
 #define NOMADYS_VERSION "0.5.0"
 #define NOMADYS_AUTHOR "Hugo Oliveira"
-#define NOMADYS_CONTACT "hs.oliveira@mailbox.org"
+#define NOMADYS_CONTACT "nomadys-pdf@mailbox.org"
 #define NOMADYS_URL "github.com/hdsoliveira/Nomadys-PDF"
 #define CMD_MAX 4096
 #define NMARKS 26

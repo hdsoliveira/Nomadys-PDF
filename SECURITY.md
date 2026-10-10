@@ -6,7 +6,7 @@ the [changelog](CHANGELOG.md), and `tests/qa/security.py` checks it.
 
 ## Reporting a problem
 
-Please write to hso.smas@gmail.com, or open a private security advisory on
+Please write to nomadys-pdf@mailbox.org, or open a private security advisory on
 GitHub, before making a problem public. A PDF that reproduces it helps most.
 You will get an answer within a few days.
 
