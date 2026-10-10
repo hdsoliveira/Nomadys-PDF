@@ -215,6 +215,12 @@ footer .right { margin-left: auto; display: flex; gap: 18px; }
 }
 @media (max-width: 560px) {
   .wrap { padding: 0 16px; }
+  .top .wrap { gap: 10px; }
+  .brand { gap: 8px; font-size: 15px; }
+  .brand img { width: 26px; height: 26px; }
+  .top nav { gap: 10px; font-size: 13px; }
+  .top nav a { white-space: nowrap; }
+  .top nav .gh { padding: 5px 9px; }
   .grid, .qol ul { grid-template-columns: 1fr; }
   .hero { padding-top: 44px; }
   section { padding: 52px 0; }
