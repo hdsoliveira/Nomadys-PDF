@@ -29,7 +29,7 @@ npdf                           # the tabs you had open last time</code></pre>
 <h2 id="modes">Modes<a class="anchor" href="#modes">#</a></h2>
 <p>Like vim, Nomadys-PDF has modes. A small badge in the bottom-left corner shows which one you are in.</p>
 <table><thead><tr><th>Badge</th><th>Mode</th><th>How you get there</th></tr></thead><tbody><tr><td><code>NORMAL</code></td><td>reading</td><td>the start; <code>Esc</code> from anywhere</td></tr><tr><td><code>CURSOR</code></td><td>text cursor, to select text</td><td><code>v</code></td></tr><tr><td><code>AREA</code></td><td>free cursor, for figures and regions</td><td><code>Ctrl-v</code></td></tr><tr><td><code>VISUAL</code></td><td>selecting (text, or a rectangle)</td><td><code>v</code> in either cursor</td></tr><tr><td><code>FOLLOW</code> / <code>PREVIEW</code></td><td>link letters on screen / a preview window</td><td><code>f</code> / <code>F</code></td></tr><tr><td><code>MOVE</code> / <code>IMAGE</code> / <code>CROP</code></td><td>moving or resizing an area or image, cropping it</td><td><code>e</code> on it in the free cursor, then <code>c</code></td></tr><tr><td><code>INSERT</code></td><td>typing in a form field</td><td><code>Ctrl-j</code> or a click on a field</td></tr><tr><td><code>COMMAND</code> / <code>SEARCH</code></td><td>the <code>:</code> or <code>/</code> line</td><td><code>:</code> / <code>/</code></td></tr><tr><td><code>COMMENT</code></td><td>the comment box</td><td><code>c</code> on a selection or highlight</td></tr><tr><td><code>PANEL</code></td><td>the panel</td><td><code>\l</code></td></tr><tr><td><code>PAGES</code></td><td>the page grid</td><td><code>\g</code></td></tr><tr><td><code>OPEN</code></td><td>recent files or the PDF finder</td><td><code>\o</code> / <code>\f</code></td></tr><tr><td><code>LIBRARY</code></td><td>search across all PDFs</td><td><code>\/</code> / <code>\n</code></td></tr><tr><td><code>THEME</code></td><td>the theme chooser</td><td><code>\T</code></td></tr><tr><td><code>HELP</code></td><td>the help screen</td><td><code>\c</code></td></tr></tbody></table>
-<p><code>mode_indicator = false</code> in the configuration hides the badge.</p>
+<p><code>mode_indicator = false</code> in the configuration hides the badge. Beside it, the page you are on and how many there are (<code>3/50</code>).</p>
 <h2 id="the-help-screen">The help screen<a class="anchor" href="#the-help-screen">#</a></h2>
 <p><code>\c</code> opens the help, with every key of every mode, grouped, drawn as keycaps, in tabs (Reading, Text cursor, Free cursor, Comments, Panel, Preview, Commands, Forms, Move/resize, Crop, Pages, Present). It opens on the tab of the mode you are in, and each tab starts with <em>How to get here</em>.</p>
 <ul><li><code>Tab</code>, <code>h</code> <code>l</code> or <code>1</code>–<code>9</code> change tab; <code>j</code> <code>k</code> move</li><li><code>/</code> searches the keys of every tab ("split", "comment", "zoom")</li><li><code>Esc</code> or <code>\c</code> again closes it</li></ul>
@@ -44,7 +44,7 @@ npdf                           # the tabs you had open last time</code></pre>
 </main>
 </div>
 <footer><div class="wrap">
-<span>Nomadys-PDF 0.5.0 · MIT licence · made by Hugo Oliveira</span>
+<span>Nomadys-PDF 0.5.1 · MIT licence · made by Hugo Oliveira</span>
 <span class="right"><a href="../docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:nomadys-pdf@mailbox.org">Contact</a><a href="https://ko-fi.com/hugooliveira35800">Buy me a coffee</a></span>
 </div></footer>
 </body></html>

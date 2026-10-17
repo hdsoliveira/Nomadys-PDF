@@ -1,6 +1,6 @@
 pkgbase = nomadys-pdf
 	pkgdesc = Keyboard-driven PDF reader for research: vim keys, highlights, LaTeX comments, SyncTeX
-	pkgver = 0.5.0
+	pkgver = 0.5.1
 	pkgrel = 1
 	url = https://github.com/hdsoliveira/Nomadys-PDF
 	arch = x86_64
@@ -27,7 +27,7 @@ pkgbase = nomadys-pdf
 	optdepends = curl: BibTeX of a cited DOI
 	optdepends = cups: printing
 	noextract = pdfium-8086.tgz
-	source = nomadys-pdf-0.5.0.tar.gz::https://github.com/hdsoliveira/Nomadys-PDF/archive/refs/tags/v0.5.0.tar.gz
+	source = nomadys-pdf-0.5.1.tar.gz::https://github.com/hdsoliveira/Nomadys-PDF/archive/refs/tags/v0.5.1.tar.gz
 	source = pdfium-8086.tgz::https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8086/pdfium-linux-x64.tgz
 	sha256sums = 3a911e8b4b72ace006f2af48999b477ad1639dcee0b60bfb88f7dd652eb0d25e
 	sha256sums = 588577cf52dabc1a444988bac841920df54cc2f141801424de97ab04f4fbb935

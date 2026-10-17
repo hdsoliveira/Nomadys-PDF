@@ -30,12 +30,15 @@
 <p><strong>Form calculations do not update.</strong> Nomadys-PDF does not run JavaScript inside PDFs, which some forms use for automatic calculations.</p>
 <p><strong>Can I undo deleting or moving pages?</strong> Yes, with <code>u</code>, until the file is closed. The pages of signed PDFs cannot be changed.</p>
 <p><strong>How do I make it the default PDF reader?</strong> <code>xdg-mime default npdf.desktop application/pdf</code></p>
+<p><strong>How do I open the PDFs of neomutt (or another program) in tabs of one window?</strong> Use <code>npdf --tab file.pdf</code>: if npdf is running, the file opens as a new tab there (or switches to the tab it already has); if not, npdf starts as usual. It returns only once the file is open, so the program that made a temporary file can delete it afterwards. For neomutt, in <code>~/.mailcap</code>:</p>
+<p>application/pdf; npdf --tab %s; test=test -n "$WAYLAND_DISPLAY" -o -n "$DISPLAY"</p>
+<p>If the first PDF opened this way is the one that starts npdf, neomutt waits until you close that window; open the next ones from neomutt as usual and they become tabs.</p>
 <p><strong>How do I report a bug or reach the author?</strong> <code>\a</code> shows the contact address; the source and issues are on <a href="https://github.com/hdsoliveira/Nomadys-PDF">GitHub</a>.</p>
 <nav class="pager"><a href="Files-Memory-and-Speed.html"><small>Previous</small>Files, memory and speed</a></nav>
 </main>
 </div>
 <footer><div class="wrap">
-<span>Nomadys-PDF 0.5.0 · MIT licence · made by Hugo Oliveira</span>
+<span>Nomadys-PDF 0.5.1 · MIT licence · made by Hugo Oliveira</span>
 <span class="right"><a href="../docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:nomadys-pdf@mailbox.org">Contact</a><a href="https://ko-fi.com/hugooliveira35800">Buy me a coffee</a></span>
 </div></footer>
 </body></html>

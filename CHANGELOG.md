@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.1
 - The page and the total (`3/50`) next to the mode badge.
 - `↑` and `↓` in the `:` and `/` lines bring back what you typed before, also
   in the next run.

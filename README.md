@@ -141,9 +141,9 @@ Linux (Wayland or X11). The easiest ways come from the
 
 | | |
 |---|---|
-| **Debian, Ubuntu, Linux Mint, Pop!_OS** | `sudo apt install ./nomadys-pdf_0.5.0_amd64.deb` |
-| **Any distribution** | the AppImage, with `chmod +x Nomadys-PDF-0.5.0-x86_64.AppImage` and then run it |
-| **Arch Linux** | `sudo pacman -U nomadys-pdf-0.5.0-1-x86_64.pkg.tar.zst` (the AUR package comes later) |
+| **Debian, Ubuntu, Linux Mint, Pop!_OS** | `sudo apt install ./nomadys-pdf_0.5.1_amd64.deb` |
+| **Any distribution** | the AppImage, with `chmod +x Nomadys-PDF-0.5.1-x86_64.AppImage` and then run it |
+| **Arch Linux** | `sudo pacman -U nomadys-pdf-0.5.1-1-x86_64.pkg.tar.zst` (the AUR package comes later) |
 
 Every file there has a SHA-256 in `SHA256SUMS`. Tried on Ubuntu 22.04 and
 24.04, Debian 12 and 13, Fedora, Arch and openSUSE Tumbleweed, under X11 and
