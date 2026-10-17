@@ -71,7 +71,8 @@ shows which one you are in.
 | `THEME` | the theme chooser | `\T` |
 | `HELP` | the help screen | `\c` |
 
-`mode_indicator = false` in the configuration hides the badge.
+`mode_indicator = false` in the configuration hides the badge. Beside it, the
+page you are on and how many there are (`3/50`).
 
 ## The help screen
 

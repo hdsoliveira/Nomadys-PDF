@@ -164,7 +164,8 @@ static void draw_message(Window *w)
     font_draw(w->font, (float)(w->W - tw), (float)(w->H - h - p + p / 2), text, t->message_fg);
 }
 
-/* The current mode, as a small coloured badge in the bottom-left corner. */
+/* The current mode, as a small coloured badge in the bottom-left corner,
+ * and after it the page: 3/50. */
 static void draw_mode(Window *w)
 {
     const Theme *t = uitheme(w);
@@ -207,8 +208,23 @@ static void draw_mode(Window *w)
         y -= ui_bar_height(w) * (w->ncomp > 1 ? 2 : 1);
     /* dark text on light colours, light text on dark ones */
     int lum = (int)(((color >> 16) & 0xFF) * 299 + ((color >> 8) & 0xFF) * 587 + (color & 0xFF) * 114) / 1000;
-    ui_fill(w, (float)p, y, (float)(tw + p), (float)h, color, 220);
-    font_draw(w->font, p + p / 2.0f, y + p / 4.0f, label, lum > 150 ? 0x1E1E1E : 0xFAFAFA);
+    float x = (float)p;
+    if (cfg.mode_indicator) {
+        ui_fill(w, x, y, (float)(tw + p), (float)h, color, 220);
+        font_draw(w->font, p + p / 2.0f, y + p / 4.0f, label, lum > 150 ? 0x1E1E1E : 0xFAFAFA);
+        x += tw + p + p / 2.0f;
+    }
+    Mode shown = w->mode == MODE_PROMPT ? w->prompt_return : w->mode; /* the pages, not a list or a panel */
+    if (shown == MODE_PANEL || shown == MODE_HELP || shown == MODE_PICKER || shown == MODE_LIBRARY ||
+        shown == MODE_GRID || shown == MODE_PRESENT || shown == MODE_THEMES || shown == MODE_ABOUT)
+        return;
+    View *pv = w->split && w->split_focus ? w->split : v;
+    if (!pv->doc->npages)
+        return;
+    char page[40];
+    snprintf(page, sizeof page, "%d/%d", view_top_page(pv) + 1, pv->doc->npages);
+    ui_fill(w, x, y, (float)(font_width(w->font, page) + p), (float)h, t->message_bg, 220);
+    font_draw(w->font, x + p / 2.0f, y + p / 4.0f, page, t->message_fg);
 }
 
 void ui_draw_overlays(Window *w, uint64_t now)
@@ -239,8 +255,7 @@ void ui_draw_overlays(Window *w, uint64_t now)
         theme_draw(w);
     if (w->mode == MODE_ABOUT)
         about_draw(w);
-    if (cfg.mode_indicator)
-        draw_mode(w);
+    draw_mode(w);
     if (w->mode == MODE_PROMPT && w->prompt_box)
         ; /* drawn above */
     else if (w->mode == MODE_PROMPT)

@@ -251,8 +251,12 @@ bool prompt_uses_document(Window *w)
     return w->mode == MODE_PROMPT && w->prompt_done != command_run && w->prompt_done != run_search;
 }
 
+static int hist_pos = -1;        /* how far back Up went; -1: the line being typed */
+static char hist_draft[CMD_MAX]; /* that line, kept while browsing */
+
 void prompt_open(Window *w, const char *label, const char *initial, PromptFn done, int arg)
 {
+    hist_pos = -1;
     w->prompt_return = w->mode;
     w->mode = MODE_PROMPT;
     snprintf(w->prompt_label, sizeof w->prompt_label, "%s", label);
@@ -286,6 +290,26 @@ static void prompt_special(Window *w, const char *tok)
     }
     command_complete_reset(w);
     bool searching = w->prompt_done == run_search;
+    if ((!strcmp(tok, "<Up>") || !strcmp(tok, "<Down>")) && (searching || w->prompt_done == command_run)) {
+        bool up = tok[1] == 'U';
+        if (up && hist_pos == -1)
+            snprintf(hist_draft, sizeof hist_draft, "%s", w->cmd);
+        const char *line = NULL;
+        if (up)
+            line = history_get(searching, hist_pos + 1);
+        else if (hist_pos == 0)
+            line = hist_draft;
+        else if (hist_pos > 0)
+            line = history_get(searching, hist_pos - 1);
+        if (line) {
+            hist_pos += up ? 1 : -1;
+            snprintf(w->cmd, sizeof w->cmd, "%s", line);
+            w->cmdlen = (int)strlen(w->cmd);
+            if (searching)
+                search_live(w, cur_view(w), w->cmd);
+        }
+        return;
+    }
     if (!strcmp(tok, "<Esc>")) {
         w->mode = w->prompt_return;
         if (searching)
@@ -301,6 +325,8 @@ static void prompt_special(Window *w, const char *tok)
         w->mode = w->prompt_return;
         char text[CMD_MAX];
         snprintf(text, sizeof text, "%s", w->cmd);
+        if (searching || w->prompt_done == command_run)
+            history_add(searching, text);
         w->prompt_done(w, text);
     } else if (!strcmp(tok, "<BS>")) {
         if (w->cmdlen == 0 && (w->prompt_done == command_run || searching)) {

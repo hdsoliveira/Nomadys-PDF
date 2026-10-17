@@ -409,9 +409,51 @@ bool window_alive(Window *w) { return alive(w); }
 
 /* ---------- LaTeX: requests from VimTeX and reloads ---------- */
 
-/* "forward\t<pdf>\t<line>\t<col>\t<tex>": show that source line in the PDF. */
-static void handle_request(char *msg)
+/* the window may be on another workspace, or hidden: ask for it. How
+ * far the window manager goes is its call (sway: focus_on_window_activation) */
+static void raise_window(Window *w)
 {
+    SDL_SetHint(SDL_HINT_FORCE_RAISEWINDOW, "1");
+    SDL_RestoreWindow(w->win);
+    SDL_RaiseWindow(w->win);
+}
+
+/* "open\t<pdf>" (npdf --tab): a tab for it in the first window, or the tab it
+ * already has. `client` is told when done. */
+static void open_request(const char *pdf, int client)
+{
+    char *real = realpath(pdf, NULL);
+    if (real && nwindows) {
+        Window *w = windows[0];
+        int tab = -1;
+        for (int k = 0; k < w->ntabs; k++)
+            if (!strcmp(w->tabs[k]->doc->path, real))
+                tab = k;
+        if (tab >= 0) {
+            w->cur = tab;
+            w->mode = MODE_NORMAL;
+            w->tabs_flash_until = SDL_GetTicks() + 1000;
+            update_title(w);
+            w->redraw = true;
+        } else {
+            open_tab(w, real);
+        }
+        raise_window(w);
+    }
+    free(real);
+    ssize_t sent = write(client, "ok\n", 3);
+    (void)sent;
+    close(client);
+}
+
+/* "forward\t<pdf>\t<line>\t<col>\t<tex>": show that source line in the PDF. */
+static void handle_request(char *msg, int client)
+{
+    if (!strncmp(msg, "open\t", 5)) {
+        msg[strcspn(msg, "\n")] = 0;
+        open_request(msg + 5, client);
+        return;
+    }
     char *f[5];
     int n = 0;
     for (char *p = strtok(msg, "\t\n"); p && n < 5; p = strtok(NULL, "\t\n"))
@@ -454,11 +496,7 @@ static void handle_request(char *msg)
     synctex_forward(w, v, f[4], atoi(f[2]), atoi(f[3]));
     if (pane)
         pane_leave(w);
-    /* the window may be on another workspace, or hidden: ask for it. How
-     * far the window manager goes is its call (sway: focus_on_window_activation) */
-    SDL_SetHint(SDL_HINT_FORCE_RAISEWINDOW, "1");
-    SDL_RestoreWindow(w->win);
-    SDL_RaiseWindow(w->win);
+    raise_window(w);
 }
 
 static void file_changed(int wd, const char *name)
@@ -534,7 +572,7 @@ static void handle_event(SDL_Event *e)
     last_input = SDL_GetTicks();
     if (e->type == ipc_event) {
         if (e->user.code == IPC_REQUEST)
-            handle_request(e->user.data1);
+            handle_request(e->user.data1, (int)(intptr_t)e->user.data2);
         else if (e->user.code == IPC_FINDER)
             picker_refresh();
         else if (e->user.code == IPC_INDEX || e->user.code == IPC_LIBRARY)
@@ -964,6 +1002,7 @@ static void usage(void)
            "LaTeX: --synctex-forward LINE:COL:FILE.tex file.pdf shows that line;\n"
            "       double click, Ctrl+click or Enter in a cursor opens the source (-x COMMAND)\n"
            "\n"
+           "--tab file.pdf      open it as a tab of the npdf that is running\n"
            "--export file.pdf   print its highlights and comments as Markdown\n"
            "\n"
            "config: ~/.config/nomadys-pdf/config\n",
@@ -973,6 +1012,18 @@ static void usage(void)
 int main(int argc, char **argv)
 {
     const char *forward = NULL, *editor = NULL;
+    if (argc >= 3 && !strcmp(argv[1], "--tab")) { /* in the npdf that is running, if there is one */
+        argv++, argc--;
+        bool all = true;
+        for (int i = 1; i < argc && all; i++) {
+            char *pdf = realpath(argv[i], NULL), req[8192];
+            snprintf(req, sizeof req, "open\t%s\n", pdf ? pdf : "");
+            all = pdf && ipc_send_wait(req);
+            free(pdf);
+        }
+        if (all)
+            return 0;
+    }
     if (argc == 4 && !strcmp(argv[1], "--index-worker")) { /* the library index, a process apart (library.c) */
         config_load();
         FPDF_LIBRARY_CONFIG lib = {.version = 2};

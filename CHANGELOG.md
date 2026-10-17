@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+- The page and the total (`3/50`) next to the mode badge.
+- `↑` and `↓` in the `:` and `/` lines bring back what you typed before, also
+  in the next run.
+- `npdf --tab file.pdf` opens the file as a tab of the npdf that is running
+  (for neomutt's mailcap, see the FAQ).
+
 ## 0.5.0, the first public release
 
 Nomadys-PDF is a minimal, keyboard-driven PDF reader for Linux, made for

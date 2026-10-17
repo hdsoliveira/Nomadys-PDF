@@ -48,6 +48,27 @@ bool ipc_send(const char *msg)
     return ok;
 }
 
+/* Like ipc_send, then waits (a few seconds) for the running instance to say it
+ * opened the file: the sender may delete it as soon as this returns. */
+bool ipc_send_wait(const char *msg)
+{
+    struct sockaddr_un a;
+    socket_path(&a);
+    int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    if (fd < 0)
+        return false;
+    size_t n = strlen(msg);
+    bool ok = connect(fd, (struct sockaddr *)&a, sizeof a) == 0 && write(fd, msg, n) == (ssize_t)n;
+    if (ok) {
+        shutdown(fd, SHUT_WR);
+        struct pollfd p = {fd, POLLIN, 0};
+        char reply[8];
+        ok = poll(&p, 1, 5000) == 1 && read(fd, reply, sizeof reply) > 0;
+    }
+    close(fd);
+    return ok;
+}
+
 static void post(int code, char *text, int wd)
 {
     if (SDL_GetAtomicInt(&stopping)) {
@@ -78,8 +99,12 @@ static void read_request(int client)
         if (r <= 0 || (len += (size_t)r) >= sizeof buf - 1)
             break;
     }
-    close(client);
     buf[len] = 0;
+    if (!strncmp(buf, "open\t", 5)) { /* the window answers once it has opened it */
+        post(IPC_REQUEST, xstrdup(buf), client);
+        return;
+    }
+    close(client);
     if (len)
         post(IPC_REQUEST, xstrdup(buf), 0);
 }

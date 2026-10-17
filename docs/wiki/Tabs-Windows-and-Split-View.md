@@ -13,6 +13,9 @@ inside, `:e file.pdf`, `\o` or `\f`.
 | `:q` | close the tab (`:q!` discarding unsaved changes; `:wq`, `:x` save first) |
 | `\l`, then the **Tabs** tab | all open files, where `Enter` switches and `x` closes |
 
+From a shell or another program, `npdf --tab file.pdf` adds a tab to the npdf
+that is running (see the [FAQ](FAQ.md) for neomutt).
+
 The tab bar is hidden by default, to leave the whole window to the page; it
 shows for a moment when you switch tabs. `show_tabs = true` in the
 [configuration](Configuration.md) keeps it visible.

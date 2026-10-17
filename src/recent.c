@@ -71,6 +71,65 @@ static void finish(FILE *f, const char *tmp, const char *path)
         unlink(tmp);
 }
 
+/* ---------- what you typed after ':' and '/', for the Up and Down keys ---------- */
+
+#define HISTORY_MAX 100
+
+static char *typed[2][HISTORY_MAX]; /* oldest first; 0: commands, 1: searches */
+static int ntyped[2];
+static bool typed_loaded;
+
+static void typed_push(int kind, const char *text)
+{
+    if (ntyped[kind] == HISTORY_MAX) {
+        free(typed[kind][0]);
+        memmove(typed[kind], typed[kind] + 1, (HISTORY_MAX - 1) * sizeof *typed[kind]);
+        ntyped[kind]--;
+    }
+    typed[kind][ntyped[kind]++] = xstrdup(text);
+}
+
+static void typed_load(void)
+{
+    if (typed_loaded)
+        return;
+    typed_loaded = true;
+    char path[4200], line[CMD_MAX + 8];
+    data_path("history", path, sizeof path);
+    FILE *f = fopen(path, "r");
+    if (!f)
+        return;
+    while (fgets(line, sizeof line, f)) {
+        line[strcspn(line, "\n")] = 0;
+        if ((line[0] == 'c' || line[0] == 's') && line[1] == '\t' && line[2])
+            typed_push(line[0] == 's', line + 2);
+    }
+    fclose(f);
+}
+
+/* kind: 0 for commands, 1 for searches */
+void history_add(int kind, const char *text)
+{
+    typed_load();
+    if (!*text || strchr(text, '\n') || (ntyped[kind] && !strcmp(typed[kind][ntyped[kind] - 1], text)))
+        return;
+    typed_push(kind, text);
+    char path[4200];
+    data_path("history", path, sizeof path);
+    FILE *f = fopen(path, "a"); /* appended: several npdf can run at once */
+    if (f) {
+        fprintf(f, "%c\t%s\n", kind ? 's' : 'c', text);
+        fclose(f);
+    }
+}
+
+/* The one typed `back` entries ago (0: the last), or NULL. */
+const char *history_get(int kind, int back)
+{
+    typed_load();
+    return back >= 0 && back < ntyped[kind] ? typed[kind][ntyped[kind] - 1 - back] : NULL;
+}
+
 static void load(void)
 {
     if (loaded)

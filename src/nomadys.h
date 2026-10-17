@@ -722,7 +722,8 @@ bool synctex_inverse(Window *w, View *v, int page, double x, double y);
 bool synctex_forward(Window *w, View *v, const char *tex, int line, int col);
 void ipc_start(void);
 void ipc_stop(void);
-bool ipc_send(const char *msg);                          /* to a running instance */
+bool ipc_send(const char *msg);
+bool ipc_send_wait(const char *msg);                       /* "open\tPATH\n": true once it is open there */                          /* to a running instance */
 void ipc_watch(Doc *d);
 int ipc_watch_dir(const char *dir);
 
@@ -873,6 +874,8 @@ void object_draw(Window *w, View *v, int top);
 
 /* recent.c: recent files, the session, the picker */
 void recent_add(const char *path);
+void history_add(int kind, const char *text);             /* typed after : (kind 0) or / (kind 1) */
+const char *history_get(int kind, int back);
 void recent_shutdown(void);
 void session_save(void);
 int session_files(char ***out, int *current);             /* the last session's files */

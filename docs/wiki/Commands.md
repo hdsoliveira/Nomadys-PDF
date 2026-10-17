@@ -3,6 +3,8 @@
 Type `:` and the command. `Tab` completes command names and file paths;
 with several options they are listed above the line and `Tab` /
 `Shift-Tab` cycle through them. `:` followed by `Tab` lists every command.
+`↑` and `↓` bring back what you typed before (the last 100 commands, kept
+between runs); the same for `/` searches.
 
 ## Files and tabs
 

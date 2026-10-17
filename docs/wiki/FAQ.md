@@ -68,6 +68,18 @@ be changed.
 **How do I make it the default PDF reader?**
 `xdg-mime default npdf.desktop application/pdf`
 
+**How do I open the PDFs of neomutt (or another program) in tabs of one window?**
+Use `npdf --tab file.pdf`: if npdf is running, the file opens as a new tab
+there (or switches to the tab it already has); if not, npdf starts as usual. It
+returns only once the file is open, so the program that made a temporary file
+can delete it afterwards. For neomutt, in `~/.mailcap`:
+
+    application/pdf; npdf --tab %s; test=test -n "$WAYLAND_DISPLAY" -o -n "$DISPLAY"
+
+If the first PDF opened this way is the one that starts npdf, neomutt waits
+until you close that window; open the next ones from neomutt as usual and
+they become tabs.
+
 **How do I report a bug or reach the author?**
 `\a` shows the contact address; the source and issues are on
 [GitHub](https://github.com/hdsoliveira/Nomadys-PDF).
