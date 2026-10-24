@@ -29,7 +29,7 @@ pkgbase = nomadys-pdf
 	noextract = pdfium-8086.tgz
 	source = nomadys-pdf-0.6.0.tar.gz::https://github.com/hdsoliveira/Nomadys-PDF/archive/refs/tags/v0.6.0.tar.gz
 	source = pdfium-8086.tgz::https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8086/pdfium-linux-x64.tgz
-	sha256sums = 2ac1699ebe30dd88b8918961d4921fa176c4988dd9eb5220ff16953fd99353a5
+	sha256sums = d5558cd419c8d46bdc958064cb97f963d1ea793866414c025906ec15033512ed
 	sha256sums = 588577cf52dabc1a444988bac841920df54cc2f141801424de97ab04f4fbb935
 
 pkgname = nomadys-pdf
