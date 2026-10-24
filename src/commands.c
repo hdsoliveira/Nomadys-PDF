@@ -137,6 +137,8 @@ static void c_rotate(Window *w, View *v, const char *a)
 static void c_print(Window *w, View *v, const char *a) { print_document(w, v, a); }
 
 static void c_export(Window *w, View *v, const char *a) { export_notes(w, v, a, false, NULL); }
+static void c_export_all(Window *w, View *v, const char *a) { export_all(w, v, a, false); }
+static void c_export_all_force(Window *w, View *v, const char *a) { export_all(w, v, a, true); }
 static void c_export_force(Window *w, View *v, const char *a) { export_notes(w, v, a, true, NULL); }
 static void c_response(Window *w, View *v, const char *a) { response_letter(w, v, a, false); }
 static void c_response_force(Window *w, View *v, const char *a) { response_letter(w, v, a, true); }
@@ -177,6 +179,17 @@ static void c_session(Window *w, View *v, const char *a) { (void)v, (void)a; ses
 
 static void c_about(Window *w, View *v, const char *a) { (void)v, (void)a; about_open(w); }
 static void c_theme(Window *w, View *v, const char *a) { (void)v; theme_command(w, a); }
+static void c_hits(Window *w, View *v, const char *a) { hits_open(w, v, a); }
+static void c_update(Window *w, View *v, const char *a) { (void)v, (void)a; ui_message(w, "asking GitHub…"); update_check(true); }
+static void c_set(Window *w, View *v, const char *a)
+{
+    (void)v;
+    char msg[600];
+    config_set(a, msg, sizeof msg);
+    ui_message_long(w, 5000, "%s", msg);
+    for (int i = 0; i < nwindows; i++)
+        windows[i]->redraw = true;
+}
 static void c_form(Window *w, View *v, const char *a) { (void)v; fills_command(w, a); }
 
 static void c_diff(Window *w, View *v, const char *a)
@@ -316,11 +329,16 @@ static const Command commands[] = {
     {"light", ARG_NONE, c_light, "light mode"},
     {"export", ARG_MD, c_export, "highlights and comments to Markdown (paper-notes.md); :export red green commented tasks"},
     {"export!", ARG_MD, c_export_force, "the same, overwriting any file"},
+    {"exportall", ARG_WORDS, c_export_all, "the notes of every PDF in this folder (or :exportall dir) to all-notes.md; same colour words as :export"},
+    {"exportall!", ARG_WORDS, c_export_all_force, "the same, overwriting any file"},
     {"response", ARG_MD, c_response, "the reply to the reviewers: their comments and your replies (r), to Markdown"},
     {"response!", ARG_MD, c_response_force, "the same, overwriting any file"},
     {"image", ARG_IMAGE, c_image, "put a PNG / JPEG on the page (then move and resize it)"},
     {"about", ARG_NONE, c_about, "version, author, contact (also \\a)"},
-    {"form", ARG_WORDS, c_form, "saved forms: :form (the menu), :form save P80, :form P80 fills, :form delete P80"},
+    {"hits", ARG_WORDS, c_hits, "the matches of a search as a list with their words: :hits words (or after /, \\s)"},
+    {"update", ARG_NONE, c_update, "ask GitHub if a newer version is out (needs curl; nothing is installed)"},
+    {"set", ARG_WORDS, c_set, "change a setting now and keep it in the config: :set smooth_scroll true"},
+    {"form", ARG_WORDS, c_form, "saved forms: :form (the menu), :form save P80, :form P80 fills (P80 empty: only empty fields), :form delete P80"},
     {"theme", ARG_THEME, c_theme, "colour theme: :theme gruvbox, :theme (the list), :theme new NAME (yours)"},
     {"diff", ARG_FILE, c_diff, "compare with an older version: new text green, changed amber, deleted red"},
     {"vsplit", ARG_FILE, c_vsplit, "split side by side: this PDF, or another (also Ctrl-w v)"},

@@ -134,6 +134,7 @@ static void window_destroy(Window *w)
     free(w->links);
     grid_free(w);
     fills_free(w);
+    hits_free(w);
     if (w->about_tex)
         SDL_DestroyTexture(w->about_tex);
     present_free(w);
@@ -358,6 +359,10 @@ static void draw_pages(Window *w, View *v, uint64_t now)
 static void draw(Window *w, uint64_t now)
 {
     View *v = cur_view(w);
+    if (v != w->seen_tab) {
+        w->prev_tab = w->seen_tab;
+        w->seen_tab = v;
+    }
     update_size(w);
     cursor_cross(w->mode);
     uint32_t bg = (w->mode == MODE_GRID ? uitheme(w) : wtheme(w))->background; /* the page grid is a menu */
@@ -568,6 +573,10 @@ static void reload_due(uint64_t now, int *wait)
     }
 }
 
+/* the middle button dragging the page, and the window where a Shift + drag rectangle began */
+static struct Pan { bool on; Window *w; float x, y; } pan;
+static Window *shift_rect;
+
 static void handle_event(SDL_Event *e)
 {
     Window *w = NULL;
@@ -627,6 +636,15 @@ static void handle_event(SDL_Event *e)
         }
         return;
     case SDL_EVENT_MOUSE_MOTION:
+        if (pan.on && (e->motion.state & SDL_BUTTON_MMASK) && (w = window_by_id(e->motion.windowID)) && w == pan.w) {
+            float x = e->motion.x * w->density, y = e->motion.y * w->density;
+            bool pane = pane_enter_focused(w);
+            scroll(w, pan.x - x, pan.y - y); /* the page follows the pointer */
+            pan.x = x, pan.y = y;
+            if (pane && alive(w))
+                pane_leave(w);
+            return;
+        }
         if ((w = window_by_id(e->motion.windowID)) && w->ntabs &&
             (w->mode == MODE_OBJECT || w->mode == MODE_ROTATE || object_mouse_active(w))) {
             float x = e->motion.x * w->density, y = e->motion.y * w->density;
@@ -669,6 +687,48 @@ static void handle_event(SDL_Event *e)
         /* presenting: left click forward, right click back */
         if (e->type == SDL_EVENT_MOUSE_BUTTON_DOWN && (w = window_by_id(e->button.windowID)) && w->mode == MODE_PRESENT) {
             present_step(w, e->button.button == SDL_BUTTON_RIGHT ? -1 : 1);
+            return;
+        }
+        /* the middle button drags the page */
+        if ((w = window_by_id(e->button.windowID)) && w->ntabs && e->button.button == SDL_BUTTON_MIDDLE &&
+            (w->mode == MODE_NORMAL || w->mode == MODE_CARET || w->mode == MODE_AREA)) {
+            if (e->type == SDL_EVENT_MOUSE_BUTTON_DOWN)
+                pan = (struct Pan){true, w, e->button.x * w->density, e->button.y * w->density};
+            else
+                pan.on = false;
+            return;
+        }
+        /* Shift + drag in the pages: a rectangle, copied as an image when you let go */
+        if ((w = window_by_id(e->button.windowID)) && w->ntabs && e->button.button == SDL_BUTTON_LEFT &&
+            ((e->type == SDL_EVENT_MOUSE_BUTTON_DOWN && w->mode == MODE_NORMAL && (SDL_GetModState() & SDL_KMOD_SHIFT)) ||
+             (e->type == SDL_EVENT_MOUSE_BUTTON_UP && shift_rect == w))) {
+            float x = e->button.x * w->density, y = e->button.y * w->density;
+            if (e->type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+                shift_rect = w;
+                input_token(w, "<C-v>"); /* the free cursor */
+                if (alive(w) && w->mode == MODE_AREA) {
+                    bool pane = pane_enter_at(w, &x, &y);
+                    area_mouse_down(w, cur_view(w), x, y);
+                    if (pane && alive(w))
+                        pane_leave(w);
+                } else {
+                    shift_rect = NULL;
+                }
+            } else {
+                shift_rect = NULL;
+                bool pane = pane_enter_focused(w);
+                bool dragged = cur_view(w)->area_selecting;
+                area_mouse_up(w, cur_view(w));
+                if (pane && alive(w))
+                    pane_leave(w);
+                if (alive(w)) {
+                    if (dragged)
+                        input_token(w, "y"); /* copy the rectangle as an image */
+                    input_token(w, "<Esc>");
+                }
+            }
+            if (alive(w))
+                w->redraw = true;
             return;
         }
         /* pictures and areas: a press selects, dragging moves, resizes or turns */
@@ -977,6 +1037,26 @@ static bool script_step(void)
             if (alive(w))
                 mouse_flush(w);
         }
+    } else if (!strncmp(tok, "<mid:", 5)) { /* the middle button dragged from one point to another */
+        float x0, y0, x1, y1;
+        if (sscanf(tok + 5, "%f,%f,%f,%f", &x0, &y0, &x1, &y1) == 4) {
+            SDL_WindowID id = SDL_GetWindowID(w->win);
+            SDL_Event e = {0};
+            e.button = (SDL_MouseButtonEvent){.type = SDL_EVENT_MOUSE_BUTTON_DOWN, .windowID = id,
+                                              .button = SDL_BUTTON_MIDDLE, .down = true, .clicks = 1, .x = x0, .y = y0};
+            handle_event(&e);
+            for (int k = 1; k <= 4 && alive(w); k++) {
+                e.motion = (SDL_MouseMotionEvent){.type = SDL_EVENT_MOUSE_MOTION, .windowID = id, .state = SDL_BUTTON_MMASK,
+                                                  .x = x0 + (x1 - x0) * k / 4, .y = y0 + (y1 - y0) * k / 4};
+                handle_event(&e);
+            }
+            e.button = (SDL_MouseButtonEvent){.type = SDL_EVENT_MOUSE_BUTTON_UP, .windowID = id,
+                                              .button = SDL_BUTTON_MIDDLE, .clicks = 1, .x = x1, .y = y1};
+            if (alive(w))
+                handle_event(&e);
+        }
+    } else if (!strncmp(tok, "<mods:", 6)) { /* <mods:shift> holds Shift down, <mods:none> lets go */
+        SDL_SetModState(!strncmp(tok + 6, "shift", 5) ? SDL_KMOD_SHIFT : SDL_KMOD_NONE);
     } else if (!strncmp(tok, "<hover:", 7)) { /* the pointer moved, no button down */
         float x, y;
         if (sscanf(tok + 7, "%f,%f", &x, &y) == 2) {
@@ -991,6 +1071,7 @@ static bool script_step(void)
             input_expire(SDL_GetTicks());
             if (math_poll())
                 need_redraw_all = true;
+            glide_step(w, SDL_GetTicks());
             if (!idle_work())
                 SDL_Delay(5);
         }
@@ -1047,6 +1128,7 @@ static void usage(void)
            "\n"
            "--tab file.pdf      open it as a tab of the npdf that is running\n"
            "--export file.pdf   print its highlights and comments as Markdown\n"
+           "--export-dir folder print the notes of every PDF in the folder as Markdown\n"
            "\n"
            "config: ~/.config/nomadys-pdf/config\n",
            leader_label(), leader_label(), leader_label());
@@ -1134,6 +1216,14 @@ int main(int argc, char **argv)
         FPDF_DestroyLibrary();
         return d ? 0 : 1;
     }
+    if (argc >= 2 && !strcmp(argv[1], "--export-dir")) { /* the notes of every PDF in a folder, to standard output */
+        if (argc != 3)
+            fprintf(stderr, "usage: npdf --export-dir folder\n");
+        else
+            export_folder(argv[2], stdout, NULL, NULL);
+        FPDF_DestroyLibrary();
+        return argc == 3 ? 0 : 1;
+    }
     SDL_SetAppMetadata("Nomadys-PDF", VERSION, "npdf"); /* app id: npdf.desktop gives the icon */
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         fprintf(stderr, "npdf: %s\n", SDL_GetError());
@@ -1198,6 +1288,8 @@ int main(int argc, char **argv)
         e.user.data1 = xstrdup(request);
         SDL_PushEvent(&e);
     }
+    if (cfg.check_updates)
+        update_check(false);
     bool prefetching = false;
     while (nwindows) {
         uint64_t now = SDL_GetTicks();
@@ -1215,6 +1307,10 @@ int main(int argc, char **argv)
                 if (!cursor_locating(x, now))
                     x->locate_at = 0;
             }
+            if (glide_step(x, now)) {
+                x->redraw = true;
+                wait = wait < 0 ? 8 : SDL_min(wait, 8);
+            }
             uint64_t until[3] = {x->msg_until, x->tabs_flash_until, x->ntabs ? cur_view(x)->flash_until : 0};
             for (int k = 0; k < 3; k++) {
                 if (until[k] > now) {
@@ -1225,6 +1321,11 @@ int main(int argc, char **argv)
                 }
             }
         }
+        char news[200];
+        if (update_poll(news, sizeof news) && nwindows)
+            ui_message_long(windows[0], 9000, "%s", news);
+        if (update_busy())
+            wait = wait < 0 ? 100 : SDL_min(wait, 100);
         if (math_poll()) /* a formula was typeset */
             need_redraw_all = true;
         if (math_busy())

@@ -13,8 +13,6 @@
 #define LIVE_PAGES 30        /* pages searched per key while typing */
 #define COUNT_PAGES_MAX 150  /* "match 3 of 17" for documents up to this size */
 
-typedef struct { int start, len; } Match;
-
 static bool has_upper(const char *s)
 {
     for (; *s; s++)
@@ -28,7 +26,7 @@ static unsigned long search_flags(const View *v, const char *query)
     return v->match_case || has_upper(query) ? FPDF_MATCHCASE : 0;
 }
 
-static int page_matches(View *v, int page, const char *query, Match **out)
+int search_page_matches(View *v, int page, const char *query, Match **out)
 {
     FPDF_TEXTPAGE tp = doc_text(v->doc, page);
     *out = NULL;
@@ -77,7 +75,7 @@ static bool find(Window *w, View *v, const char *query, int dir, bool from_curre
     for (int k = 0; k <= limit; k++) {
         int page = ((start_page + dir * k) % npages + npages) % npages;
         Match *m;
-        int n = page_matches(v, page, query, &m), pick = -1;
+        int n = search_page_matches(v, page, query, &m), pick = -1;
         for (int i = 0; i < n; i++) {
             if (k == 0 && (dir > 0 ? m[i].start <= cur : m[i].start >= cur))
                 continue;
@@ -109,7 +107,7 @@ static void report(Window *w, View *v)
     int total = 0, index = 0;
     for (int page = 0; page < v->doc->npages; page++) {
         Match *m;
-        int n = page_matches(v, page, v->query, &m);
+        int n = search_page_matches(v, page, v->query, &m);
         for (int i = 0; i < n; i++)
             if (page < v->match_page || (page == v->match_page && m[i].start <= v->match_start))
                 index++;
@@ -139,6 +137,20 @@ bool search_run(Window *w, View *v, int dir, bool from_current)
     v->query_absent = true;
     ui_message(w, "not found: %s", v->query);
     return false;
+}
+
+/* Go to one match of a query (Enter in the list of matches). */
+void search_goto(Window *w, View *v, const char *query, int page, int start, int len)
+{
+    snprintf(v->query, sizeof v->query, "%s", query);
+    v->match_page = page;
+    v->match_start = start;
+    v->match_len = len;
+    v->query_absent = false;
+    v->highlight_all = true;
+    jump_to(w, v, match_pos(w, v));
+    report(w, v);
+    w->redraw = true;
 }
 
 /* ---------- while the query is typed ---------- */
@@ -234,7 +246,7 @@ static const PRect *page_rects(View *v, int page, int *n)
     hl[slot].rects = NULL;
     hl[slot].n = 0;
     Match *m;
-    int count = page_matches(v, page, v->query, &m), cap = 0;
+    int count = search_page_matches(v, page, v->query, &m), cap = 0;
     FPDF_TEXTPAGE tp = doc_text(v->doc, page);
     for (int i = 0; tp && i < count; i++) {
         int nr = FPDFText_CountRects(tp, m[i].start, m[i].len);

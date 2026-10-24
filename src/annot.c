@@ -306,7 +306,7 @@ static bool undoing; /* applying an undo or redo: not recorded again */
 
 static void undo_free(Undo *u)
 {
-    if (u->kind == U_PAGES) { /* snapshots of the document: temporary files */
+    if (u->kind == U_PAGES || u->kind == U_FORMS) { /* snapshots of the document: temporary files */
         if (u->text_before)
             unlink(u->text_before);
         if (u->text_after)
@@ -360,6 +360,15 @@ void undo_pages(Doc *d, int page, char *snapshot, const Mark *marks_before)
     push(d, u);
 }
 
+/* A saved form filled in (:form NAME): the document before, in a snapshot. */
+void undo_forms(Doc *d, int page, char *snapshot)
+{
+    Undo u = {.kind = U_FORMS, .page = page, .text_before = snapshot, .group = d->undo_group_open};
+    u.marks_before = xmalloc(NMARKS * sizeof *u.marks_before);
+    memcpy(u.marks_before, d->marks, NMARKS * sizeof *u.marks_before);
+    push(d, u);
+}
+
 /* A move / resize / crop, from start to end of the edit. */
 void undo_edit(Doc *d, int page, int annot, PRect before, PRect after, const ImageView *vbefore, const ImageView *vafter)
 {
@@ -380,7 +389,7 @@ void undo_edit(Doc *d, int page, int annot, PRect before, PRect after, const Ima
 
 static bool apply(Doc *d, Undo *u, bool redo)
 {
-    if (u->kind == U_PAGES) {
+    if (u->kind == U_PAGES || u->kind == U_FORMS) {
         if (!redo && !u->text_after) { /* the state to redo, taken once */
             u->text_after = pages_snapshot(d);
             u->marks_after = xmalloc(NMARKS * sizeof *u->marks_after);
@@ -417,6 +426,7 @@ static bool apply(Doc *d, Undo *u, bool redo)
         return true;
     }
     case U_PAGES:
+    case U_FORMS:
         return false; /* above */
     case U_TEXTBOX: {
         TextBox b;
@@ -445,6 +455,7 @@ static const char *what(const Undo *u)
     case U_COMMENT: return "comment";
     case U_EDIT: return u->has_view ? "image change" : "move / resize";
     case U_PAGES: return "page change";
+    case U_FORMS: return "form fill";
     case U_TASK: return "task";
     case U_TEXTBOX: return "text";
     }

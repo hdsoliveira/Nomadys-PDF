@@ -1,6 +1,7 @@
 /* Saved answers for forms: fill in a PDF once, give the answers a name (P80),
  * and next time one menu (\F, or :form P80) fills every blank. Answers are
  * kept by field name, so they fit any PDF that has the same fields. */
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -167,22 +168,44 @@ static char *field_string(Doc *d, FPDF_ANNOTATION a, FieldString get)
     return s;
 }
 
+/* The label of option i of a choice field. */
+static char *option_label(Doc *d, FPDF_ANNOTATION a, int i)
+{
+    unsigned long bytes = FPDFAnnot_GetOptionLabel(d->form, a, i, NULL, 0);
+    if (bytes < 2)
+        return xstrdup("");
+    unsigned short *u = xmalloc(bytes + 2);
+    FPDFAnnot_GetOptionLabel(d->form, a, i, u, bytes);
+    char *s = utf16_to_utf8(u, (int)(bytes / 2));
+    free(u);
+    return s;
+}
+
 /* The option a choice field shows: the label of the selected one. */
 static char *chosen_option(Doc *d, FPDF_ANNOTATION a)
 {
-    for (int i = 0, n = FPDFAnnot_GetOptionCount(d->form, a); i < n; i++) {
-        if (!FPDFAnnot_IsOptionSelected(d->form, a, i))
-            continue;
-        unsigned long bytes = FPDFAnnot_GetOptionLabel(d->form, a, i, NULL, 0);
-        if (bytes < 2)
-            break;
-        unsigned short *u = xmalloc(bytes + 2);
-        FPDFAnnot_GetOptionLabel(d->form, a, i, u, bytes);
-        char *s = utf16_to_utf8(u, (int)(bytes / 2));
-        free(u);
-        return s;
-    }
+    for (int i = 0, n = FPDFAnnot_GetOptionCount(d->form, a); i < n; i++)
+        if (FPDFAnnot_IsOptionSelected(d->form, a, i))
+            return option_label(d, a, i);
     return NULL;
+}
+
+/* Field names match when they are the same, or the same apart from capitals,
+ * spaces and punctuation ("Full name", "full_name"). */
+static bool same_name(const char *a, const char *b)
+{
+    if (!strcmp(a, b))
+        return true;
+    for (;; a++, b++) {
+        while (*a && !isalnum((unsigned char)*a) && (unsigned char)*a < 0x80)
+            a++;
+        while (*b && !isalnum((unsigned char)*b) && (unsigned char)*b < 0x80)
+            b++;
+        if (tolower((unsigned char)*a) != tolower((unsigned char)*b))
+            return false;
+        if (!*a)
+            return true;
+    }
 }
 
 /* Calls fn for every fillable widget of the PDF, with its annotation open. */
@@ -205,6 +228,16 @@ static void each_widget(Doc *d, WidgetFn fn, void *arg)
 
 static bool is_button(int type) { return type == FPDF_FORMFIELD_CHECKBOX || type == FPDF_FORMFIELD_RADIOBUTTON; }
 
+static void collect_add(Fill *f, const char *key, const char *export, const char *value, bool by_value)
+{
+    if (!*key || !value || !*value)
+        return;
+    for (int i = 0; i < f->n; i++) /* the widgets of one field show one value */
+        if (!strcmp(f->a[i].key, key) && !strcmp(f->a[i].export, export) && (!by_value || !strcmp(f->a[i].value, value)))
+            return;
+    fill_add(f, key, export, value);
+}
+
 static void collect_one(Doc *d, int page, int widget, FPDF_ANNOTATION a, int type, void *arg)
 {
     Fill *f = arg;
@@ -216,18 +249,21 @@ static void collect_one(Doc *d, int page, int widget, FPDF_ANNOTATION a, int typ
             export = field_string(d, a, FPDFAnnot_GetFormFieldExportValue);
             value = xstrdup("1");
         }
-    } else if (type == FPDF_FORMFIELD_LISTBOX || type == FPDF_FORMFIELD_COMBOBOX) {
+    } else if (type == FPDF_FORMFIELD_LISTBOX) { /* every option chosen */
+        for (int i = 0, n = FPDFAnnot_GetOptionCount(d->form, a); i < n; i++)
+            if (FPDFAnnot_IsOptionSelected(d->form, a, i)) {
+                char *label = option_label(d, a, i);
+                collect_add(f, key, export, label, true);
+                free(label);
+            }
+    } else if (type == FPDF_FORMFIELD_COMBOBOX) {
         value = chosen_option(d, a);
-        if (!value && type == FPDF_FORMFIELD_COMBOBOX)
+        if (!value)
             value = field_string(d, a, FPDFAnnot_GetFormFieldValue); /* typed into an editable one */
     } else {
         value = field_string(d, a, FPDFAnnot_GetFormFieldValue);
     }
-    bool seen = false; /* the widgets of one field show one value */
-    for (int i = 0; i < f->n && value; i++)
-        seen |= !strcmp(f->a[i].key, key) && !strcmp(f->a[i].export, export);
-    if (*key && value && *value && !seen)
-        fill_add(f, key, export, value);
+    collect_add(f, key, export, value, false);
     free(key), free(export), free(value);
 }
 
@@ -244,6 +280,7 @@ typedef struct {
     const Fill *f;
     bool *used;
     int changed;
+    bool only_empty; /* leave fields that already have something */
 } Apply;
 
 static void set_text(Doc *d, FPDF_PAGE p, const char *s)
@@ -261,12 +298,12 @@ static void apply_one(Doc *d, int page, int widget, FPDF_ANNOTATION a, int type,
     char *key = field_string(d, a, FPDFAnnot_GetFormFieldName), *export = NULL;
     for (int i = 0; i < ap->f->n; i++) {
         const Answer *an = &ap->f->a[i];
-        if (strcmp(an->key, key))
+        if (!same_name(an->key, key))
             continue;
         if (is_button(type)) {
             if (!export)
                 export = field_string(d, a, FPDFAnnot_GetFormFieldExportValue);
-            if (strcmp(an->export, export))
+            if (!same_name(an->export, export))
                 continue;
         } else if (*an->export) {
             continue;
@@ -283,31 +320,34 @@ static void apply_one(Doc *d, int page, int widget, FPDF_ANNOTATION a, int type,
                 ap->changed++;
             }
         } else if (type == FPDF_FORMFIELD_LISTBOX || type == FPDF_FORMFIELD_COMBOBOX) {
-            char *now = chosen_option(d, a);
-            bool same = now && !strcmp(now, an->value);
-            free(now);
             int option = -1;
-            for (int o = 0, n = FPDFAnnot_GetOptionCount(d->form, a); o < n && !same; o++) {
-                unsigned long bytes = FPDFAnnot_GetOptionLabel(d->form, a, o, NULL, 0);
-                unsigned short *u = xmalloc(bytes + 2);
-                FPDFAnnot_GetOptionLabel(d->form, a, o, u, bytes);
-                char *label = utf16_to_utf8(u, (int)(bytes / 2));
+            for (int o = 0, n = FPDFAnnot_GetOptionCount(d->form, a); o < n && option < 0; o++) {
+                char *label = option_label(d, a, o);
                 if (!strcmp(label, an->value))
                     option = o;
-                free(label), free(u);
+                free(label);
             }
-            if (!same && doc_focus_widget(d, page, widget)) {
-                if (option >= 0)
+            char *now = chosen_option(d, a);
+            bool taken = ap->only_empty && now && *now; /* it has an answer already */
+            if (option >= 0) {
+                if (!FPDFAnnot_IsOptionSelected(d->form, a, option) && !taken && doc_focus_widget(d, page, widget)) {
                     FORM_SetIndexSelected(d->form, p, option, true);
-                else if (type == FPDF_FORMFIELD_COMBOBOX)
-                    set_text(d, p, an->value); /* an editable combo box takes any text */
-                ap->changed++;
+                    ap->changed++;
+                }
+            } else if (type == FPDF_FORMFIELD_COMBOBOX) { /* an editable combo box takes any text */
+                char *typed = field_string(d, a, FPDFAnnot_GetFormFieldValue);
+                if (strcmp(typed, an->value) && !(ap->only_empty && *typed) && doc_focus_widget(d, page, widget)) {
+                    set_text(d, p, an->value);
+                    ap->changed++;
+                }
+                free(typed);
             }
+            free(now);
         } else {
             char *now = field_string(d, a, FPDFAnnot_GetFormFieldValue);
-            bool same = !strcmp(now, an->value);
+            bool keep = !strcmp(now, an->value) || (ap->only_empty && *now);
             free(now);
-            if (!same && doc_focus_widget(d, page, widget)) {
+            if (!keep && doc_focus_widget(d, page, widget)) {
                 set_text(d, p, an->value);
                 ap->changed++;
             }
@@ -319,9 +359,9 @@ static void apply_one(Doc *d, int page, int widget, FPDF_ANNOTATION a, int type,
 
 /* Puts the answers in the fields they belong to. Returns how many fields changed;
  * *missing counts the answers that no field of this PDF takes. */
-static int apply(Doc *d, const Fill *f, int *missing)
+static int apply(Doc *d, const Fill *f, int *missing, bool only_empty)
 {
-    Apply ap = {f, xcalloc((size_t)f->n + 1, sizeof(bool)), 0};
+    Apply ap = {f, xcalloc((size_t)f->n + 1, sizeof(bool)), 0, only_empty};
     doc_kill_focus(d);
     each_widget(d, apply_one, &ap);
     *missing = 0;
@@ -391,7 +431,7 @@ static void fills_save(Window *w, const char *given)
     store_free(all, n);
 }
 
-static void fills_use(Window *w, const char *given)
+static void fills_use(Window *w, const char *given, bool only_empty)
 {
     Doc *d = cur_view(w)->doc;
     char name[CMD_MAX];
@@ -404,7 +444,14 @@ static void fills_use(Window *w, const char *given)
     if (at < 0) {
         ui_message(w, "no saved form called \"%s\" (\\F lists them)", name);
     } else {
-        int changed = apply(d, &all[at], &missing);
+        char *before = pages_snapshot(d); /* for u */
+        int changed = apply(d, &all[at], &missing, only_empty);
+        if (before && changed) {
+            undo_forms(d, view_top_page(cur_view(w)), before);
+        } else if (before) {
+            unlink(before);
+            free(before);
+        }
         if (missing)
             ui_message_long(w, 5000, "\"%s\": %d field%s filled, %d answer%s had no field in this PDF", name, changed,
                             changed == 1 ? "" : "s", missing, missing == 1 ? "" : "s");
@@ -444,8 +491,15 @@ void fills_command(Window *w, const char *arg)
         fills_save(w, arg + 5);
     else if (!strncmp(arg, "delete ", 7))
         fills_delete(w, arg + 7);
-    else
-        fills_use(w, arg);
+    else { /* :form P80 empty fills only the fields that are still empty */
+        char name[CMD_MAX];
+        snprintf(name, sizeof name, "%s", arg);
+        size_t n = strlen(name);
+        bool only_empty = n > 6 && !strcmp(name + n - 6, " empty");
+        if (only_empty)
+            name[n - 6] = 0;
+        fills_use(w, name, only_empty);
+    }
 }
 
 /* ---------- the menu ---------- */
@@ -519,11 +573,11 @@ void fills_key(Window *w, const char *tok)
         d = -1;
     if (d) {
         w->fill_sel = SDL_clamp(w->fill_sel + d, 0, SDL_max(0, w->nfill - 1));
-    } else if (!strcmp(tok, "<Enter>") && w->nfill) {
+    } else if ((!strcmp(tok, "<Enter>") || !strcmp(tok, "e")) && w->nfill) {
         char name[NAME_MAX_LEN * 4 + 8];
         snprintf(name, sizeof name, "%s", w->fill_names[w->fill_sel]);
         close_list(w);
-        fills_use(w, name);
+        fills_use(w, name, !strcmp(tok, "e"));
         return;
     } else if (!strcmp(tok, "n")) {
         prompt_open(w, "save the form as: ", "", save_asked, 0);
@@ -552,7 +606,7 @@ void fills_draw(Window *w)
     ui_fill(w, x, list_top - pad / 2.0f, bw, SDL_max(1.0f, w->density), t->panel_header, 90);
     ui_fill(w, x, list_bottom, bw, SDL_max(1.0f, w->density), t->panel_header, 90);
     char foot[200];
-    snprintf(foot, sizeof foot - 4, "j k move   Enter fill   n save what is filled in   x delete   Esc close");
+    snprintf(foot, sizeof foot - 4, "j k move   Enter fill   e only empty fields   n save   x delete   Esc");
     font_fit(w->font, foot, (int)bw - 2 * pad);
     font_draw(w->font, x + pad, list_bottom + pad / 2.0f, foot, t->panel_header);
     if (!w->nfill) {

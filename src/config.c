@@ -14,6 +14,8 @@
 Config cfg = {
     .dark = false,
     .autosave = true,
+    .smooth_scroll = false,
+    .check_updates = false,
     .autosave_delay_ms = 1000,
     .backup = true,
     .subpixel_text = false,
@@ -154,6 +156,10 @@ static bool set_global_key(const char *k, const char *v)
         cfg.dark = !strcmp(v, "dark");
     else if (!strcmp(k, "autosave"))
         cfg.autosave = parse_bool(v);
+    else if (!strcmp(k, "check_updates"))
+        cfg.check_updates = parse_bool(v);
+    else if (!strcmp(k, "smooth_scroll"))
+        cfg.smooth_scroll = parse_bool(v);
     else if (!strcmp(k, "autosave_delay_ms"))
         cfg.autosave_delay_ms = atoi(v);
     else if (!strcmp(k, "backup"))
@@ -523,5 +529,111 @@ bool theme_save(const char *name, char *err, size_t cap)
         snprintf(err, cap, "cannot write %s", path);
         return false;
     }
+    return true;
+}
+
+/* ---------- :set key value ---------- */
+/* Puts "key = value" in the config file: the line is changed where it is, or
+ * added before the first [section]; the rest stays as written. */
+static bool config_put(const char *key, const char *value)
+{
+    const char *path = config_file();
+    FILE *f = fopen(path, "r");
+    char *text = NULL, line[1024];
+    size_t len = 0, tcap = 0, klen = strlen(key);
+    bool done = false, in_section = false;
+    char *later = NULL; /* the lines from the first [section] on */
+    size_t later_len = 0, later_cap = 0;
+    while (f && fgets(line, sizeof line, f)) {
+        const char *t = line + strspn(line, " \t");
+        if (*t == '[')
+            in_section = true;
+        char out[1100];
+        if (!in_section && !done && !strncmp(t, key, klen) && t[klen + strspn(t + klen, " \t")] == '=') {
+            snprintf(out, sizeof out, "%s = %s\n", key, value);
+            done = true;
+        } else {
+            snprintf(out, sizeof out, "%s", line);
+        }
+        char **buf = in_section ? &later : &text;
+        size_t *n = in_section ? &later_len : &len, *cap = in_section ? &later_cap : &tcap, add = strlen(out);
+        if (*n + add + 1 > *cap)
+            *buf = xrealloc(*buf, *cap = (*n + add + 1) * 2);
+        memcpy(*buf + *n, out, add + 1);
+        *n += add;
+    }
+    if (f)
+        fclose(f);
+    char dir[1024], tmp[1100];
+    snprintf(dir, sizeof dir, "%s", path);
+    *strrchr(dir, '/') = 0;
+    for (char *c = dir + 1; *c; c++)
+        if (*c == '/') {
+            *c = 0;
+            mkdir(dir, 0755);
+            *c = '/';
+        }
+    mkdir(dir, 0755);
+    snprintf(tmp, sizeof tmp, "%s.tmp%d", path, (int)getpid());
+    FILE *o = fopen(tmp, "w");
+    bool ok = o != NULL;
+    if (o) {
+        while (!done && len > 1 && text[len - 1] == '\n' && text[len - 2] == '\n') /* the new line joins the last ones */
+            text[--len] = 0;
+        if (text)
+            fputs(text, o);
+        if (!done)
+            fprintf(o, "%s%s = %s\n", len && text[len - 1] != '\n' ? "\n" : "", key, value);
+        if (later) {
+            if (!done)
+                fputc('\n', o);
+            fputs(later, o);
+        }
+        ok = !ferror(o);
+        ok = fclose(o) == 0 && ok;
+        if (!ok || rename(tmp, path)) {
+            unlink(tmp);
+            ok = false;
+        }
+    }
+    free(text);
+    free(later);
+    return ok;
+}
+
+/* ":set key value" (or key=value): the setting applies now and stays in the
+ * config file. Returns false, with the reason in msg, when it did not. */
+bool config_set(const char *arg, char *msg, size_t cap)
+{
+    char key[64], value[512];
+    while (*arg == ' ')
+        arg++;
+    size_t n = strcspn(arg, " =");
+    snprintf(key, sizeof key, "%.*s", (int)SDL_min(n, sizeof key - 1), arg);
+    arg += n;
+    arg += strspn(arg, " ");
+    if (*arg == '=')
+        arg++;
+    arg += strspn(arg, " ");
+    snprintf(value, sizeof value, "%s", arg);
+    for (char *e = value + strlen(value); e > value && e[-1] == ' ';)
+        *--e = 0;
+    if (!*key || !*value) {
+        snprintf(msg, cap, "usage: :set key value  (for example :set smooth_scroll true); the keys are those of the config file");
+        return false;
+    }
+    if (!strcmp(key, "theme") || !strcmp(key, "include")) {
+        snprintf(msg, cap, "the theme is chosen with :theme (or \\T)");
+        return false;
+    }
+    if (!set_global_key(key, value)) {
+        snprintf(msg, cap, "not a setting, or not a good value: %s = %s", key, value);
+        return false;
+    }
+    bool restart = !strcmp(key, "font") || !strcmp(key, "font_size");
+    if (!config_put(key, value))
+        snprintf(msg, cap, "%s = %s (now, but %s could not be written)", key, value, config_file());
+    else
+        snprintf(msg, cap, "%s = %s%s", key, value, restart ? " (saved; the font changes when npdf is started again)" : " (saved in the config)");
     return true;
 }

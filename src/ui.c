@@ -212,6 +212,7 @@ static void draw_mode(Window *w)
     case MODE_THEMES: label = "THEME", color = t->tab_accent; break;
     case MODE_ABOUT: label = "ABOUT", color = t->tab_accent; break;
     case MODE_FORMS: label = "FORMS", color = t->tab_accent; break;
+    case MODE_HITS: label = "MATCHES", color = t->tab_accent; break;
     case MODE_PROMPT:
         label = prompt_kind(w);
         color = !strcmp(label, "COMMAND") || !strcmp(label, "SEARCH") ? t->mode_command : t->mode_insert;
@@ -231,7 +232,7 @@ static void draw_mode(Window *w)
     }
     Mode shown = w->mode == MODE_PROMPT ? w->prompt_return : w->mode; /* the pages, not a list or a panel */
     if (shown == MODE_PANEL || shown == MODE_HELP || shown == MODE_PICKER || shown == MODE_LIBRARY ||
-        shown == MODE_GRID || shown == MODE_PRESENT || shown == MODE_THEMES || shown == MODE_ABOUT || shown == MODE_FORMS)
+        shown == MODE_GRID || shown == MODE_PRESENT || shown == MODE_THEMES || shown == MODE_ABOUT || shown == MODE_FORMS || shown == MODE_HITS)
         return;
     View *pv = w->split && w->split_focus ? w->split : v;
     if (!pv->doc->npages)
@@ -270,6 +271,8 @@ void ui_draw_overlays(Window *w, uint64_t now)
         theme_draw(w);
     if (w->mode == MODE_ABOUT)
         about_draw(w);
+    if (w->mode == MODE_HITS)
+        hits_draw(w);
     if (w->mode == MODE_FORMS || (w->mode == MODE_PROMPT && w->prompt_return == MODE_FORMS))
         fills_draw(w);
     draw_mode(w);

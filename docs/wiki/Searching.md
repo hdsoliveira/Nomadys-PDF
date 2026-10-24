@@ -23,6 +23,7 @@ goes to the first match after where you were.
 | `Esc` in the prompt | cancel, back where you were |
 | `Ctrl-t` in the prompt | match upper and lower case exactly (the prompt shows `/Aa`) |
 | `n` / `N` | next / previous match, across pages |
+| `\s` (or `:hits words`) | every match as a list with the words around it; `j` `k` move, `Enter` goes to it, `Esc` closes |
 | `Esc`, `:noh` | remove the highlighting |
 
 Every match on screen is highlighted, and the message says which one you are

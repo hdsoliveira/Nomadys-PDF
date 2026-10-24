@@ -17,7 +17,7 @@
 <h1 id="tabs-windows-and-split-view">Tabs, windows and split view</h1>
 <h2 id="tabs">Tabs<a class="anchor" href="#tabs">#</a></h2>
 <p>Each PDF opens in a tab of the same window, using <code>npdf a.pdf b.pdf c.pdf</code> or, from inside, <code>:e file.pdf</code>, <code>\o</code> or <code>\f</code>.</p>
-<table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>Ctrl-,</code> / <code>Ctrl-.</code></td><td>previous / next tab</td></tr><tr><td><code>t</code></td><td>show / hide the tab bar</td></tr><tr><td><code>:e file.pdf</code></td><td>open in a new tab (<code>Tab</code> completes the path)</td></tr><tr><td><code>:q</code></td><td>close the tab (<code>:q!</code> discarding unsaved changes; <code>:wq</code>, <code>:x</code> save first)</td></tr><tr><td><code>\l</code>, then the <strong>Tabs</strong> tab</td><td>all open files, where <code>Enter</code> switches and <code>x</code> closes</td></tr></tbody></table>
+<table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>Ctrl-,</code> / <code>Ctrl-.</code></td><td>previous / next tab</td></tr><tr><td><code>Backspace</code></td><td>back to the tab you came from (again to return)</td></tr><tr><td><code>t</code></td><td>show / hide the tab bar</td></tr><tr><td><code>:e file.pdf</code></td><td>open in a new tab (<code>Tab</code> completes the path)</td></tr><tr><td><code>:q</code></td><td>close the tab (<code>:q!</code> discarding unsaved changes; <code>:wq</code>, <code>:x</code> save first)</td></tr><tr><td><code>\l</code>, then the <strong>Tabs</strong> tab</td><td>all open files, where <code>Enter</code> switches and <code>x</code> closes</td></tr></tbody></table>
 <p>From a shell or another program, <code>npdf --tab file.pdf</code> adds a tab to the npdf that is running (see the <a href="FAQ.html">FAQ</a> for neomutt).</p>
 <p>The tab bar is hidden by default, to leave the whole window to the page; it shows for a moment when you switch tabs. <code>show_tabs = true</code> in the <a href="Configuration.html">configuration</a> keeps it visible.</p>
 <h2 id="windows">Windows<a class="anchor" href="#windows">#</a></h2>
@@ -34,7 +34,7 @@
 </main>
 </div>
 <footer><div class="wrap">
-<span>Nomadys-PDF 0.6.0 · MIT licence · made by Hugo Oliveira</span>
+<span>Nomadys-PDF 0.7.0 · MIT licence · made by Hugo Oliveira</span>
 <span class="right"><a href="../docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:nomadys-pdf@mailbox.org">Contact</a><a href="https://ko-fi.com/hugooliveira35800">Buy me a coffee</a></span>
 </div></footer>
 </body></html>

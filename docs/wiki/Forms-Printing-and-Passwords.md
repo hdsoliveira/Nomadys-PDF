@@ -26,17 +26,20 @@ blank of the next one at once.
 |---|---|
 | `\F` | the menu of saved forms |
 | `Enter` (in the menu) | fill this PDF with the chosen one |
+| `e` (in the menu) | fill only the fields that are still empty |
 | `n` (in the menu) | save what is filled in now, asking for a name |
 | `x` (in the menu) | delete the chosen one (asks first) |
 | `:form save P80` | save what is filled in now as `P80` |
 | `:form P80` | fill with `P80` |
+| `:form P80 empty` | fill only the fields that are still empty |
 | `:form delete P80` | delete `P80` |
 
 Answers are kept by field name, in the `forms` file of the data folder, so a
 form works on any PDF whose fields are named the same; fields the PDF does not
-have are reported. Text, multi-line text, combo and list boxes, ticked
-checkboxes and chosen radio buttons are kept. A list box keeps one option.
-Filling is not covered by `u`; `Ctrl-z` undoes a field.
+have are reported. Names match when they differ only in capitals, spaces or
+punctuation (`Full name`, `full_name`). Text, multi-line text, combo and list
+boxes (every option chosen), ticked checkboxes and chosen radio buttons are
+kept. `u` undoes a whole fill and `Ctrl-r` redoes it; `Ctrl-z` undoes one field.
 
 ## Printing
 

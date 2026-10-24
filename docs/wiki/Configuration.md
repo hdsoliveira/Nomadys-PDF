@@ -15,6 +15,8 @@ cp config.example ~/.config/nomadys-pdf/config
 - A mistake is reported with its line number when the program starts, and
   the other lines still apply.
 - Changes apply the next time you open Nomadys-PDF; themes reload at once.
+- `:set name value` inside the program changes a setting right away and
+  writes it here for you (the font changes when you start npdf again).
 
 ## Reading
 
@@ -26,6 +28,7 @@ cp config.example ~/.config/nomadys-pdf/config
 | `remember_view` | `true` | and with its own zoom, dark mode, two-page layout and rotation |
 | `dark_images` | `smart` | in dark mode, `smart` keeps photos and the pictures you placed, and recolours figures on white; `keep` leaves every image; `invert` recolours all |
 | `dark_text_weight` | `2.5` | in dark mode, how firm light letters and lines are drawn; `1` is a plain inversion, higher is bolder |
+| `smooth_scroll` | `false` | `Ctrl-d`, `Ctrl-u`, `Ctrl-f`, `Ctrl-b` and `Space` glide for a moment instead of jumping |
 | `subpixel_text` | `false` | sharper text on LCD monitors (subpixel rendering) |
 | `page_shadow` | `true` | the soft shadow around pages |
 | `show_tabs` | `false` | keep the tab bar visible (`t` toggles it) |
@@ -53,6 +56,7 @@ cp config.example ~/.config/nomadys-pdf/config
 | `autosave` | `true` | save highlights, comments and form entries automatically; `false` saves only with `Ctrl-s` / `:w` (closing then asks) |
 | `autosave_delay_ms` | `1000` | how long after a change to save |
 | `backup` | `true` | before the first save of a session, keep the file as it was, next to it, as `name.pdf.bak` (a hard link, so it is instant whatever the size); the next session replaces it |
+| `check_updates` | `false` | once a day, ask GitHub (with `curl`) whether a newer version is out, and say so in a message; nothing is installed. `:update` asks at once |
 | `pdf_dirs` | `~` | where `\f`, `\/` and `\n` look for PDFs, as a comma separated list such as `~/Papers, ~/Books, ~/Nextcloud` |
 
 ## LaTeX

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.7.0
+- **Back to the tab you came from**: `Backspace` (and again to return).
+- **Smooth scrolling** for `Ctrl-d` `Ctrl-u` `Ctrl-f` `Ctrl-b` and `Space`:
+  `smooth_scroll = true` (off by default).
+- **The matches of a search as a list**, with the words around each: `\s`
+  after `/`, or `:hits words`; `Enter` goes to the match.
+- **Notes of a whole folder** in one Markdown file: `:exportall [folder]`
+  (`all-notes.md`), or `npdf --export-dir folder`.
+- **Saved forms**: `u` undoes a whole `:form` (`Ctrl-r` redoes it);
+  `:form P80 empty` (or `e` in the `\F` menu) fills only the empty fields; a
+  list box keeps every option chosen; field names match when they differ only
+  in capitals, spaces or punctuation (`Full name`, `full_name`).
+- **Mouse**: the middle button drags the page; `Shift` + drag marks a rectangle
+  and copies it as an image.
+- **`:set name value`** changes a setting now and keeps it in the config file.
+- **New version notice**: `:update` asks GitHub (with `curl`); with
+  `check_updates = true` it asks once a day. Nothing is installed.
+- A formula typeset by two npdf at once no longer fails with "LaTeX error".
+
 ## 0.6.0
 - **Saved forms.** Fill a form once and keep the answers under a name
   (`:form save P80`, or `n` in the `\F` menu). `\F` (or `:form`) lists them;

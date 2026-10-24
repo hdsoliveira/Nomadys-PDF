@@ -8,6 +8,7 @@ inside, `:e file.pdf`, `\o` or `\f`.
 | Key | Action |
 |---|---|
 | `Ctrl-,` / `Ctrl-.` | previous / next tab |
+| `Backspace` | back to the tab you came from (again to return) |
 | `t` | show / hide the tab bar |
 | `:e file.pdf` | open in a new tab (`Tab` completes the path) |
 | `:q` | close the tab (`:q!` discarding unsaved changes; `:wq`, `:x` save first) |

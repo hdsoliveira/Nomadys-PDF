@@ -20,7 +20,7 @@
 <p>And there is one comparison, <code>:diff</code>, which shows what changed between two versions of a paper.</p>
 <h2 id="in-this-pdf-with">In this PDF, with <code>/</code><a class="anchor" href="#in-this-pdf-with">#</a></h2>
 <p>Type <code>/</code> and a word. The search is <strong>incremental</strong>, so while you type, the view goes to the first match after where you were.</p>
-<table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>Enter</code></td><td>keep that match (it is a jump, and <code>Ctrl-o</code> returns)</td></tr><tr><td><code>Esc</code> in the prompt</td><td>cancel, back where you were</td></tr><tr><td><code>Ctrl-t</code> in the prompt</td><td>match upper and lower case exactly (the prompt shows <code>/Aa</code>)</td></tr><tr><td><code>n</code> / <code>N</code></td><td>next / previous match, across pages</td></tr><tr><td><code>Esc</code>, <code>:noh</code></td><td>remove the highlighting</td></tr></tbody></table>
+<table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>Enter</code></td><td>keep that match (it is a jump, and <code>Ctrl-o</code> returns)</td></tr><tr><td><code>Esc</code> in the prompt</td><td>cancel, back where you were</td></tr><tr><td><code>Ctrl-t</code> in the prompt</td><td>match upper and lower case exactly (the prompt shows <code>/Aa</code>)</td></tr><tr><td><code>n</code> / <code>N</code></td><td>next / previous match, across pages</td></tr><tr><td><code>\s</code> (or <code>:hits words</code>)</td><td>every match as a list with the words around it; <code>j</code> <code>k</code> move, <code>Enter</code> goes to it, <code>Esc</code> closes</td></tr><tr><td><code>Esc</code>, <code>:noh</code></td><td>remove the highlighting</td></tr></tbody></table>
 <p>Every match on screen is highlighted, and the message says which one you are at ("match 3 of 17", for documents up to 150 pages). The search is <strong>smart case</strong>, so a query with a capital letter matches case exactly, and otherwise it does not.</p>
 <h2 id="recent-files-with-o">Recent files, with <code>\o</code><a class="anchor" href="#recent-files-with-o">#</a></h2>
 <p><code>\o</code> (or <code>:recent</code>) lists the files you opened, most recent first. Type parts of the name to filter.</p>
@@ -49,7 +49,7 @@
 </main>
 </div>
 <footer><div class="wrap">
-<span>Nomadys-PDF 0.6.0 · MIT licence · made by Hugo Oliveira</span>
+<span>Nomadys-PDF 0.7.0 · MIT licence · made by Hugo Oliveira</span>
 <span class="right"><a href="../docs/index.html">Documentation</a><a href="https://github.com/hdsoliveira/Nomadys-PDF">Source</a><a href="mailto:nomadys-pdf@mailbox.org">Contact</a><a href="https://ko-fi.com/hugooliveira35800">Buy me a coffee</a></span>
 </div></footer>
 </body></html>

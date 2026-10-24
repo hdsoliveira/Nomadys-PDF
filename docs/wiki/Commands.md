@@ -60,6 +60,7 @@ the line, to fix what you typed.
 | Command | Action |
 |---|---|
 | `:export [file.md] [colours] [commented] [tasks]` | highlights, comments and marks to Markdown (tasks as `- [ ]` / `- [x]`) |
+| `:exportall [folder] [colours] [commented] [tasks]` | the notes of every PDF in the folder of this one (or in `folder`) in one file, `all-notes.md`; `:exportall!` overwrites |
 | `:export! …` | the same, allowed to overwrite a file it did not write |
 | `:response [file.md]` | the response letter to the reviewers, with their comments and your replies (`r`), by reviewer ([more](Highlights-and-Comments.md#answering-the-reviewers)) |
 | `:response! …` | the same, allowed to overwrite a file it did not write |
@@ -85,7 +86,10 @@ Page ranges can be `5`, `3-7` or `10-` (to the end).
 | `:theme` | choose a theme (`\T`) |
 | `:theme NAME` | switch to a theme |
 | `:theme new NAME` | make your own theme from the current one |
-| `:form` | saved forms: the menu; `:form save P80`, `:form P80`, `:form delete P80` (`\F`) |
+| `:form` | saved forms: the menu; `:form save P80`, `:form P80` (`P80 empty`: only empty fields), `:form delete P80` (`\F`) |
+| `:hits [words]` | the matches of a search as a list with their words (`\s`) |
+| `:set name value` | change a setting now and keep it in the config file, e.g. `:set smooth_scroll true` |
+| `:update` | ask GitHub if a newer version is out (needs `curl`; nothing is installed) |
 | `:about` | version, author, contact (`\a`) |
 | `:help` | every key (`\c`) |
 
@@ -96,6 +100,7 @@ Page ranges can be `5`, `3-7` or `10-` (to the end).
 | `npdf file.pdf [more.pdf …]` | open files, each in a tab |
 | `npdf` | reopen the last session |
 | `npdf --export file.pdf` | print its highlights and comments as Markdown |
+| `npdf --export-dir folder` | the same for every PDF in a folder |
 | `npdf --synctex-forward LINE:COL:FILE.tex file.pdf` | show that source line (used by VimTeX) |
 | `npdf -x "COMMAND" file.pdf` | the editor command for inverse search (`%l` `%c` `%f`) |
 | `npdf --version`, `npdf --help` | version, short help |

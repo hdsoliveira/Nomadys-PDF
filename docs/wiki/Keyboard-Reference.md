@@ -36,6 +36,7 @@ menu with the keys of the mode you are in appears.
 | Key | Action |
 |---|---|
 | `/` | search this PDF |
+| `\s` | the matches of the search as a list, with the words around each |
 | `n` / `N` | next / previous match |
 | `Esc` | clear the search |
 | `]c` / `[c` | next / previous change (after `:diff`) |
@@ -73,6 +74,7 @@ menu with the keys of the mode you are in appears.
 | `Ctrl-s` | save |
 | `Ctrl-p` | print |
 | `Ctrl-,` / `Ctrl-.` | previous / next tab |
+| `Backspace` | back to the tab you came from |
 | `Ctrl-n` | new window on the same PDF |
 | `Ctrl-j` / `Ctrl-k` | next / previous form field |
 | `q` | close the window |
@@ -98,6 +100,8 @@ menu with the keys of the mode you are in appears.
 | click on a form field | fill it |
 | double click, `Ctrl` + click | open that spot in the LaTeX source |
 | click on a pane | focus it |
+| middle button, drag | move the page |
+| `Shift` + drag | mark a rectangle and copy it as an image |
 | click on a picture, or the edge of a framed area | select it, then [move, resize or turn it](Images-and-Regions.md#with-the-mouse) |
 
 ## Text cursor (CURSOR / VISUAL)

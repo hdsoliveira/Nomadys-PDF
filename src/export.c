@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <dirent.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -236,6 +237,8 @@ static const char *base_name(const char *path)
     return s ? s + 1 : path;
 }
 
+static bool in_folder; /* export_folder: one heading and one header line for all the PDFs */
+
 /* Writes the Markdown; returns the number of highlights. */
 int export_write(Doc *d, FILE *f, int *ncomments, const NoteFilter *only)
 {
@@ -252,10 +255,14 @@ int export_write(Doc *d, FILE *f, int *ncomments, const NoteFilter *only)
     char when[64];
     time_t now = time(NULL);
     strftime(when, sizeof when, "%Y-%m-%d %H:%M", localtime(&now));
-    fprintf(f, EXPORT_TAG "\n# %s — highlights\n\n", base_name(d->path));
-    fprintf(f, "Exported by Nomadys-PDF on %s from `%s`.\n\n", when, d->path);
-    if (which[0])
-        fprintf(f, "Only the highlights that are: %s.\n\n", which);
+    if (in_folder) {
+        fprintf(f, "# %s\n\n`%s`\n\n", base_name(d->path), d->path);
+    } else {
+        fprintf(f, EXPORT_TAG "\n# %s — highlights\n\n", base_name(d->path));
+        fprintf(f, "Exported by Nomadys-PDF on %s from `%s`.\n\n", when, d->path);
+        if (which[0])
+            fprintf(f, "Only the highlights that are: %s.\n\n", which);
+    }
     for (int page = 0; page < d->npages; page++) {
         PageSlot *s = &d->slots[page];
         int shown = 0;
@@ -404,6 +411,119 @@ void export_notes(Window *w, View *v, const char *arg, bool force, const NoteFil
     }
     free(tmp);
     free(path);
+}
+
+/* ---------- :exportall — the notes of every PDF in a folder ---------- */
+static int name_cmp(const void *a, const void *b) { return strcasecmp(*(char *const *)a, *(char *const *)b); }
+
+/* Every PDF of the folder (not its subfolders) that has notes, one after
+ * the other; returns how many PDFs had any, and the highlights in *total. */
+int export_folder(const char *dir, FILE *f, int *total, const NoteFilter *only)
+{
+    char **names = NULL;
+    int n = 0, used = 0, highlights = 0;
+    DIR *dp = opendir(dir);
+    for (struct dirent *e; dp && (e = readdir(dp));) {
+        size_t len = strlen(e->d_name);
+        if (len > 4 && !strcasecmp(e->d_name + len - 4, ".pdf")) {
+            names = xrealloc(names, (size_t)(n + 1) * sizeof *names);
+            names[n++] = xstrdup(e->d_name);
+        }
+    }
+    if (dp)
+        closedir(dp);
+    qsort(names, (size_t)n, sizeof *names, name_cmp);
+    char when[64], which[160];
+    time_t now = time(NULL);
+    strftime(when, sizeof when, "%Y-%m-%d %H:%M", localtime(&now));
+    note_filter_describe(only, which, sizeof which);
+    fprintf(f, EXPORT_TAG "\n# Notes of the PDFs in %s\n\nExported by Nomadys-PDF on %s.\n\n", dir, when);
+    if (which[0])
+        fprintf(f, "Only the highlights that are: %s.\n\n", which);
+    in_folder = true;
+    for (int i = 0; i < n; i++) {
+        char path[4096], err[256];
+        snprintf(path, sizeof path, "%s/%s", dir, names[i]);
+        Doc *d = doc_open(path, err, sizeof err);
+        if (d) {
+            char *tmp = NULL;
+            size_t cap = 0;
+            FILE *m = open_memstream(&tmp, &cap);
+            int h = m ? export_write(d, m, NULL, only) : 0;
+            if (m)
+                fclose(m);
+            if (h > 0) {
+                fputs(tmp, f);
+                fputc('\n', f);
+                used++;
+                highlights += h;
+            }
+            free(tmp);
+            doc_unref(d);
+        }
+        free(names[i]);
+    }
+    in_folder = false;
+    free(names);
+    if (!used)
+        fprintf(f, "No PDF in this folder has highlights%s.\n", which[0] ? " of that kind" : "");
+    if (total)
+        *total = highlights;
+    return used;
+}
+
+/* :exportall [folder] [colours] [commented] [tasks] -> folder/all-notes.md */
+void export_all(Window *w, View *v, const char *arg, bool force)
+{
+    NoteFilter only = {0};
+    char folder[1024] = "", word[1024];
+    for (const char *p = arg; *p;) {
+        p += strspn(p, " ");
+        size_t n = strcspn(p, " ");
+        if (!n)
+            break;
+        snprintf(word, sizeof word, "%.*s", (int)SDL_min(n, sizeof word - 1), p);
+        p += n;
+        if (!note_filter_word(word, &only) && !folder[0])
+            snprintf(folder, sizeof folder, "%s", word);
+    }
+    char *dir;
+    if (folder[0]) {
+        dir = target_path(v->doc, folder, "");
+    } else { /* the folder of this PDF */
+        const char *slash = strrchr(v->doc->path, '/');
+        if (slash) {
+            size_t len = slash == v->doc->path ? 1 : (size_t)(slash - v->doc->path);
+            dir = xmalloc(len + 1);
+            memcpy(dir, v->doc->path, len);
+            dir[len] = 0;
+        } else {
+            dir = xstrdup(".");
+        }
+    }
+    char *path = xmalloc(strlen(dir) + 32), *tmp = xmalloc(strlen(dir) + 64);
+    sprintf(path, "%s/all-notes.md", dir);
+    sprintf(tmp, "%s.tmp%d", path, (int)getpid());
+    if (!force && !ours(path, EXPORT_TAG)) {
+        ui_message_long(w, 6000, "all-notes.md exists and was not made by :exportall — use :exportall! to overwrite");
+    } else {
+        FILE *f = fopen(tmp, "w");
+        int total = 0, used = f ? export_folder(dir, f, &total, &only) : 0;
+        bool ok = f && !ferror(f);
+        if (f)
+            ok &= fclose(f) == 0;
+        if (!ok || rename(tmp, path)) {
+            if (f)
+                unlink(tmp);
+            ui_message_long(w, 6000, "cannot write %s", path);
+        } else {
+            ui_message_long(w, 5000, "%d highlight%s in %d PDF%s → %s", total, total == 1 ? "" : "s", used,
+                            used == 1 ? "" : "s", path);
+        }
+    }
+    free(tmp);
+    free(path);
+    free(dir);
 }
 
 /* ---------- :response — the answer to the reviewers ---------- */

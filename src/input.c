@@ -40,6 +40,39 @@ void scroll(Window *w, double dx, double dy)
     w->redraw = true;
 }
 
+/* A long scroll that glides (smooth_scroll): the rest is spent by glide_step. */
+void scroll_smooth(Window *w, double dy)
+{
+    if (!cfg.smooth_scroll) {
+        scroll(w, 0, dy);
+        return;
+    }
+    if (w->glide * dy < 0)
+        w->glide = 0;
+    w->glide += dy;
+    w->glide_at = SDL_GetTicks();
+    w->redraw = true;
+}
+
+/* One frame of the glide; true while there is more to do. */
+bool glide_step(Window *w, uint64_t now)
+{
+    if (w->glide == 0)
+        return false;
+    double dt = (double)(now - w->glide_at);
+    w->glide_at = now;
+    double part = w->glide * (1 - SDL_exp(-dt / 45.0)); /* about 100 ms in all */
+    if (SDL_fabs(w->glide) < 2)
+        part = w->glide;
+    View *v = cur_view(w);
+    double before = v->sy;
+    scroll(w, 0, part);
+    w->glide -= part;
+    if (part != 0 && v->sy == before) /* the end of the document */
+        w->glide = 0;
+    return w->glide != 0;
+}
+
 void goto_page(Window *w, View *v, int page)
 {
     page = SDL_clamp(page, 0, v->doc->npages - 1);
@@ -64,10 +97,10 @@ static void a_down(Window *w, View *v, int c, const char *a) { (void)v, (void)a;
 static void a_up(Window *w, View *v, int c, const char *a) { (void)v, (void)a; scroll(w, 0, -line_px(w) * n1(c)); }
 static void a_left(Window *w, View *v, int c, const char *a) { (void)v, (void)a; scroll(w, -line_px(w) * n1(c), 0); }
 static void a_right(Window *w, View *v, int c, const char *a) { (void)v, (void)a; scroll(w, line_px(w) * n1(c), 0); }
-static void a_half_down(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; scroll(w, 0, page_px(w) / 2); }
-static void a_half_up(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; scroll(w, 0, -page_px(w) / 2); }
-static void a_page_down(Window *w, View *v, int c, const char *a) { (void)v, (void)a; scroll(w, 0, page_px(w) * n1(c)); }
-static void a_page_up(Window *w, View *v, int c, const char *a) { (void)v, (void)a; scroll(w, 0, -page_px(w) * n1(c)); }
+static void a_half_down(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; scroll_smooth(w, page_px(w) / 2); }
+static void a_half_up(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; scroll_smooth(w, -page_px(w) / 2); }
+static void a_page_down(Window *w, View *v, int c, const char *a) { (void)v, (void)a; scroll_smooth(w, page_px(w) * n1(c)); }
+static void a_page_up(Window *w, View *v, int c, const char *a) { (void)v, (void)a; scroll_smooth(w, -page_px(w) * n1(c)); }
 
 static void a_next_page(Window *w, View *v, int c, const char *a)
 {
@@ -167,6 +200,7 @@ static void a_quit(Window *w, View *v, int c, const char *a)
 
 static void a_form_next(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; form_step(w, 1); }
 static void a_form_prev(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; form_step(w, -1); }
+static void a_hits(Window *w, View *v, int c, const char *a) { (void)c, (void)a; hits_open(w, v, ""); }
 static void a_form_fills(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; fills_open(w); }
 static void a_new_window(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; window_new_from(w); }
 static void a_save(Window *w, View *v, int c, const char *a) { (void)c, (void)a; save(w, v); }
@@ -185,6 +219,21 @@ static void switch_tab(Window *w, int dir)
 
 static void a_tab_prev(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; switch_tab(w, -1); }
 static void a_tab_next(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; switch_tab(w, 1); }
+static void a_tab_alt(Window *w, View *v, int c, const char *a)
+{
+    (void)v, (void)c, (void)a;
+    for (int i = 0; i < w->ntabs; i++)
+        if (w->tabs[i] == w->prev_tab && i != w->cur) {
+            if (cur_view(w)->doc->focus_page >= 0)
+                form_leave(w);
+            w->cur = i;
+            w->mode = MODE_NORMAL;
+            update_title(w);
+            w->tabs_flash_until = SDL_GetTicks() + 1000;
+            return;
+        }
+    ui_message(w, "no other tab to go back to");
+}
 static void a_jump_older(Window *w, View *v, int c, const char *a) { (void)c, (void)a; jump_history(w, v, -1); }
 static void a_jump_newer(Window *w, View *v, int c, const char *a) { (void)c, (void)a; jump_history(w, v, 1); }
 static void a_jump_back(Window *w, View *v, int c, const char *a) { (void)c, (void)a; jump_back(w, v); }
@@ -831,6 +880,7 @@ static const Binding normal_map[] = {
     {"r", a_rotate_cw, "rotate 90° clockwise"}, {"R", a_rotate_ccw, "rotate 90° counter-clockwise"},
     GROUP("Search and links"),
     {"/", a_search, "search"}, {"n", a_search_next, "next match"},
+    {"<leader>s", a_hits, "the matches of the search as a list, with the words around each"},
     {"N", a_search_prev, "previous match"}, {"<Esc>", a_clear, "clear the search"},
     {"]c", a_diff_next, "next / previous change (after :diff old.pdf)"},
     {"[c", a_diff_prev, "next / previous change (after :diff old.pdf)"},
@@ -859,6 +909,7 @@ static const Binding normal_map[] = {
     {"<C-s>", a_save, "save"}, {"<C-p>", a_print, "print (opens :print; Enter prints everything)"},
     {"t", a_tabs, "show / hide tabs"},
     {"<C-,>", a_tab_prev, "previous tab"}, {"<C-.>", a_tab_next, "next tab"},
+    {"<BS>", a_tab_alt, "back to the tab you came from (and again)"},
     {"<C-n>", a_new_window, "new window on the same PDF"},
     GROUP("Split view"),
     {"<C-w>v", a_split, "split: side by side (the same PDF; :vsplit other.pdf)"},
@@ -1190,7 +1241,7 @@ static void token_run(Window *w, const char *tok);
 static bool on_pages(Mode m)
 {
     return m != MODE_GRID && m != MODE_PRESENT && m != MODE_HELP && m != MODE_PANEL && m != MODE_PICKER && m != MODE_LIBRARY &&
-           m != MODE_THEMES && m != MODE_ABOUT && m != MODE_FORMS;
+           m != MODE_THEMES && m != MODE_ABOUT && m != MODE_FORMS && m != MODE_HITS;
 }
 
 void input_token(Window *w, const char *tok)
@@ -1209,6 +1260,10 @@ static void token_run(Window *w, const char *tok)
     }
     if (w->mode == MODE_THEMES) { /* moving tries each theme */
         theme_key(w, tok);
+        return;
+    }
+    if (w->mode == MODE_HITS) { /* the list of matches */
+        hits_key(w, tok);
         return;
     }
     if (w->mode == MODE_FORMS) { /* the saved forms */
@@ -1418,7 +1473,7 @@ int help_lines(HelpLine **out)
         {"Ctrl-j Tab", "next field"}, {"Ctrl-k S-Tab", "previous field"},
         {"Ctrl-a", "select all"}, {"Ctrl-z", "undo"}, {"Ctrl-v", "paste"}, {"Esc", "leave the field"},
         {"Saved forms", NULL},
-        {"\\F", "from reading: the menu of saved forms (:form)"}, {"Enter", "fill every blank with the one selected"},
+        {"\\F", "from reading: the menu of saved forms (:form)"}, {"Enter", "fill every blank with the one selected"}, {"e", "fill only the blanks that are empty (:form NAME empty)"},
         {"n", "save what is filled in, under a name (:form save NAME)"}, {"x", "delete the one selected"},
     };
     static const HelpPair freetext[] = {
@@ -1558,6 +1613,10 @@ void input_text_event(Window *w, const char *text)
     }
     if (w->mode == MODE_THEMES) {
         theme_key(w, text);
+        return;
+    }
+    if (w->mode == MODE_HITS) {
+        hits_key(w, text);
         return;
     }
     if (w->mode == MODE_FORMS) {

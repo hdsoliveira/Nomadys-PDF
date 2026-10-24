@@ -33,7 +33,7 @@
  * decoded images (a 24 Mpixel photo is ~70 MB), so few, least recently used
  * first. Rendered pages stay as textures (render.c). */
 #define LOADED_PAGE_CAP 8
-#define NOMADYS_VERSION "0.6.0"
+#define NOMADYS_VERSION "0.7.0"
 #define NOMADYS_AUTHOR "Hugo Oliveira"
 #define NOMADYS_CONTACT "nomadys-pdf@mailbox.org"
 #define NOMADYS_URL "github.com/hdsoliveira/Nomadys-PDF"
@@ -76,6 +76,8 @@ typedef struct {
 typedef struct {
     bool dark;               /* start in dark mode */
     bool autosave;
+    bool check_updates;      /* once a day, ask GitHub if a newer version is out (needs curl) */
+    bool smooth_scroll;      /* Ctrl-d, Ctrl-u, Ctrl-f, Ctrl-b and Space glide instead of jumping */
     int autosave_delay_ms;
     bool backup;             /* keep the file as it was before the first save of a session (name.pdf.bak) */
     bool subpixel_text;
@@ -105,6 +107,7 @@ enum { DARK_IMAGES_SMART, DARK_IMAGES_KEEP, DARK_IMAGES_INVERT };
 extern Config cfg;
 void config_load(void);
 const Theme *theme_of(bool dark);
+bool config_set(const char *arg, char *msg, size_t cap); /* :set key value: now, and in the config file */
 const char *config_file(void);
 extern char config_error[256];                           /* the first problem in the config or a theme */
 bool theme_peek(const char *name, Theme *light, Theme *dark);
@@ -235,7 +238,7 @@ typedef struct {
     int back;                /* the mode to return to (a Mode) */
 } TextEd;
 
-typedef enum { U_CREATE, U_DELETE, U_COMMENT, U_EDIT, U_PAGES, U_TASK, U_TEXTBOX } UndoKind;
+typedef enum { U_CREATE, U_DELETE, U_COMMENT, U_EDIT, U_PAGES, U_TASK, U_TEXTBOX, U_FORMS } UndoKind;
 typedef struct {
     UndoKind kind;
     int page, group;         /* a group is undone at once */
@@ -361,6 +364,7 @@ void doc_undo_clear(Doc *d);
 void doc_purge_deleted(Doc *d);                           /* closing: hidden deletions go */
 int undo_group_begin(Doc *d);
 void undo_group_end(Doc *d);
+void undo_forms(Doc *d, int page, char *snapshot); /* a saved form was filled in: the document before, for u */
 void undo_pages(Doc *d, int page, char *snapshot, const Mark *marks_before); /* takes the snapshot path */
 char *pages_snapshot(Doc *d);                              /* the document as it is, to a temporary file */
 bool pages_restore(Doc *d, const char *snapshot, const Mark *marks); /* back to a snapshot (undo) */
@@ -393,7 +397,7 @@ typedef struct {
 } CacheEntry;
 
 typedef enum { MODE_NORMAL, MODE_FORM, MODE_CARET, MODE_AREA, MODE_PANEL, MODE_PROMPT, MODE_HELP,
-               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT, MODE_CROP, MODE_ROTATE, MODE_TEXT, MODE_PICKER, MODE_LIBRARY, MODE_GRID, MODE_PRESENT, MODE_THEMES, MODE_ABOUT, MODE_FORMS } Mode;
+               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT, MODE_CROP, MODE_ROTATE, MODE_TEXT, MODE_PICKER, MODE_LIBRARY, MODE_GRID, MODE_PRESENT, MODE_THEMES, MODE_ABOUT, MODE_FORMS, MODE_HITS } Mode;
 
 typedef struct { int page, ch; } TextPos;
 
@@ -516,6 +520,10 @@ struct Window {
     SDL_Texture *shadow;     /* 9-slice drop shadow (render.c) */
     int shadow_key;
     View *tabs[MAX_TABS];
+    void *hits;              /* the list of matches (MODE_HITS) */
+    double glide;            /* pixels still to scroll in a smooth scroll */
+    uint64_t glide_at;
+    View *seen_tab, *prev_tab; /* the tab drawn now, and the one before (Backspace goes back) */
     int ntabs, cur;
     bool show_tabs;
     uint64_t tabs_flash_until;
@@ -668,6 +676,8 @@ void prompt_open(Window *w, const char *label, const char *initial, PromptFn don
 bool prompt_uses_document(Window *w);
 const char *prompt_kind(Window *w);                     /* COMMAND, SEARCH, COMMENT, EDIT */
 void scroll(Window *w, double dx, double dy);
+void scroll_smooth(Window *w, double dy);
+bool glide_step(Window *w, uint64_t now);
 void goto_page(Window *w, View *v, int page);            /* a jump: Ctrl-o returns */
 
 /* ---------- ':' commands (commands.c) ---------- */
@@ -743,6 +753,13 @@ void print_document(Window *w, View *v, const char *args);
 char *print_printers(void);                              /* names, one per line */
 
 /* ---------- search (search.c) ---------- */
+typedef struct { int start, len; } Match; /* a match of a search: character start and count */
+int search_page_matches(View *v, int page, const char *query, Match **out);
+void search_goto(Window *w, View *v, const char *query, int page, int start, int len);
+void hits_open(Window *w, View *v, const char *query);   /* \s, :hits: the matches as a list */
+void hits_key(Window *w, const char *tok);
+void hits_draw(Window *w);
+void hits_free(Window *w);
 bool search_run(Window *w, View *v, int dir, bool from_current);
 void search_begin(Window *w, View *v);
 void search_live(Window *w, View *v, const char *text);   /* the prompt changed */
@@ -967,6 +984,9 @@ void fills_key(Window *w, const char *tok);
 void fills_draw(Window *w);
 void fills_free(Window *w);                             /* the list, when the window closes */
 void fills_command(Window *w, const char *arg);         /* :form [save NAME | delete NAME | NAME] */
+void update_check(bool now);                             /* ask GitHub for the latest version (update.c) */
+bool update_poll(char *msg, size_t cap);                 /* the answer, once it comes */
+bool update_busy(void);
 void data_path(const char *name, char *out, size_t cap); /* a file in the data folder (recent.c) */
 void theme_open(Window *w);
 void theme_key(Window *w, const char *tok);
@@ -992,6 +1012,8 @@ void response_letter(Window *w, View *v, const char *arg, bool force);
 /* ---------- replies in the file (reply.c) ---------- */
 bool pdf_link_replies(int fd, char (*replies)[2][64], int n);
 void export_notes(Window *w, View *v, const char *arg, bool force, const NoteFilter *only);
+int export_folder(const char *dir, FILE *f, int *total, const NoteFilter *only); /* every PDF of a folder */
+void export_all(Window *w, View *v, const char *arg, bool force);
 int note_color_index(uint32_t c);                         /* 0-4: C V B N M; 5: another colour */
 bool note_filter_word(const char *word, NoteFilter *f);   /* "red", "green", "commented"... */
 bool note_filter_pass(const NoteFilter *f, const Note *n);
