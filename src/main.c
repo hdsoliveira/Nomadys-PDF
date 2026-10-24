@@ -133,6 +133,7 @@ static void window_destroy(Window *w)
     free(w->items);
     free(w->links);
     grid_free(w);
+    fills_free(w);
     if (w->about_tex)
         SDL_DestroyTexture(w->about_tex);
     present_free(w);
@@ -358,6 +359,7 @@ static void draw(Window *w, uint64_t now)
 {
     View *v = cur_view(w);
     update_size(w);
+    cursor_cross(w->mode);
     uint32_t bg = (w->mode == MODE_GRID ? uitheme(w) : wtheme(w))->background; /* the page grid is a menu */
     SDL_SetRenderDrawColor(w->ren, bg >> 16, (bg >> 8) & 0xFF, bg & 0xFF, 255);
     SDL_RenderClear(w->ren);
@@ -637,12 +639,27 @@ static void handle_event(SDL_Event *e)
             return;
         }
         if ((e->motion.state & SDL_BUTTON_LMASK) && (w = window_by_id(e->motion.windowID)) && w->ntabs &&
-            (w->mode == MODE_NORMAL || w->mode == MODE_CARET)) {
+            (w->mode == MODE_NORMAL || w->mode == MODE_CARET || w->mode == MODE_AREA)) {
             float x = e->motion.x * w->density, y = e->motion.y * w->density;
             bool pane = pane_enter_focused(w); /* the pane where the drag began */
             if (pane)
                 x -= w->pane_x, y -= w->pane_y;
-            caret_mouse_drag(w, cur_view(w), x, y);
+            if (w->mode == MODE_AREA)
+                area_mouse_drag(w, cur_view(w), x, y);
+            else
+                caret_mouse_drag(w, cur_view(w), x, y);
+            if (pane && alive(w))
+                pane_leave(w);
+        } else if (!(e->motion.state & SDL_BUTTON_LMASK) && (w = window_by_id(e->motion.windowID)) && w->ntabs &&
+                   (w->mode == MODE_CARET || w->mode == MODE_AREA)) { /* the cursor follows the pointer */
+            float x = e->motion.x * w->density, y = e->motion.y * w->density;
+            bool pane = pane_enter_focused(w);
+            if (pane)
+                x -= w->pane_x, y -= w->pane_y;
+            if (w->mode == MODE_AREA)
+                area_mouse_hover(w, cur_view(w), x, y);
+            else
+                caret_mouse_hover(w, cur_view(w), x, y);
             if (pane && alive(w))
                 pane_leave(w);
         }
@@ -686,6 +703,24 @@ static void handle_event(SDL_Event *e)
             bool pane = pane_enter_at(w, &x, &y);
             if (screen_to_page(cur_view(w), x, y, top_of(w), &page, &px, &py))
                 synctex_inverse(w, cur_view(w), page, px, py);
+            if (pane && alive(w))
+                pane_leave(w);
+            if (alive(w))
+                w->redraw = true;
+            return;
+        }
+        /* the free cursor: a click puts the cross there, dragging marks a rectangle */
+        if ((w = window_by_id(e->button.windowID)) && w->ntabs && e->button.button == SDL_BUTTON_LEFT &&
+            w->mode == MODE_AREA) {
+            float x = e->button.x * w->density, y = e->button.y * w->density;
+            bool pane;
+            if (e->type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+                pane = pane_enter_at(w, &x, &y);
+                area_mouse_down(w, cur_view(w), x, y);
+            } else {
+                pane = pane_enter_focused(w);
+                area_mouse_up(w, cur_view(w));
+            }
             if (pane && alive(w))
                 pane_leave(w);
             if (alive(w))
@@ -941,6 +976,14 @@ static bool script_step(void)
             handle_event(&e);
             if (alive(w))
                 mouse_flush(w);
+        }
+    } else if (!strncmp(tok, "<hover:", 7)) { /* the pointer moved, no button down */
+        float x, y;
+        if (sscanf(tok + 7, "%f,%f", &x, &y) == 2) {
+            SDL_Event e = {0};
+            e.motion = (SDL_MouseMotionEvent){.type = SDL_EVENT_MOUSE_MOTION, .windowID = SDL_GetWindowID(w->win),
+                                              .x = x, .y = y};
+            handle_event(&e);
         }
     } else if (!strncmp(tok, "<wait:", 6)) {
         uint64_t until = SDL_GetTicks() + (uint64_t)atoi(tok + 6);

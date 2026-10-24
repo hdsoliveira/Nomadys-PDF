@@ -167,6 +167,7 @@ static void a_quit(Window *w, View *v, int c, const char *a)
 
 static void a_form_next(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; form_step(w, 1); }
 static void a_form_prev(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; form_step(w, -1); }
+static void a_form_fills(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; fills_open(w); }
 static void a_new_window(Window *w, View *v, int c, const char *a) { (void)v, (void)c, (void)a; window_new_from(w); }
 static void a_save(Window *w, View *v, int c, const char *a) { (void)c, (void)a; save(w, v); }
 
@@ -261,7 +262,7 @@ void prompt_open(Window *w, const char *label, const char *initial, PromptFn don
     w->mode = MODE_PROMPT;
     snprintf(w->prompt_label, sizeof w->prompt_label, "%s", label);
     snprintf(w->cmd, sizeof w->cmd, "%s", initial);
-    w->cmdlen = (int)strlen(w->cmd);
+    w->cmdlen = w->cmdpos = (int)strlen(w->cmd);
     w->prompt_done = done;
     w->prompt_arg = arg;
     w->prompt_box = false;
@@ -274,18 +275,60 @@ static void prompt_insert(Window *w, const char *t)
     command_complete_reset(w);
     size_t n = strlen(t);
     if (w->cmdlen + n < CMD_MAX - 1) {
-        memcpy(w->cmd + w->cmdlen, t, n + 1);
+        memmove(w->cmd + w->cmdpos + n, w->cmd + w->cmdpos, (size_t)(w->cmdlen - w->cmdpos) + 1);
+        memcpy(w->cmd + w->cmdpos, t, n);
         w->cmdlen += (int)n;
+        w->cmdpos += (int)n;
     }
     if (w->prompt_done == run_search) /* incremental search */
         search_live(w, cur_view(w), w->cmd);
+}
+
+static int prompt_prev(const Window *w, int i)
+{
+    while (i > 0 && ((unsigned char)w->cmd[--i] & 0xC0) == 0x80)
+        ;
+    return i;
+}
+
+static int prompt_next(const Window *w, int i)
+{
+    const char *p = w->cmd + i;
+    if (i < w->cmdlen)
+        utf8_next(&p);
+    return (int)(p - w->cmd);
+}
+
+static void prompt_erase(Window *w, int from, int to)
+{
+    memmove(w->cmd + from, w->cmd + to, (size_t)(w->cmdlen - to) + 1);
+    w->cmdlen -= to - from;
+    w->cmdpos = from;
+}
+
+/* Left, Right, Home, End, Ctrl-a / Ctrl-e, Ctrl-b / Ctrl-f: the cursor in the line. */
+static bool prompt_move(Window *w, const char *tok)
+{
+    if (!strcmp(tok, "<Left>") || !strcmp(tok, "<C-b>"))
+        w->cmdpos = prompt_prev(w, w->cmdpos);
+    else if (!strcmp(tok, "<Right>") || !strcmp(tok, "<C-f>"))
+        w->cmdpos = prompt_next(w, w->cmdpos);
+    else if (!strcmp(tok, "<Home>") || !strcmp(tok, "<C-a>"))
+        w->cmdpos = 0;
+    else if (!strcmp(tok, "<End>") || !strcmp(tok, "<C-e>"))
+        w->cmdpos = w->cmdlen;
+    else
+        return false;
+    return true;
 }
 
 static void prompt_special(Window *w, const char *tok)
 {
     bool completing = w->prompt_done == command_run && (!strcmp(tok, "<Tab>") || !strcmp(tok, "<S-Tab>"));
     if (completing) {
+        w->cmdpos = w->cmdlen; /* completes the word at the end of the line */
         command_complete(w, tok[1] == 'S' ? -1 : 1);
+        w->cmdpos = w->cmdlen;
         return;
     }
     command_complete_reset(w);
@@ -304,12 +347,14 @@ static void prompt_special(Window *w, const char *tok)
         if (line) {
             hist_pos += up ? 1 : -1;
             snprintf(w->cmd, sizeof w->cmd, "%s", line);
-            w->cmdlen = (int)strlen(w->cmd);
+            w->cmdlen = w->cmdpos = (int)strlen(w->cmd);
             if (searching)
                 search_live(w, cur_view(w), w->cmd);
         }
         return;
     }
+    if (prompt_move(w, tok))
+        return;
     if (!strcmp(tok, "<Esc>")) {
         w->mode = w->prompt_return;
         if (searching)
@@ -335,13 +380,25 @@ static void prompt_special(Window *w, const char *tok)
                 search_cancel(w, cur_view(w));
             return;
         }
-        while (w->cmdlen > 0 && ((unsigned char)w->cmd[--w->cmdlen] & 0xC0) == 0x80)
-            ;
-        w->cmd[w->cmdlen] = 0;
+        if (w->cmdpos > 0)
+            prompt_erase(w, prompt_prev(w, w->cmdpos), w->cmdpos);
         if (searching)
             search_live(w, cur_view(w), w->cmd);
-    } else if (!strcmp(tok, "<C-u>")) {
-        w->cmd[w->cmdlen = 0] = 0;
+    } else if (!strcmp(tok, "<Del>")) {
+        prompt_erase(w, w->cmdpos, prompt_next(w, w->cmdpos));
+        if (searching)
+            search_live(w, cur_view(w), w->cmd);
+    } else if (!strcmp(tok, "<C-w>")) { /* the word before the cursor */
+        int i = w->cmdpos;
+        while (i > 0 && w->cmd[i - 1] == ' ')
+            i--;
+        while (i > 0 && w->cmd[i - 1] != ' ')
+            i--;
+        prompt_erase(w, i, w->cmdpos);
+        if (searching)
+            search_live(w, cur_view(w), w->cmd);
+    } else if (!strcmp(tok, "<C-u>")) { /* everything before the cursor */
+        prompt_erase(w, 0, w->cmdpos);
         if (searching)
             search_live(w, cur_view(w), w->cmd);
     }
@@ -788,6 +845,7 @@ static const Binding normal_map[] = {
     GROUP("Forms"),
     {"<C-j>", a_form_next, "next form field"}, {"<C-k>", a_form_prev, "previous form field"},
     {"<Tab>", a_form_next, NULL}, {"<S-Tab>", a_form_prev, NULL},
+    {"<leader>F", a_form_fills, "saved forms: fill every blank at once (n saves what is filled in)"},
     GROUP("Files, tabs and windows"),
     {":", a_command, "command line: :w save, :q close tab, :e file, :42 page"},
     {"<leader>o", a_recent, "open a recent file (type to filter)"},
@@ -1132,7 +1190,7 @@ static void token_run(Window *w, const char *tok);
 static bool on_pages(Mode m)
 {
     return m != MODE_GRID && m != MODE_PRESENT && m != MODE_HELP && m != MODE_PANEL && m != MODE_PICKER && m != MODE_LIBRARY &&
-           m != MODE_THEMES && m != MODE_ABOUT;
+           m != MODE_THEMES && m != MODE_ABOUT && m != MODE_FORMS;
 }
 
 void input_token(Window *w, const char *tok)
@@ -1151,6 +1209,10 @@ static void token_run(Window *w, const char *tok)
     }
     if (w->mode == MODE_THEMES) { /* moving tries each theme */
         theme_key(w, tok);
+        return;
+    }
+    if (w->mode == MODE_FORMS) { /* the saved forms */
+        fills_key(w, tok);
         return;
     }
     if (w->mode == MODE_PICKER) { /* typing filters the recent files */
@@ -1355,6 +1417,9 @@ int help_lines(HelpLine **out)
         {"type", "fill in the field"}, {"Space", "tick / untick a checkbox"},
         {"Ctrl-j Tab", "next field"}, {"Ctrl-k S-Tab", "previous field"},
         {"Ctrl-a", "select all"}, {"Ctrl-z", "undo"}, {"Ctrl-v", "paste"}, {"Esc", "leave the field"},
+        {"Saved forms", NULL},
+        {"\\F", "from reading: the menu of saved forms (:form)"}, {"Enter", "fill every blank with the one selected"},
+        {"n", "save what is filled in, under a name (:form save NAME)"}, {"x", "delete the one selected"},
     };
     static const HelpPair freetext[] = {
         {"Writing", NULL},
@@ -1493,6 +1558,10 @@ void input_text_event(Window *w, const char *text)
     }
     if (w->mode == MODE_THEMES) {
         theme_key(w, text);
+        return;
+    }
+    if (w->mode == MODE_FORMS) {
+        fills_key(w, text);
         return;
     }
     if (w->mode == MODE_ABOUT) {

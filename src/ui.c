@@ -126,28 +126,42 @@ static void draw_prompt(Window *w)
     if (w->ncomp > 1)
         draw_wildmenu(w);
     char line[CMD_MAX + 80];
+    size_t at; /* where the cursor is in line */
     if (w->prompt_secret) { /* a password: one dot a character */
-        int n = 0;
-        for (const char *c = w->cmd; *c; utf8_next(&c))
+        int n = 0, before = 0;
+        for (const char *c = w->cmd; *c; utf8_next(&c)) {
             n++;
+            before += c - w->cmd < w->cmdpos;
+        }
         snprintf(line, sizeof line, "%s", w->prompt_label);
-        for (int i = 0; i < n && strlen(line) + 4 < sizeof line; i++)
+        at = strlen(line);
+        for (int i = 0; i < n && strlen(line) + 4 < sizeof line; i++) {
             SDL_strlcat(line, "\u2022", sizeof line);
+            if (i < before)
+                at = strlen(line);
+        }
     } else {
         snprintf(line, sizeof line, "%s%s", w->prompt_label, w->cmd);
+        at = strlen(w->prompt_label) + (size_t)w->cmdpos;
     }
-    /* too long: keep the end, where the cursor is */
+    /* too long: scroll so that the cursor stays in view */
+    char head[CMD_MAX + 80];
     const char *shown = line;
-    while (*shown && font_width(w->font, shown) > w->W - 3 * p)
+    for (;;) {
+        snprintf(head, sizeof head, "%.*s", (int)(at - (size_t)(shown - line)), shown);
+        if (!*shown || font_width(w->font, head) <= w->W - 3 * p)
+            break;
         utf8_next(&shown);
+    }
     if (shown != line) {
         char tail[CMD_MAX + 80] = "\u2026";
         SDL_strlcat(tail, shown, sizeof tail);
+        snprintf(head, sizeof head, "\u2026%.*s", (int)(at - (size_t)(shown - line)), shown);
         SDL_strlcpy(line, tail, sizeof line);
     }
     ui_fill(w, 0, (float)(w->H - h), (float)w->W, (float)h, t->bar_bg, 250);
     font_draw(w->font, (float)p, (float)(w->H - h + p / 2), line, t->bar_fg);
-    float cx = (float)(p + font_width(w->font, line));
+    float cx = (float)(p + font_width(w->font, head));
     ui_fill(w, cx, (float)(w->H - h + p / 2), SDL_max(2.0f, w->density * 2), (float)font_height(w->font),
             t->bar_cursor, 255);
 }
@@ -197,6 +211,7 @@ static void draw_mode(Window *w)
     case MODE_PRESENT: label = "", color = 0; break;
     case MODE_THEMES: label = "THEME", color = t->tab_accent; break;
     case MODE_ABOUT: label = "ABOUT", color = t->tab_accent; break;
+    case MODE_FORMS: label = "FORMS", color = t->tab_accent; break;
     case MODE_PROMPT:
         label = prompt_kind(w);
         color = !strcmp(label, "COMMAND") || !strcmp(label, "SEARCH") ? t->mode_command : t->mode_insert;
@@ -216,7 +231,7 @@ static void draw_mode(Window *w)
     }
     Mode shown = w->mode == MODE_PROMPT ? w->prompt_return : w->mode; /* the pages, not a list or a panel */
     if (shown == MODE_PANEL || shown == MODE_HELP || shown == MODE_PICKER || shown == MODE_LIBRARY ||
-        shown == MODE_GRID || shown == MODE_PRESENT || shown == MODE_THEMES || shown == MODE_ABOUT)
+        shown == MODE_GRID || shown == MODE_PRESENT || shown == MODE_THEMES || shown == MODE_ABOUT || shown == MODE_FORMS)
         return;
     View *pv = w->split && w->split_focus ? w->split : v;
     if (!pv->doc->npages)
@@ -255,6 +270,8 @@ void ui_draw_overlays(Window *w, uint64_t now)
         theme_draw(w);
     if (w->mode == MODE_ABOUT)
         about_draw(w);
+    if (w->mode == MODE_FORMS || (w->mode == MODE_PROMPT && w->prompt_return == MODE_FORMS))
+        fills_draw(w);
     draw_mode(w);
     if (w->mode == MODE_PROMPT && w->prompt_box)
         ; /* drawn above */

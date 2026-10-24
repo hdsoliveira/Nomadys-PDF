@@ -33,7 +33,7 @@
  * decoded images (a 24 Mpixel photo is ~70 MB), so few, least recently used
  * first. Rendered pages stay as textures (render.c). */
 #define LOADED_PAGE_CAP 8
-#define NOMADYS_VERSION "0.5.1"
+#define NOMADYS_VERSION "0.6.0"
 #define NOMADYS_AUTHOR "Hugo Oliveira"
 #define NOMADYS_CONTACT "nomadys-pdf@mailbox.org"
 #define NOMADYS_URL "github.com/hdsoliveira/Nomadys-PDF"
@@ -393,7 +393,7 @@ typedef struct {
 } CacheEntry;
 
 typedef enum { MODE_NORMAL, MODE_FORM, MODE_CARET, MODE_AREA, MODE_PANEL, MODE_PROMPT, MODE_HELP,
-               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT, MODE_CROP, MODE_ROTATE, MODE_TEXT, MODE_PICKER, MODE_LIBRARY, MODE_GRID, MODE_PRESENT, MODE_THEMES, MODE_ABOUT } Mode;
+               MODE_HINTS, MODE_PREVIEW, MODE_OBJECT, MODE_CROP, MODE_ROTATE, MODE_TEXT, MODE_PICKER, MODE_LIBRARY, MODE_GRID, MODE_PRESENT, MODE_THEMES, MODE_ABOUT, MODE_FORMS } Mode;
 
 typedef struct { int page, ch; } TextPos;
 
@@ -571,6 +571,11 @@ struct Window {
     int ntheme, theme_sel, theme_first;
     char theme_orig[64];     /* Esc goes back to it */
     Mode theme_return;
+    /* saved forms menu (fills.c) */
+    char **fill_names;
+    int *fill_counts;
+    int nfill, fill_sel, fill_first;
+    Mode fill_return;
     Slide *slides;
     int present_page;
     bool present_black, present_was_full;
@@ -698,6 +703,12 @@ void cite_result(Window *w, const char *text);             /* the download finis
 void area_enter(Window *w, View *v);
 void area_move(Window *w, View *v, float dx, float dy);
 void area_toggle_select(Window *w, View *v);
+void area_mouse_down(Window *w, View *v, float x, float y);   /* the mouse puts the cross there */
+void area_mouse_drag(Window *w, View *v, float x, float y);   /* dragging marks a rectangle */
+void area_mouse_up(Window *w, View *v);
+void area_mouse_hover(Window *w, View *v, float x, float y);  /* the cross follows the pointer */
+void caret_mouse_hover(Window *w, View *v, float x, float y); /* so does the text cursor */
+void cursor_cross(Mode mode);                                  /* the pointer: a cross, hidden, or the arrow */
 void area_mark(Window *w, View *v, bool comment, uint32_t color);
 bool area_target(View *v, int *page, PRect *rect, bool *is_rect); /* free cursor point or rectangle */
 bool cursor_note(Window *w, View *v, int *page, int *note); /* note under the cursor */
@@ -951,6 +962,12 @@ void diff_step(Window *w, View *v, int dir);              /* ]c [c */
 void diff_draw(Window *w, View *v, int top);
 
 /* theme.c: choosing and editing themes while running */
+void fills_open(Window *w);                             /* \F: the saved forms */
+void fills_key(Window *w, const char *tok);
+void fills_draw(Window *w);
+void fills_free(Window *w);                             /* the list, when the window closes */
+void fills_command(Window *w, const char *arg);         /* :form [save NAME | delete NAME | NAME] */
+void data_path(const char *name, char *out, size_t cap); /* a file in the data folder (recent.c) */
 void theme_open(Window *w);
 void theme_key(Window *w, const char *tok);
 void theme_draw(Window *w);

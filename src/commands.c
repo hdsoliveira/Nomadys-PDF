@@ -177,6 +177,7 @@ static void c_session(Window *w, View *v, const char *a) { (void)v, (void)a; ses
 
 static void c_about(Window *w, View *v, const char *a) { (void)v, (void)a; about_open(w); }
 static void c_theme(Window *w, View *v, const char *a) { (void)v; theme_command(w, a); }
+static void c_form(Window *w, View *v, const char *a) { (void)v; fills_command(w, a); }
 
 static void c_diff(Window *w, View *v, const char *a)
 {
@@ -319,6 +320,7 @@ static const Command commands[] = {
     {"response!", ARG_MD, c_response_force, "the same, overwriting any file"},
     {"image", ARG_IMAGE, c_image, "put a PNG / JPEG on the page (then move and resize it)"},
     {"about", ARG_NONE, c_about, "version, author, contact (also \\a)"},
+    {"form", ARG_WORDS, c_form, "saved forms: :form (the menu), :form save P80, :form P80 fills, :form delete P80"},
     {"theme", ARG_THEME, c_theme, "colour theme: :theme gruvbox, :theme (the list), :theme new NAME (yours)"},
     {"diff", ARG_FILE, c_diff, "compare with an older version: new text green, changed amber, deleted red"},
     {"vsplit", ARG_FILE, c_vsplit, "split side by side: this PDF, or another (also Ctrl-w v)"},

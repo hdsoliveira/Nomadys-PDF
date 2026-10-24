@@ -17,6 +17,27 @@ automatically, like highlights.
 PDF forms sometimes contain JavaScript (for example to add up fields);
 Nomadys-PDF does not run it, so such automatic calculations do not happen.
 
+## Saved forms
+
+Fill a form once, keep the answers under a name (say `P80`), and fill every
+blank of the next one at once.
+
+| Key | Action |
+|---|---|
+| `\F` | the menu of saved forms |
+| `Enter` (in the menu) | fill this PDF with the chosen one |
+| `n` (in the menu) | save what is filled in now, asking for a name |
+| `x` (in the menu) | delete the chosen one (asks first) |
+| `:form save P80` | save what is filled in now as `P80` |
+| `:form P80` | fill with `P80` |
+| `:form delete P80` | delete `P80` |
+
+Answers are kept by field name, in the `forms` file of the data folder, so a
+form works on any PDF whose fields are named the same; fields the PDF does not
+have are reported. Text, multi-line text, combo and list boxes, ticked
+checkboxes and chosen radio buttons are kept. A list box keeps one option.
+Filling is not covered by `u`; `Ctrl-z` undoes a field.
+
 ## Printing
 
 `Ctrl-p` opens the print line (`Enter` prints everything to the default

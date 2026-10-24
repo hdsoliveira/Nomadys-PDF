@@ -712,6 +712,28 @@ static void cursor_default(void)
     cursor_changed = false;
 }
 
+/* With a cursor on the page (v, Ctrl-v) the pointer is a cross; in the free
+ * cursor the red cross is the pointer, so the system one is hidden. */
+void cursor_cross(Mode mode)
+{
+    static bool cross, hidden;
+    bool want_cross = mode == MODE_CARET, want_hidden = mode == MODE_AREA;
+    if (want_hidden != hidden) {
+        hidden = want_hidden;
+        if (hidden)
+            SDL_HideCursor();
+        else
+            SDL_ShowCursor();
+    }
+    if (want_cross == cross)
+        return;
+    cross = want_cross;
+    if (cross)
+        cursor_set(SDL_SYSTEM_CURSOR_CROSSHAIR);
+    else
+        cursor_default();
+}
+
 /* The cursor for a handle: the arrow that lies along its direction on screen. */
 static void cursor_for(Window *w, const Map *m, int kind, int hx, int hy)
 {

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.0
+- **Saved forms.** Fill a form once and keep the answers under a name
+  (`:form save P80`, or `n` in the `\F` menu). `\F` (or `:form`) lists them;
+  `Enter` on one, or `:form P80`, fills every blank of any PDF that has fields
+  of those names. Text, multi-line text, combo and list boxes, checkboxes and
+  radio buttons. `x` / `:form delete NAME` removes one.
+- **Mouse in the free cursor.** In `Ctrl-v` the pointer is a cross that follows
+  the mouse; click to put the cross, drag to mark a rectangle. The same in the
+  text cursor (`v`): the cursor follows the pointer. `hjkl` still work.
+- **Walk through what you type.** In `:`, `/` and the comment box, `←` `→`,
+  `Home` `End` (`Ctrl-a` `Ctrl-e`), `Delete`, `Ctrl-w` (word) and `Ctrl-u`
+  (to the start) edit the line where the cursor is.
+- In the free cursor the red cross is the only pointer (the system one is hidden).
+- Fixed a "LaTeX error" in comments when two npdf typeset the same equation
+  at once.
+
 ## 0.5.1
 - The page and the total (`3/50`) next to the mode badge.
 - `↑` and `↓` in the `:` and `/` lines bring back what you typed before, also

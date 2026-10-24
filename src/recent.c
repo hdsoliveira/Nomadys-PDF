@@ -38,7 +38,7 @@ typedef struct {
 static Hit *hits;            /* the picker's list: recent files that match */
 static int nhits;
 
-static void data_path(const char *name, char *out, size_t cap)
+void data_path(const char *name, char *out, size_t cap)
 {
     const char *xdg = getenv("XDG_DATA_HOME"), *home = getenv("HOME");
     char dir[4096];

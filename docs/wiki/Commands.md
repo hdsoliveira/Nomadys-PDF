@@ -4,7 +4,8 @@ Type `:` and the command. `Tab` completes command names and file paths;
 with several options they are listed above the line and `Tab` /
 `Shift-Tab` cycle through them. `:` followed by `Tab` lists every command.
 `↑` and `↓` bring back what you typed before (the last 100 commands, kept
-between runs); the same for `/` searches.
+between runs); the same for `/` searches. `←` `→` `Home` `End` move inside
+the line, to fix what you typed.
 
 ## Files and tabs
 
@@ -84,6 +85,7 @@ Page ranges can be `5`, `3-7` or `10-` (to the end).
 | `:theme` | choose a theme (`\T`) |
 | `:theme NAME` | switch to a theme |
 | `:theme new NAME` | make your own theme from the current one |
+| `:form` | saved forms: the menu; `:form save P80`, `:form P80`, `:form delete P80` (`\F`) |
 | `:about` | version, author, contact (`\a`) |
 | `:help` | every key (`\c`) |
 

@@ -63,6 +63,7 @@ menu with the keys of the mode you are in appears.
 | `\g` | page grid |
 | `\o` | recent files |
 | `\f` | find a PDF in your folders |
+| `\F` | saved forms: fill every blank at once |
 | `\/` | search the text of all your PDFs |
 | `\n` | search the comments and highlights of all your PDFs |
 | `\T` | choose a theme |
@@ -118,6 +119,7 @@ menu with the keys of the mode you are in appears.
 | `r` | reply to the comment under the cursor (a reviewer's), or change the reply |
 | `Enter` | open this spot in the LaTeX editor |
 | `Ctrl-v` | switch to the free cursor |
+| mouse | the cursor follows the pointer |
 | `Esc` | cancel the selection, then leave |
 
 Scrolling, marks, jumps, undo, `\l` and `\c` work here too.
@@ -129,6 +131,7 @@ Scrolling, marks, jumps, undo, `\l` and `\c` work here too.
 | `h` `j` `k` `l` | move |
 | `w` `b` `J` `K`, `Ctrl-h` `Ctrl-j` `Ctrl-k` `Ctrl-l` | move faster |
 | `v` | start / stop a rectangle |
+| mouse | the pointer is a cross that the mouse moves; click puts it, drag marks a rectangle |
 | `C` `V` `B` `N` `M` | highlight the area in that colour |
 | `c` | highlight with a comment, or edit the comment under the cross |
 | `y` / `Y` | copy the rectangle as an image / save it as a PNG |
@@ -315,8 +318,10 @@ round knob above it to turn it.
 | `Enter` | run |
 | `Esc` | cancel |
 | `Ctrl-t` | in search, match case exactly |
-| `Backspace` | delete a character |
-| `Ctrl-u` | delete everything |
+| `←` `→`, `Home` `End` (`Ctrl-b` `Ctrl-f`, `Ctrl-a` `Ctrl-e`) | walk through what you typed |
+| `Backspace`, `Delete` | delete before / under the cursor |
+| `Ctrl-w` | delete the word before the cursor |
+| `Ctrl-u` | delete from the cursor to the start |
 
 ## Help (HELP)
 

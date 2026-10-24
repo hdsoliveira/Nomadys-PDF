@@ -503,6 +503,19 @@ void caret_mouse_drag(Window *w, View *v, float x, float y)
     }
 }
 
+void caret_mouse_hover(Window *w, View *v, float x, float y)
+{
+    int page;
+    double px, py;
+    TextPos p;
+    if (screen_to_page(v, x, y, top_of(w), &page, &px, &py) && char_near(v, page, px, py, 40, &p) && valid(v, p) &&
+        (p.page != v->caret.page || p.ch != v->caret.ch)) {
+        v->caret = p;
+        remember_x(v);
+        w->redraw = true;
+    }
+}
+
 void caret_mouse_up(Window *w, View *v)
 {
     bool dragged = drag.pressed && drag.dragging && drag.w == w;
@@ -581,6 +594,56 @@ void area_move(Window *w, View *v, float dx, float dy)
     v->area_y = SDL_clamp(v->area_y, 0, d->ph[v->area_page]);
     PRect r = {v->area_x - 4, v->area_y + 4, v->area_x + 4, v->area_y - 4};
     show_rect(w, v, v->area_page, r);
+}
+
+/* The mouse and the cross: a click puts it there, dragging marks a rectangle
+ * (the same one v starts from the keyboard). */
+static struct { Window *w; bool pressed, dragging; float x, y; } cross;
+
+static bool cross_to(Window *w, View *v, float x, float y)
+{
+    int page;
+    double px, py;
+    if (!screen_to_page(v, x, y, top_of(w), &page, &px, &py) || (v->area_selecting && page != v->area_page))
+        return false; /* a rectangle stays on one page */
+    v->area_page = page;
+    v->area_x = (float)px;
+    v->area_y = (float)py;
+    w->redraw = true;
+    return true;
+}
+
+void area_mouse_hover(Window *w, View *v, float x, float y) { cross_to(w, v, x, y); }
+
+void area_mouse_down(Window *w, View *v, float x, float y)
+{
+    cross.w = w;
+    cross.x = x, cross.y = y;
+    cross.dragging = false;
+    cross.pressed = cross_to(w, v, x, y);
+    if (cross.pressed && !v->area_selecting)
+        v->area_ax = v->area_x, v->area_ay = v->area_y;
+}
+
+void area_mouse_drag(Window *w, View *v, float x, float y)
+{
+    if (!cross.pressed || cross.w != w)
+        return;
+    if (!cross.dragging) {
+        if (SDL_fabsf(x - cross.x) + SDL_fabsf(y - cross.y) < 6 * w->density)
+            return;
+        cross.dragging = true;
+        v->area_selecting = true;
+    }
+    cross_to(w, v, x, y);
+}
+
+void area_mouse_up(Window *w, View *v)
+{
+    bool dragged = cross.pressed && cross.dragging && cross.w == w;
+    cross.pressed = cross.dragging = false;
+    if (dragged)
+        ui_message(w, "rectangle marked: C V B N M highlight, y copies it as an image");
 }
 
 void area_toggle_select(Window *w, View *v)

@@ -117,6 +117,13 @@ static void entry_path(const MathEntry *e, const char *ext, char *out, size_t ca
     snprintf(out, cap, "%s/%016llx%s", cache_dir, (unsigned long long)e->key, ext);
 }
 
+/* The scratch folder of a job; the pid keeps two npdf typesetting the same
+ * formula from deleting each other's files. */
+static void job_dir(const MathEntry *e, char *out, size_t cap)
+{
+    snprintf(out, cap, "%s/%016llx.%d.d", cache_dir, (unsigned long long)e->key, (int)getpid());
+}
+
 /* A formula typeset in an earlier session. */
 static bool load_cached(MathEntry *e)
 {
@@ -135,7 +142,7 @@ static bool load_cached(MathEntry *e)
 static void start_job(MathEntry *e)
 {
     char dir[4200], tex[4300];
-    entry_path(e, ".d", dir, sizeof dir);
+    job_dir(e, dir, sizeof dir);
     mkdir(dir, 0700);
     snprintf(tex, sizeof tex, "%s/job.tex", dir);
     FILE *f = fopen(tex, "w");
@@ -180,7 +187,7 @@ static void remove_job_dir(const MathEntry *e)
 {
     static const char *files[] = {"job.tex", "job.log", "job.aux", "job.pdf"};
     char dir[4200], path[4300];
-    entry_path(e, ".d", dir, sizeof dir);
+    job_dir(e, dir, sizeof dir);
     for (size_t i = 0; i < SDL_arraysize(files); i++) {
         snprintf(path, sizeof path, "%s/%s", dir, files[i]);
         unlink(path);
@@ -205,7 +212,7 @@ static void finish_job(MathEntry *e, int status)
     running--;
     e->pid = 0;
     char dir[4200], log_path[4300], pdf[4300], dest[4200], dim[4200];
-    entry_path(e, ".d", dir, sizeof dir);
+    job_dir(e, dir, sizeof dir);
     snprintf(log_path, sizeof log_path, "%s/job.log", dir);
     snprintf(pdf, sizeof pdf, "%s/job.pdf", dir);
     char *log = read_file(log_path);

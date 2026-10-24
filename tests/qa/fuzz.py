@@ -13,7 +13,7 @@ specials = ['<Esc>', '<Enter>', '<Tab>', '<S-Tab>', '<BS>', '<Del>', '<Up>', '<D
             '<Home>', '<End>', '<PageUp>', '<PageDown>', '<C-a>', '<C-z>', '<C-u>', '<C-w>', '<C-x>', '<C-q>']
 words = ['hello', 'ção ü 漢字 🙂', 'x' * 300, ' ', ':', '/', '0', '42', '999999', 'rotate 90', 'zoom 1',
          'zoom 99999', 'e /nonexistent', 'e ~', 'page -5', 'page 0', 'marks', 'reload', 'w', 'q!', 'noh',
-         'image /nonexistent.png'] + ['image %s/corpus/%s' % (work, f) for f in ('pic.png', 'opaque.png', 'trunc.png', 'bad.png', 'pic.jpg')] + ['diff %s/corpus/%s' % (work, f) for f in ('text.pdf', 'garbage.pdf', 'many_pages.pdf', 'empty.pdf', 'rotated.pdf')] + ['nodiff', 'response', 'response! x.md', 'present', 'pages', 'recent', 'session', 'theme', 'theme nord', 'theme zzz', 'theme new fz', 'theme new', 'about']
+         'image /nonexistent.png'] + ['image %s/corpus/%s' % (work, f) for f in ('pic.png', 'opaque.png', 'trunc.png', 'bad.png', 'pic.jpg')] + ['diff %s/corpus/%s' % (work, f) for f in ('text.pdf', 'garbage.pdf', 'many_pages.pdf', 'empty.pdf', 'rotated.pdf')] + ['nodiff', 'response', 'response! x.md', 'present', 'pages', 'recent', 'session', 'theme', 'theme nord', 'theme zzz', 'theme new fz', 'theme new', 'about', 'form', 'form save fz', 'form fz', 'form delete fz']
 out = []
 for i in range(n):
     r = random.random()

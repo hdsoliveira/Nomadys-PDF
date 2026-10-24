@@ -63,7 +63,7 @@ xdg-mime default npdf.desktop application/pdf
 ## Checking the installation
 
 ```sh
-npdf --version      # Nomadys-PDF (npdf) 0.5.1
+npdf --version      # Nomadys-PDF (npdf) 0.6.0
 npdf --help         # a short list of keys and options
 ```
 
