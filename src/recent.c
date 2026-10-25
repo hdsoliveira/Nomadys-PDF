@@ -9,7 +9,11 @@
  *          folder by default), found by a thread and kept for next time */
 #include <ctype.h>
 #include <dirent.h>
+#ifdef __APPLE__
+#include <sys/mount.h>
+#else
 #include <sys/vfs.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -334,6 +338,15 @@ static bool remote(const char *dir)
     struct statfs fs;
     if (statfs(dir, &fs) != 0)
         return true;
+#ifdef __APPLE__
+    static const char *net[] = {"nfs", "smbfs", "afpfs", "webdav", "cifs", "ftp", "osxfuse", "macfuse", "fuse", "fusefs"};
+    if (!(fs.f_flags & MNT_LOCAL))
+        return true;
+    for (size_t i = 0; i < sizeof net / sizeof *net; i++)
+        if (!strncmp(fs.f_fstypename, net[i], strlen(net[i])))
+            return true;
+    return false;
+#endif
     switch ((unsigned long)fs.f_type) {
     case 0x65735546: /* fuse */
     case 0x6969:     /* nfs */

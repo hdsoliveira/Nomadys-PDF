@@ -1,5 +1,10 @@
 /* Nomadys-PDF: windows, tabs, drawing and the event loop. */
+#ifdef __linux__
 #include <malloc.h>
+#endif
+#ifdef __APPLE__
+#include <dirent.h>
+#endif
 #include <stdio.h>
 #include <termios.h>
 #include <unistd.h>
@@ -596,6 +601,12 @@ static void handle_event(SDL_Event *e)
         return;
     }
     switch (e->type) {
+    case SDL_EVENT_DROP_FILE: /* dragged onto the window, or opened from Finder while running */
+        if (!(w = window_by_id(e->drop.windowID)) && nwindows)
+            w = windows[0];
+        if (w && e->drop.data && open_tab(w, e->drop.data))
+            raise_window(w);
+        return;
     case SDL_EVENT_QUIT:
         while (nwindows)
             close_window(windows[0]);
@@ -923,7 +934,9 @@ static bool idle_work(void)
     if (compact_docs(SDL_GetTicks()))
         return true;
     if (memory_freed) { /* freed pages and textures: back to the system, not kept by malloc */
+#ifdef __linux__
         malloc_trim(0);
+#endif
         memory_freed = false;
     }
     return false;
@@ -1102,6 +1115,57 @@ static bool read_password(const char *path, char *out, size_t cap)
     return ok && *out;
 }
 
+#ifdef __APPLE__
+/* The files Finder hands over at launch (double-click, Open With, a drop on
+ * the Dock icon): SDL reports them as drop events soon after it starts. */
+static int finder_files(char ***out)
+{
+    *out = NULL;
+    if (!SDL_Init(SDL_INIT_VIDEO))
+        return 0;
+    int n = 0;
+    uint64_t until = SDL_GetTicks() + 400;
+    SDL_Event e;
+    while (SDL_GetTicks() < until) {
+        if (!SDL_WaitEventTimeout(&e, 50))
+            continue;
+        if (e.type == SDL_EVENT_DROP_FILE && e.drop.data) {
+            *out = xrealloc(*out, (size_t)(n + 1) * sizeof **out);
+            (*out)[n++] = xstrdup(e.drop.data);
+            until = SDL_GetTicks() + 100; /* more may follow */
+        }
+    }
+    return n;
+}
+
+static struct { char **files; int n; bool done; } picked;
+
+static void picked_cb(void *data, const char *const *list, int filter)
+{
+    (void)data, (void)filter;
+    for (int i = 0; list && list[i]; i++) {
+        picked.files = xrealloc(picked.files, (size_t)(picked.n + 1) * sizeof *picked.files);
+        picked.files[picked.n++] = xstrdup(list[i]);
+    }
+    picked.done = true;
+}
+
+/* An open panel, for a start with no file and no last session. */
+static int pick_files(char ***out)
+{
+    static const SDL_DialogFileFilter pdf = {"PDF documents", "pdf"};
+    if (!SDL_Init(SDL_INIT_VIDEO))
+        return 0;
+    SDL_ShowOpenFileDialog(picked_cb, NULL, NULL, &pdf, 1, NULL, true);
+    SDL_Event e;
+    while (!picked.done)
+        if (SDL_WaitEventTimeout(&e, 100) && e.type == SDL_EVENT_QUIT)
+            break;
+    *out = picked.files;
+    return picked.n;
+}
+#endif
+
 static void usage(void)
 {
     printf("usage: npdf file.pdf [other.pdf ...]\n"
@@ -1134,9 +1198,90 @@ static void usage(void)
            leader_label(), leader_label(), leader_label());
 }
 
+#ifdef __APPLE__
+/* Inside Nomadys PDF.app the fontconfig settings travel with the program
+ * (Contents/Resources/fontconfig), as a Mac may have no Homebrew. */
+static void use_bundled_fontconfig(void)
+{
+    char exe[4096];
+    ssize_t n = readlink("/proc/self/exe", exe, sizeof exe - 1);
+    if (n <= 0 || getenv("FONTCONFIG_FILE"))
+        return;
+    exe[n] = 0;
+    *strrchr(exe, '/') = 0;
+    char dir[4200], file[4300];
+    snprintf(dir, sizeof dir, "%s/../Resources/fontconfig", exe);
+    snprintf(file, sizeof file, "%s/fonts.conf", dir);
+    if (access(file, R_OK) == 0) {
+        setenv("FONTCONFIG_PATH", dir, 1);
+        setenv("FONTCONFIG_FILE", file, 1);
+    }
+}
+
+static void path_add(char *path, size_t cap, const char *dir)
+{
+    size_t n = strlen(dir), len = strlen(path);
+    if (!n || n >= 1024)
+        return;
+    for (const char *p = path; *p;) { /* already there? */
+        const char *end = strchr(p, ':');
+        size_t k = end ? (size_t)(end - p) : strlen(p);
+        if (k == n && !strncmp(p, dir, n))
+            return;
+        p += k + (end != NULL);
+    }
+    if (len + n + 2 < cap)
+        snprintf(path + len, cap - len, "%s%s", len ? ":" : "", dir);
+}
+
+static void path_add_file(char *path, size_t cap, const char *file)
+{
+    FILE *f = fopen(file, "r");
+    char line[1100];
+    while (f && fgets(line, sizeof line, f)) {
+        line[strcspn(line, "\r\n")] = 0;
+        if (line[0] == '/')
+            path_add(path, cap, line);
+    }
+    if (f)
+        fclose(f);
+}
+
+/* Started from Finder, the program gets PATH=/usr/bin:/bin:/usr/sbin:/sbin,
+ * without TeX (pdflatex, synctex) or Homebrew. Add what a terminal would
+ * have: /etc/paths and /etc/paths.d (MacTeX puts /Library/TeX/texbin there),
+ * then the usual places. */
+static void complete_path(void)
+{
+    static char path[16384];
+    const char *old = getenv("PATH");
+    snprintf(path, sizeof path, "%s", old ? old : "");
+    path_add_file(path, sizeof path, "/etc/paths");
+    DIR *d = opendir("/etc/paths.d");
+    struct dirent *e;
+    while (d && (e = readdir(d))) {
+        if (e->d_name[0] == '.')
+            continue;
+        char file[1100];
+        snprintf(file, sizeof file, "/etc/paths.d/%s", e->d_name);
+        path_add_file(path, sizeof path, file);
+    }
+    if (d)
+        closedir(d);
+    const char *more[] = {"/Library/TeX/texbin", "/opt/homebrew/bin", "/opt/homebrew/sbin", "/usr/local/bin", "/opt/local/bin"};
+    for (size_t i = 0; i < sizeof more / sizeof *more; i++)
+        path_add(path, sizeof path, more[i]);
+    setenv("PATH", path, 1);
+}
+#endif
+
 int main(int argc, char **argv)
 {
     const char *forward = NULL, *editor = NULL;
+#ifdef __APPLE__
+    use_bundled_fontconfig();
+    complete_path();
+#endif
     if (argc >= 3 && !strcmp(argv[1], "--tab")) { /* in the npdf that is running, if there is one */
         argv++, argc--;
         bool all = true;
@@ -1192,10 +1337,23 @@ int main(int argc, char **argv)
     /* npdf alone: the tabs of the last session */
     char **files = argv + 1, **session = NULL;
     int nfiles = argc - 1, session_cur = 0;
+#ifdef __APPLE__
+    if (argc < 2) /* started from Finder: the PDFs it opens with us come as events */
+        nfiles = finder_files(&session);
+    if (argc < 2 && nfiles)
+        files = session;
+    else
+#endif
     if (argc < 2) {
         nfiles = session_files(&session, &session_cur);
         files = session;
     }
+#ifdef __APPLE__
+    if (argc < 2 && !nfiles && !isatty(STDIN_FILENO)) { /* nothing to reopen: ask for one */
+        nfiles = pick_files(&session);
+        files = session;
+    }
+#endif
     if (!nfiles || (argc >= 2 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))) {
         usage();
         return argc < 2;
