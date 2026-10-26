@@ -176,19 +176,24 @@ static void open_uri(Window *w, const char *uri)
         ui_message_long(w, 5000, "not opened (copied): %s", uri);
         return;
     }
-    char *argv[] = {"xdg-open", url, NULL};
+#ifdef __APPLE__
+#define OPENER "open"
+#else
+#define OPENER "xdg-open"
+#endif
+    char *argv[] = {OPENER, url, NULL};
     pid_t pid;
     posix_spawn_file_actions_t fa;
     posix_spawn_file_actions_init(&fa);
     posix_spawn_file_actions_addopen(&fa, STDOUT_FILENO, "/dev/null", 1, 0);
     posix_spawn_file_actions_addopen(&fa, STDERR_FILENO, "/dev/null", 1, 0);
-    if (posix_spawnp(&pid, "xdg-open", &fa, NULL, argv, environ) == 0) {
+    if (posix_spawnp(&pid, OPENER, &fa, NULL, argv, environ) == 0) {
         /* xdg-open hands the URL to the browser and exits quickly */
         waitpid(pid, NULL, 0);
         ui_message(w, "opening %s", url);
     } else {
         SDL_SetClipboardText(url);
-        ui_message_long(w, 5000, "xdg-open not found; link copied: %s", url);
+        ui_message_long(w, 5000, OPENER " not found; link copied: %s", url);
     }
     posix_spawn_file_actions_destroy(&fa);
 }

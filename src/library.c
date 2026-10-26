@@ -19,7 +19,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(__linux__)
 #include <sys/prctl.h>
+#endif
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <unistd.h>
@@ -361,6 +363,7 @@ static int extract(const char *path, const char *gz)
  * can read files but write only in its own folder (Landlock). If the kernel does not offer
  * one of them the worker goes on without it. NPDF_NO_SANDBOX=1 turns this off (for debugging);
  * NPDF_SANDBOX_CHECK=1 makes the worker report what it can still do. */
+#if defined(__linux__)
 #ifndef __NR_landlock_create_ruleset
 #define __NR_landlock_create_ruleset 444
 #define __NR_landlock_add_rule 445
@@ -415,13 +418,48 @@ static bool seccomp_confine(void)
 #endif
 }
 
+#endif
+
+#if defined(__APPLE__)
+/* macOS: the same rules as a Seatbelt profile (sandbox_init is deprecated,
+ * but it is what the system still offers to a plain program). */
+int sandbox_init(const char *profile, uint64_t flags, char **errorbuf);
+void sandbox_free_error(char *errorbuf);
+
+static bool seatbelt_confine(const char *dir)
+{
+    char real[PATH_MAX];
+    if (!realpath(dir, real) || strpbrk(real, "\"\\"))
+        return false;
+    char profile[PATH_MAX + 512];
+    snprintf(profile, sizeof profile,
+             "(version 1)(allow default)"
+             "(deny network*)(deny system-socket)(deny process-exec*)(deny process-fork)"
+             "(deny file-write*)"
+             "(allow file-write* (subpath \"%s\") (literal \"/dev/null\"))", real);
+    char *err = NULL;
+    if (sandbox_init(profile, 0, &err) != 0) {
+        if (err)
+            sandbox_free_error(err);
+        return false;
+    }
+    return true;
+}
+#endif
+
 static void sandbox_worker(const char *dir)
 {
     const char *off = getenv("NPDF_NO_SANDBOX");
     if (off && *off == '1')
         return;
+#if defined(__linux__)
     bool nnp = prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) == 0;
     bool fs = nnp && landlock_confine(dir), net = nnp && seccomp_confine();
+#elif defined(__APPLE__)
+    bool fs = seatbelt_confine(dir), net = fs;
+#else
+    bool fs = false, net = false;
+#endif
     const char *check = getenv("NPDF_SANDBOX_CHECK");
     if (check && *check == '1') { /* what a hostile PDF could still do */
         int w = open("/tmp/npdf-sandbox-canary", O_WRONLY | O_CREAT | O_EXCL, 0600);

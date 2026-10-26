@@ -11,7 +11,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef __APPLE__
+#include <CoreServices/CoreServices.h>
+#include <dispatch/dispatch.h>
+#include <libgen.h>
+#else
 #include <sys/inotify.h>
+#endif
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -109,6 +115,85 @@ static void read_request(int client)
         post(IPC_REQUEST, xstrdup(buf), 0);
 }
 
+#ifdef __APPLE__
+/* macOS has no inotify: FSEvents reports changed files per path. A watch is
+ * the index (+1) of its folder here; the stream is remade when one is added. */
+#define MAX_WATCHED 256
+static char *watched[MAX_WATCHED];
+static int nwatched;
+static FSEventStreamRef stream;
+static dispatch_queue_t fs_queue;
+
+static void fs_changed(ConstFSEventStreamRef ref, void *info, size_t n, void *paths, const FSEventStreamEventFlags flags[],
+                       const FSEventStreamEventId ids[])
+{
+    (void)ref, (void)info, (void)ids;
+    const FSEventStreamEventFlags wanted = kFSEventStreamEventFlagItemCreated | kFSEventStreamEventFlagItemModified |
+                                           kFSEventStreamEventFlagItemRenamed | kFSEventStreamEventFlagItemInodeMetaMod;
+    for (size_t i = 0; i < n; i++) {
+        if (!(flags[i] & wanted) || !(flags[i] & kFSEventStreamEventFlagItemIsFile))
+            continue;
+        char dir[4096];
+        snprintf(dir, sizeof dir, "%s", ((char **)paths)[i]);
+        char *slash = strrchr(dir, '/');
+        if (!slash)
+            continue;
+        *slash = 0;
+        const char *name = slash + 1, *parent = *dir ? dir : "/";
+        for (int k = 0; k < nwatched; k++)
+            if (!strcmp(watched[k], parent))
+                post(IPC_FILE, xstrdup(name), k + 1);
+    }
+}
+
+/* on fs_queue */
+static void restart_stream(void)
+{
+    if (stream) {
+        FSEventStreamStop(stream);
+        FSEventStreamInvalidate(stream);
+        FSEventStreamRelease(stream);
+        stream = NULL;
+    }
+    if (!nwatched)
+        return;
+    CFMutableArrayRef list = CFArrayCreateMutable(NULL, nwatched, &kCFTypeArrayCallBacks);
+    for (int k = 0; k < nwatched; k++) {
+        CFStringRef str = CFStringCreateWithCString(NULL, watched[k], kCFStringEncodingUTF8);
+        if (str) {
+            CFArrayAppendValue(list, str);
+            CFRelease(str);
+        }
+    }
+    stream = FSEventStreamCreate(NULL, fs_changed, NULL, list, kFSEventStreamEventIdSinceNow, 0.05,
+                                 kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagNoDefer);
+    CFRelease(list);
+    if (stream) {
+        FSEventStreamSetDispatchQueue(stream, fs_queue);
+        FSEventStreamStart(stream);
+    }
+}
+
+static int watch_dir(const char *dir)
+{
+    char real[PATH_MAX];
+    if (!fs_queue || !realpath(dir, real)) /* FSEvents names files by their real path (/private/tmp) */
+        return -1;
+    __block int wd = -1;
+    const char *want = real;
+    dispatch_sync(fs_queue, ^{
+        for (int k = 0; k < nwatched; k++)
+            if (!strcmp(watched[k], want))
+                wd = k + 1;
+        if (wd < 0 && nwatched < MAX_WATCHED) {
+            watched[nwatched++] = xstrdup(want);
+            wd = nwatched;
+            restart_stream();
+        }
+    });
+    return wd;
+}
+#else
 static void read_notify(void)
 {
     char buf[16384] __attribute__((aligned(__alignof__(struct inotify_event))));
@@ -120,6 +205,12 @@ static void read_notify(void)
         p += sizeof *ev + ev->len;
     }
 }
+
+static int watch_dir(const char *dir)
+{
+    return notify_fd < 0 ? -1 : inotify_add_watch(notify_fd, dir, IN_CLOSE_WRITE | IN_MOVED_TO | IN_CREATE);
+}
+#endif
 
 static int loop(void *unused)
 {
@@ -134,26 +225,42 @@ static int loop(void *unused)
         if (fds[0].revents & POLLIN) {
             int c = accept4(server_fd, NULL, NULL, SOCK_CLOEXEC);
             if (c >= 0) {
+#ifdef __APPLE__
+                uid_t uid;
+                gid_t gid;
+                if (getpeereid(c, &uid, &gid) == 0 && uid == geteuid())
+#else
                 struct ucred cred;
                 socklen_t len = sizeof cred;
                 if (getsockopt(c, SOL_SOCKET, SO_PEERCRED, &cred, &len) == 0 && cred.uid == geteuid())
+#endif
                     read_request(c); /* only requests from you */
                 else
                     close(c);
             }
         }
+#ifndef __APPLE__
         if (fds[1].revents & POLLIN)
             read_notify();
+#endif
     }
 }
 
 void ipc_start(void)
 {
     ipc_event = SDL_RegisterEvents(1);
+#ifdef __APPLE__
+    fs_queue = dispatch_queue_create("nomadys-fsevents", DISPATCH_QUEUE_SERIAL);
+#else
     notify_fd = inotify_init1(IN_CLOEXEC);
+#endif
     struct sockaddr_un a;
     socket_path(&a);
     server_fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+#ifdef __APPLE__
+    if (server_fd >= 0)
+        fcntl(server_fd, F_SETFD, FD_CLOEXEC); /* macOS has no SOCK_CLOEXEC */
+#endif
     mode_t old_umask = umask(0077); /* the socket file is for you alone (it can sit in /tmp) */
     bool bound = server_fd >= 0 && bind(server_fd, (struct sockaddr *)&a, sizeof a) == 0;
     umask(old_umask);
@@ -194,12 +301,12 @@ void ipc_stop(void)
  * events come as IPC_FILE with this watch. Returns it, or -1. */
 int ipc_watch_dir(const char *dir)
 {
-    return notify_fd < 0 ? -1 : inotify_add_watch(notify_fd, dir, IN_CLOSE_WRITE | IN_MOVED_TO | IN_CREATE);
+    return watch_dir(dir);
 }
 
 void ipc_watch(Doc *d)
 {
-    if (notify_fd < 0 || d->watch_wd > 0)
+    if (d->watch_wd > 0)
         return;
     char dir[4096];
     snprintf(dir, sizeof dir, "%s", d->path);
@@ -207,5 +314,5 @@ void ipc_watch(Doc *d)
     if (!slash)
         return;
     *slash = 0;
-    d->watch_wd = inotify_add_watch(notify_fd, *dir ? dir : "/", IN_CLOSE_WRITE | IN_MOVED_TO | IN_CREATE);
+    d->watch_wd = watch_dir(*dir ? dir : "/");
 }

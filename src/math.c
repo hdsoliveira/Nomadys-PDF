@@ -98,8 +98,14 @@ static void init(void)
     char buf[4096];
     if (xdg && *xdg)
         snprintf(buf, sizeof buf, "%s/nomadys-pdf/math", xdg);
+#ifdef __APPLE__
+    /* the "paranoid" setting refuses paths through a dot folder such as ~/.cache */
+    else
+        snprintf(buf, sizeof buf, "%s/Library/Caches/nomadys-pdf/math", home ? home : "/tmp");
+#else
     else
         snprintf(buf, sizeof buf, "%s/.cache/nomadys-pdf/math", home ? home : "/tmp");
+#endif
     cache_dir = xstrdup(buf);
     mkdirs(cache_dir);
     const char *cfgdir = getenv("XDG_CONFIG_HOME");

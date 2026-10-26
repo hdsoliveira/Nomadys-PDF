@@ -161,6 +161,32 @@ in Chrome), is downloaded and checked automatically by the first `make`.
 TeX Live (equations in comments and SyncTeX), `curl` (`:bibtex`) and
 CUPS (printing) are optional. `make uninstall` removes everything.
 
+### macOS
+
+Build the app yourself:
+
+```sh
+xcode-select --install
+brew install sdl3 freetype fontconfig pkgconf
+make app                   # dist/Nomadys PDF.app and a .dmg
+```
+
+Then drag `dist/Nomadys PDF.app` to Applications. For the terminal, link the
+command into your `PATH`:
+
+```sh
+ln -s "/Applications/Nomadys PDF.app/Contents/MacOS/npdf" /opt/homebrew/bin/npdf
+```
+
+PDFs open from Finder (double-click, Open With, or by dropping them on the
+Dock icon or the window). Started with no file and no last session, it asks
+for one. `make` alone builds `./npdf`, which runs from the source tree.
+`make install` is Linux-only.
+
+On macOS the reload after LaTeX writes the PDF uses FSEvents, links open
+with `open`, and the library index workers are confined with the system
+sandbox (no network, writes only to their own folder).
+
 ## First steps
 
 ```sh

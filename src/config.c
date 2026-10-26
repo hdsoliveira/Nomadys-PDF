@@ -286,7 +286,7 @@ static bool find_include(const char *value, const char *from, char *out, size_t 
 
 /* What parse_file applies: the global settings (and includes), the colour
  * sections, or both. */
-enum { P_GLOBALS = 1, P_THEMES = 2, P_ALL = 3 };
+enum { P_GLOBALS = 1, P_THEMES = 2, P_BOTH = 3 };
 
 char config_error[256];      /* the first problem found, for the window */
 static char config_path[1024];
@@ -373,7 +373,7 @@ void config_load(void)
 {
     builtin_light = cfg.light;
     builtin_dark = cfg.dark_theme;
-    parse_file(config_file(), 0, &cfg.light, &cfg.dark_theme, P_ALL);
+    parse_file(config_file(), 0, &cfg.light, &cfg.dark_theme, P_BOTH);
 }
 
 /* ---------- themes while running ---------- */
