@@ -236,6 +236,10 @@ typedef struct {
     bool fresh;              /* created by this editing: Esc on an empty one removes it */
     char *before;            /* the box as it was (an existing one), for undo */
     int back;                /* the mode to return to (a Mode) */
+    bool normal;             /* Esc once: y p x and the motions, as in vim; i writes again */
+    bool sel;                /* a selection from anchor to cursor (v, or Shift + arrows) */
+    int anchor;              /* where the selection began, a byte offset */
+    char pend;               /* y or d, waiting for the second one (yy, dd) */
 } TextEd;
 
 typedef enum { U_CREATE, U_DELETE, U_COMMENT, U_EDIT, U_PAGES, U_TASK, U_TEXTBOX, U_FORMS } UndoKind;
@@ -710,6 +714,7 @@ void caret_mouse_up(Window *w, View *v);                     /* copies what was 
 void cite_copy(Window *w, View *v, char *text, int first_page, int last_page);
 void cite_bibtex(Window *w, View *v);                      /* :bibtex */
 void cite_result(Window *w, const char *text);             /* the download finished */
+void dialog_result(Window *w, bool save, const char *path); /* :eg / :wg: the file chosen (NULL: none; "!...": an error) */
 void area_enter(Window *w, View *v);
 void area_move(Window *w, View *v, float dx, float dy);
 void area_toggle_select(Window *w, View *v);
@@ -736,7 +741,7 @@ void jump_back(Window *w, View *v);                      /* "mm" */
 void jump_history(Window *w, View *v, int dir);          /* Ctrl-o / Ctrl-i */
 
 /* ---------- LaTeX: SyncTeX and the link with VimTeX (synctex.c, ipc.c) ---------- */
-enum { IPC_REQUEST = 1, IPC_FILE = 2, IPC_BIBTEX = 3, IPC_FINDER = 4, IPC_INDEX = 5, IPC_LIBRARY = 6 };
+enum { IPC_REQUEST = 1, IPC_FILE = 2, IPC_BIBTEX = 3, IPC_FINDER = 4, IPC_INDEX = 5, IPC_LIBRARY = 6, IPC_OPEN_DIALOG = 7, IPC_SAVE_DIALOG = 8 };
 extern Uint32 ipc_event;
 bool synctex_available(Doc *d);
 bool synctex_inverse(Window *w, View *v, int page, double x, double y);

@@ -1481,7 +1481,11 @@ int help_lines(HelpLine **out)
         {"type", "write; the box grows with the text"}, {"Enter", "new line"},
         {"Ctrl-= Ctrl--", "bigger / smaller letters (Ctrl + wheel too)"},
         {"arrows Home End", "move in the text"}, {"Ctrl-w", "delete the word before"},
-        {"Ctrl-v", "paste"}, {"Esc", "done (u undoes it)"},
+        {"Shift+arrows", "select"}, {"Ctrl-c Ctrl-x Ctrl-v", "copy, cut, paste"},
+        {"Esc", "normal mode (as in vim); Esc again: done (u undoes it)"},
+        {"Normal mode", NULL},
+        {"h j k l w b e 0 $", "move"}, {"v", "select (y copy, x or d cut)"}, {"yy dd", "copy / cut the line"},
+        {"x p P", "cut the letter; paste after / before"}, {"i a A I", "write again"},
         {"Afterwards", NULL},
         {"e", "move the box (H L: width, + -: letters); i writes in it again"},
     };
@@ -1588,6 +1592,13 @@ bool input_key_event(Window *w, const SDL_KeyboardEvent *e)
                 snprintf(tok, sizeof tok, "%s", names[i].name);
         if (!tok[0])
             return false; /* printable keys arrive as text input */
+        if (w->mode == MODE_TEXT && (e->mod & SDL_KMOD_SHIFT) &&
+            (e->key == SDLK_LEFT || e->key == SDLK_RIGHT || e->key == SDLK_UP || e->key == SDLK_DOWN ||
+             e->key == SDLK_HOME || e->key == SDLK_END)) { /* Shift + arrows select in a free text */
+            char plain[TOKEN_LEN];
+            snprintf(plain, sizeof plain, "%s", tok + 1);
+            snprintf(tok, sizeof tok, "<S-%.8s", plain);
+        }
     }
     input_token(w, tok);
     return true;

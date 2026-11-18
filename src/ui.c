@@ -204,7 +204,10 @@ static void draw_mode(Window *w)
     case MODE_OBJECT: label = w->obj_image ? "IMAGE" : "MOVE", color = t->mode_visual; break;
     case MODE_CROP: label = "CROP", color = t->search_match; break;
     case MODE_ROTATE: label = "ROTATE", color = t->search_match; break;
-    case MODE_TEXT: label = "TEXT", color = t->mode_insert; break;
+    case MODE_TEXT:
+        label = !w->tx.normal ? "TEXT" : w->tx.sel ? "VISUAL" : "NORMAL";
+        color = !w->tx.normal ? t->mode_insert : w->tx.sel ? t->mode_visual : t->mode_normal;
+        break;
     case MODE_PICKER: label = "OPEN", color = t->tab_accent; break;
     case MODE_LIBRARY: label = "LIBRARY", color = t->tab_accent; break;
     case MODE_GRID: label = "PAGES", color = t->tab_accent; break;

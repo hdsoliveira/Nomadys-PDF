@@ -169,90 +169,107 @@ def main():
     LINE = 1.2 * 12  # one line of 12 pt letters
     click = f'<down:{INSIDE[0]},{INSIDE[1]}><up:{INSIDE[0]},{INSIDE[1]}>'
 
-    check('writes', NEW + 'Hello world<Esc>' + SAVE,
+    check('writes', NEW + 'Hello world<Esc><Esc>' + SAVE,
           lambda b: (is_(len(b), 1), is_(b[0]['text'], 'Hello world'), near(b[0]['size'], 12, 0),
                      near(b[0]['width'], 200, 0), near(b[0]['height'], LINE + 6, 0.5, 'height')))
-    check('accents-and-signs', NEW + 'ação “x” — € ß<Esc>' + SAVE,
+    check('accents-and-signs', NEW + 'ação “x” — € ß<Esc><Esc>' + SAVE,
           lambda b: is_(b[0]['text'], 'ação “x” — € ß'))
     check('grows-with-the-text', NEW + 'one two three four five six seven eight nine ten eleven twelve thirteen '
-          'fourteen fifteen sixteen seventeen<Esc>' + SAVE,
+          'fourteen fifteen sixteen seventeen<Esc><Esc>' + SAVE,
           lambda b: assert_true(b[0]['height'] > 2 * LINE + 6 - 1, 'did not grow'))
-    check('new-line', NEW + 'a<Enter>b<Enter>c<Esc>' + SAVE,
+    check('new-line', NEW + 'a<Enter>b<Enter>c<Esc><Esc>' + SAVE,
           lambda b: (is_(b[0]['text'], 'a\nb\nc'), near(b[0]['height'], 3 * LINE + 6, 0.5)))
-    check('letters-bigger', NEW + 'abc<C-=><C-=><Esc>' + SAVE,
+    check('letters-bigger', NEW + 'abc<C-=><C-=><Esc><Esc>' + SAVE,
           lambda b: near(b[0]['size'], 14.5, 0.01))
-    check('letters-smaller', NEW + 'abc<C--><Esc>' + SAVE,
+    check('letters-smaller', NEW + 'abc<C--><Esc><Esc>' + SAVE,
           lambda b: near(b[0]['size'], 11, 0.01))
-    check('width-from-the-rectangle', '<C-v>jjjjjjjjjvllllllllllT' + 'abc<Esc>' + SAVE,
+    check('width-from-the-rectangle', '<C-v>jjjjjjjjjvllllllllllT' + 'abc<Esc><Esc>' + SAVE,
           lambda b: near(b[0]['width'], 72, 30, 'width'))  # ten steps of the cursor, at least six letters wide
-    check('left-and-top', NEW + 'abc<Esc>' + SAVE,
+    check('left-and-top', NEW + 'abc<Esc><Esc>' + SAVE,
           lambda b: (near(b[0]['top'], 842 - 126, 20, 'top'), assert_true(b[0]['left'] >= 0, 'left')))
-    check('empty-leaves-nothing', NEW + '<Esc>' + SAVE, lambda b: is_(len(b), 0))
-    check('erased-leaves-nothing', NEW + 'abc<BS><BS><BS><Esc>' + SAVE, lambda b: is_(len(b), 0))
-    check('backspace-and-arrows', NEW + 'abc<Left><BS><Esc>' + SAVE, lambda b: is_(b[0]['text'], 'ac'))
-    check('delete-forward', NEW + 'abc<Left><Left><Del><Esc>' + SAVE, lambda b: is_(b[0]['text'], 'ac'))
-    check('word-erased', NEW + 'one two<C-w><Esc>' + SAVE, lambda b: is_(b[0]['text'], 'one '))
-    check('home-and-end', NEW + 'abc<Home>X<End>Y<Esc>' + SAVE, lambda b: is_(b[0]['text'], 'XabcY'))
-    check('up-and-down', NEW + 'abc<Enter>de<Up>X<Esc>' + SAVE, lambda b: is_(b[0]['text'], 'abXc\nde'))
-    check('undo-hides-it', NEW + 'abc<Esc>u' + SAVE, lambda b: is_(len(b), 0))
-    check('undo-redo', NEW + 'abc<Esc>u<C-r>' + SAVE, lambda b: is_(b[0]['text'], 'abc'))
-    check('not-in-the-font', NEW + 'a日b<Esc>' + SAVE, lambda b: is_(b[0]['text'], 'a日b'))
+    check('empty-leaves-nothing', NEW + '<Esc><Esc>' + SAVE, lambda b: is_(len(b), 0))
+    check('erased-leaves-nothing', NEW + 'abc<BS><BS><BS><Esc><Esc>' + SAVE, lambda b: is_(len(b), 0))
+    check('backspace-and-arrows', NEW + 'abc<Left><BS><Esc><Esc>' + SAVE, lambda b: is_(b[0]['text'], 'ac'))
+    check('delete-forward', NEW + 'abc<Left><Left><Del><Esc><Esc>' + SAVE, lambda b: is_(b[0]['text'], 'ac'))
+    check('word-erased', NEW + 'one two<C-w><Esc><Esc>' + SAVE, lambda b: is_(b[0]['text'], 'one '))
+    check('home-and-end', NEW + 'abc<Home>X<End>Y<Esc><Esc>' + SAVE, lambda b: is_(b[0]['text'], 'XabcY'))
+    check('up-and-down', NEW + 'abc<Enter>de<Up>X<Esc><Esc>' + SAVE, lambda b: is_(b[0]['text'], 'abXc\nde'))
+    check('undo-hides-it', NEW + 'abc<Esc><Esc>u' + SAVE, lambda b: is_(len(b), 0))
+    check('undo-redo', NEW + 'abc<Esc><Esc>u<C-r>' + SAVE, lambda b: is_(b[0]['text'], 'abc'))
+    check('not-in-the-font', NEW + 'a日b<Esc><Esc>' + SAVE, lambda b: is_(b[0]['text'], 'a日b'))
 
     # written again
-    check('write-again', NEW + 'Hello<Esc>' + click + 'i world<Esc>' + SAVE,
+    check('write-again', NEW + 'Hello<Esc><Esc>' + click + 'i world<Esc><Esc>' + SAVE,
           lambda b: is_(b[0]['text'], 'Hello world'))
-    check('write-again-undo', NEW + 'Hello<Esc>' + click + 'i world<Esc>u' + SAVE,
+    check('write-again-undo', NEW + 'Hello<Esc><Esc>' + click + 'i world<Esc><Esc>u' + SAVE,
           lambda b: is_(b[0]['text'], 'Hello'))
-    check('write-again-redo', NEW + 'Hello<Esc>' + click + 'i world<Esc>u<C-r>' + SAVE,
+    check('write-again-redo', NEW + 'Hello<Esc><Esc>' + click + 'i world<Esc><Esc>u<C-r>' + SAVE,
           lambda b: is_(b[0]['text'], 'Hello world'))
-    check('write-again-erase-all', NEW + 'Hello<Esc>' + click + 'i<BS><BS><BS><BS><BS><Esc>' + SAVE,
+    check('write-again-erase-all', NEW + 'Hello<Esc><Esc>' + click + 'i<BS><BS><BS><BS><BS><Esc><Esc>' + SAVE,
           lambda b: is_(len(b), 0))
-    check('write-again-erase-undo', NEW + 'Hello<Esc>' + click + 'i<BS><BS><BS><BS><BS><Esc>u' + SAVE,
+    check('write-again-erase-undo', NEW + 'Hello<Esc><Esc>' + click + 'i<BS><BS><BS><BS><BS><Esc><Esc>u' + SAVE,
           lambda b: is_(b[0]['text'], 'Hello'))
 
     # moved and resized
-    check('width-keys', NEW + 'Hello<Esc>' + click + 'LL<Enter>' + SAVE,
+    check('width-keys', NEW + 'Hello<Esc><Esc>' + click + 'LL<Enter>' + SAVE,
           lambda b: assert_true(b[0]['width'] > 200, 'width'))
-    check('width-narrower', NEW + 'Hello<Esc>' + click + 'HH<Enter>' + SAVE,
+    check('width-narrower', NEW + 'Hello<Esc><Esc>' + click + 'HH<Enter>' + SAVE,
           lambda b: assert_true(b[0]['width'] < 200, 'width'))
-    check('letters-keys', NEW + 'Hello<Esc>' + click + '++<Enter>' + SAVE,
+    check('letters-keys', NEW + 'Hello<Esc><Esc>' + click + '++<Enter>' + SAVE,
           lambda b: assert_true(b[0]['size'] > 12, 'size'))
-    check('esc-puts-back', NEW + 'Hello<Esc>' + click + 'LL++l<Esc>' + SAVE,
+    check('esc-puts-back', NEW + 'Hello<Esc><Esc>' + click + 'LL++l<Esc><Esc>' + SAVE,
           lambda b: (near(b[0]['width'], 200, 0), near(b[0]['size'], 12, 0)))
-    check('resize-undo', NEW + 'Hello<Esc>' + click + 'LL<Enter>u' + SAVE,
+    check('resize-undo', NEW + 'Hello<Esc><Esc>' + click + 'LL<Enter>u' + SAVE,
           lambda b: near(b[0]['width'], 200, 0))
-    check('move-keys', NEW + 'Hello<Esc>' + click + 'llll<Enter>' + SAVE,
+    check('move-keys', NEW + 'Hello<Esc><Esc>' + click + 'llll<Enter>' + SAVE,
           lambda b: (assert_true(b[0]['left'] > 297.5 + 1, 'did not move'), is_(b[0]['text'], 'Hello')))
-    check('move-undo', NEW + 'Hello<Esc>' + click + 'llll<Enter>u' + SAVE,
+    check('move-undo', NEW + 'Hello<Esc><Esc>' + click + 'llll<Enter>u' + SAVE,
           lambda b: near(b[0]['left'], 297.5, 1))
     x, y = INSIDE
-    check('mouse-move', NEW + 'Hello<Esc>' + f'<drag:{x},{y},{x + 100},{y + 100}>' + '<Enter>' + SAVE,
+    check('mouse-move', NEW + 'Hello<Esc><Esc>' + f'<drag:{x},{y},{x + 100},{y + 100}>' + '<Enter>' + SAVE,
           lambda b: (near(b[0]['left'], 297.5 + 100 / PX, 3, 'dx'), near(b[0]['width'], 200, 0)))
-    check('mouse-width', NEW + 'Hello<Esc>' + click + '<drag:738,215,838,215><Enter>' + SAVE,
+    check('mouse-width', NEW + 'Hello<Esc><Esc>' + click + '<drag:738,215,838,215><Enter>' + SAVE,
           lambda b: near(b[0]['width'], 200 + 100 / PX, 6, 'width'))
-    check('mouse-move-esc', NEW + 'Hello<Esc>' + f'<drag:{x},{y},{x + 100},{y + 100}>' + '<Esc>' + SAVE,
+    check('mouse-move-esc', NEW + 'Hello<Esc><Esc>' + f'<drag:{x},{y},{x + 100},{y + 100}>' + '<Esc><Esc>' + SAVE,
           lambda b: near(b[0]['left'], 297.5, 1))
-    check('delete', NEW + 'Hello<Esc>' + click + 'x' + SAVE, lambda b: is_(len(b), 0))
-    check('delete-undo', NEW + 'Hello<Esc>' + click + 'xu' + SAVE, lambda b: is_(b[0]['text'], 'Hello'))
+    check('delete', NEW + 'Hello<Esc><Esc>' + click + 'x' + SAVE, lambda b: is_(len(b), 0))
+    check('delete-undo', NEW + 'Hello<Esc><Esc>' + click + 'xu' + SAVE, lambda b: is_(b[0]['text'], 'Hello'))
+
+    # selecting, copying: Shift + arrows and Ctrl-c/x/v, then normal mode (Esc once): v y x p yy dd
+    D = '<Esc><Esc>'
+    check('shift-select-copy-paste', NEW + 'abc def<S-Left><S-Left><S-Left><C-c><End><C-v>' + D + SAVE,
+          lambda b: is_(b[0]['text'], 'abc defdef'))
+    check('shift-select-cut', NEW + 'abc def<S-Left><S-Left><S-Left><C-x><C-v><C-v>' + D + SAVE,
+          lambda b: is_(b[0]['text'], 'abc defdef'))
+    check('type-over-selection', NEW + 'abc<S-Left><S-Left>X' + D + SAVE, lambda b: is_(b[0]['text'], 'aX'))
+    check('bs-deletes-selection', NEW + 'abc def<S-Left><S-Left><BS>' + D + SAVE, lambda b: is_(b[0]['text'], 'abc d'))
+    check('normal-x-p', NEW + 'abc<Esc>0xp' + D + SAVE, lambda b: is_(b[0]['text'], 'bac'))
+    check('normal-visual-y-p', NEW + 'one two<Esc>0vey$p' + D + SAVE, lambda b: is_(b[0]['text'], 'one twoone'))
+    check('normal-visual-x', NEW + 'one two<Esc>0vex' + D + SAVE, lambda b: is_(b[0]['text'], ' two'))
+    check('normal-yy-p', NEW + 'ab<Enter>cd<Esc>yykP' + D + SAVE, lambda b: is_(b[0]['text'], 'abcd\ncd'))
+    check('normal-dd', NEW + 'ab<Enter>cd<Esc>ddk' + D + SAVE, lambda b: is_(b[0]['text'], 'ab\n'))
+    check('normal-i-writes', NEW + 'ac<Esc>0lib' + D + SAVE, lambda b: is_(b[0]['text'], 'abc'))
+    check('normal-letters-dont-write', NEW + 'ac<Esc>zq' + D + SAVE, lambda b: is_(b[0]['text'], 'ac'))
+    check('normal-esc-cancels-visual', NEW + 'abc<Esc>0vl<Esc>x' + D + SAVE, lambda b: is_(b[0]['text'], 'ac'))
 
     # two boxes, and the file
-    check('two-boxes', NEW + 'one<Esc>jjjjjjjjjjjjjjjjjjjjjjT' + 'two<Esc>' + SAVE, lambda b: is_(len(b), 2))
+    check('two-boxes', NEW + 'one<Esc><Esc>jjjjjjjjjjjjjjjjjjjjjjT' + 'two<Esc><Esc>' + SAVE, lambda b: is_(len(b), 2))
     # :w name.pdf writes a copy next to the PDF; a name that is there is refused, :w! replaces it
     global fails
-    pdf, ok = run('copy', NEW + 'abc<Esc>:w copy.pdf<Enter><wait:300>jjjjjjjjjjjjjjjjjjjjjjT' + 'two<Esc>:w copy.pdf<Enter><wait:300>q')
+    pdf, ok = run('copy', NEW + 'abc<Esc><Esc>:w copy.pdf<Enter><wait:300>jjjjjjjjjjjjjjjjjjjjjjT' + 'two<Esc><Esc>:w copy.pdf<Enter><wait:300>q')
     got = boxes(f'{work}/copy/copy.pdf') if os.path.exists(f'{work}/copy/copy.pdf') else []
     problem = None if ok and len(got) == 1 else f'{len(got)} boxes in the copy (1 expected: the second :w is refused)'
-    pdf, ok = run('copy-replace', NEW + 'abc<Esc>:w copy.pdf<Enter><wait:300>jjjjjjjjjjjjjjjjjjjjjjT' + 'two<Esc>:w! copy.pdf<Enter><wait:300>q')
+    pdf, ok = run('copy-replace', NEW + 'abc<Esc><Esc>:w copy.pdf<Enter><wait:300>jjjjjjjjjjjjjjjjjjjjjjT' + 'two<Esc><Esc>:w! copy.pdf<Enter><wait:300>q')
     got = boxes(f'{work}/copy-replace/copy.pdf') if os.path.exists(f'{work}/copy-replace/copy.pdf') else []
     problem = problem or (None if ok and len(got) == 2 else f'{len(got)} boxes after :w! (2 expected)')
     fails += bool(problem)
     print(f'{"save-copy":30s} {"OK" if not problem else "FAIL: " + problem}')
-    pdf, ok = run('size', NEW + 'x<Esc>' + SAVE)
+    pdf, ok = run('size', NEW + 'x<Esc><Esc>' + SAVE)
     small = os.path.getsize(pdf)
     long = 'Hello world, ação and a long line that must wrap to the next lines of the box. ' * 4
-    pdf, ok = run('size-long', NEW + long + '<Esc>' + SAVE)
+    pdf, ok = run('size-long', NEW + long + '<Esc><Esc>' + SAVE)
     per_char = (os.path.getsize(pdf) - small) / (len(long) - 1)
-    check('small-file', NEW + 'x<Esc>' + SAVE, lambda b: assert_true(per_char < 6, f'{per_char:.1f} bytes a letter'))
+    check('small-file', NEW + 'x<Esc><Esc>' + SAVE, lambda b: assert_true(per_char < 6, f'{per_char:.1f} bytes a letter'))
     print(f'  ({per_char:.1f} bytes a letter)')
     print('failures:', fails)
     return fails

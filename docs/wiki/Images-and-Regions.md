@@ -57,8 +57,14 @@ mark its **width** with `v` (a rectangle works too), and press `T`.
 | `Ctrl-=` / `Ctrl--` | bigger / smaller letters (`Ctrl` + wheel too); 12 pt to start with |
 | arrows, `Home`, `End` | move in the text |
 | `Ctrl-w`, `Backspace`, `Delete` | erase |
-| `Ctrl-v` | paste |
-| `Esc` | done (`u` undoes the whole box) |
+| `Shift` + arrows | select; typing, `Backspace` or `Delete` replaces or erases the selection |
+| `Ctrl-c` / `Ctrl-x` / `Ctrl-v` | copy, cut and paste |
+| `Esc` | normal mode, as in vim (below); `Esc` again is done (`u` undoes the whole box) |
+
+In the normal mode (the bar says NORMAL) the letters are commands: `h` `j` `k` `l` `w` `b` `e`
+`0` `$` move, `v` selects, `y` copies, `x` or `d` cuts, `p` and `P` paste, `yy` and `dd` copy and
+cut a line, and `i` `a` `A` `I` write again. The copies go to the system clipboard, so they paste
+into other programs too.
 
 The box is then like a picture. Put the cross on it (or **click** it) and
 press `e`, then use these keys.

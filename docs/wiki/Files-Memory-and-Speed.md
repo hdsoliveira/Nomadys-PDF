@@ -41,7 +41,7 @@ rm -rf ~/.config/nomadys-pdf ~/.local/share/nomadys-pdf ~/.cache/nomadys-pdf
   instant and takes no space, whatever the size). If something goes wrong,
   rename it back. The next session replaces the `.bak` with the file as that
   session found it. `backup = false` turns this off.
-- `:w name.pdf` saves a copy under another name. With `autosave` on, the
+- `:w name.pdf` saves a copy under another name (`:wg` asks with the file dialog). With `autosave` on, the
   open file is saved by itself as well; to keep the original untouched
   set `autosave = false` before you start.
 - The file is written to a temporary file and then renamed over the

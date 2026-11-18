@@ -160,7 +160,20 @@ Scrolling, marks, jumps, undo, `\l` and `\c` work here too.
 | `Ctrl-=` / `Ctrl--` | bigger / smaller letters |
 | arrows, `Home`, `End` | move in the text |
 | `Backspace`, `Delete`, `Ctrl-w` | erase a letter, the next one, the word before |
-| `Ctrl-v` | paste |
+| `Shift` + arrows, `Home`, `End` | select |
+| `Ctrl-c` / `Ctrl-x` / `Ctrl-v` | copy / cut / paste (over a selection, it replaces it) |
+| `Esc` | the normal mode below (with a selection: drop it); in an empty box, done |
+
+Normal mode (`Esc` once), as in vim; the bar says NORMAL or VISUAL:
+
+| Key | Action |
+|---|---|
+| `h` `j` `k` `l`, `w` `b` `e`, `0` `$` | move: letter, line, word, start / end of the line |
+| `v` | select (`Esc` drops it) |
+| `y` / `x` or `d` | copy / cut the selection; without one, `x` cuts the letter |
+| `yy` / `dd` | copy / cut the line |
+| `p` / `P` | paste after / before the cursor (`p` over a selection replaces it) |
+| `i` `a` `A` `I` | write again: here, after, at the end of the line, at its start |
 | `Esc` | done |
 
 Afterwards `e` on the box moves it (`H` `L` change the width and `+` `-` the letters) and `i`

@@ -17,6 +17,8 @@ the line, to fix what you typed.
 | `:q!` | close it, discarding unsaved changes |
 | `:wq`, `:x` | save and close the tab |
 | `:e file.pdf` | open a PDF in a new tab |
+| `:eg` | the same with your desktop's file dialog (*edit gui*), starting in this PDF's folder |
+| `:wg` | save a copy with your desktop's file dialog (*write gui*): choose the folder and the name; the dialog asks before replacing a file |
 | `:reload` | read the PDF again from disk |
 | `:recent` | recent files (`\o`) |
 | `:find` | find any PDF in your folders (`\f`) |

@@ -89,6 +89,62 @@ static void c_edit(Window *w, View *v, const char *a)
     free(path);
 }
 
+/* :eg and :wg: the desktop's own file dialog. It answers from another thread
+ * (or later), so the answer comes back as an event for the window that asked. */
+static void dialog_answer(void *window, const char *const *files, int code)
+{
+    SDL_Event e = {0};
+    e.type = ipc_event;
+    e.user.code = code;
+    if (!files) {
+        size_t n = strlen(SDL_GetError()) + 128;
+        char *msg = xmalloc(n);
+        snprintf(msg, n, "!no file dialog (it needs xdg-desktop-portal or zenity): %s", SDL_GetError());
+        e.user.data1 = msg;
+    } else if (files[0]) {
+        e.user.data1 = xstrdup(files[0]);
+    }
+    e.user.data2 = window;
+    if (!SDL_PushEvent(&e))
+        free(e.user.data1);
+}
+
+static void open_dialog_done(void *window, const char *const *files, int filter) { (void)filter, dialog_answer(window, files, IPC_OPEN_DIALOG); }
+static void save_dialog_done(void *window, const char *const *files, int filter) { (void)filter, dialog_answer(window, files, IPC_SAVE_DIALOG); }
+
+static const SDL_DialogFileFilter pdf_filter[] = {{"PDF", "pdf"}};
+
+static void c_edit_gui(Window *w, View *v, const char *a)
+{
+    (void)a;
+    const char *pdf = v->doc->path, *slash = strrchr(pdf, '/');
+    char dir[4200] = "";
+    if (slash)
+        snprintf(dir, sizeof dir, "%.*s", (int)(slash - pdf) + 1, pdf);
+    SDL_ShowOpenFileDialog(open_dialog_done, (void *)(uintptr_t)SDL_GetWindowID(w->win), w->win, pdf_filter, 1,
+                           dir[0] ? dir : NULL, false);
+}
+
+static void c_write_gui(Window *w, View *v, const char *a)
+{
+    (void)a;
+    SDL_ShowSaveFileDialog(save_dialog_done, (void *)(uintptr_t)SDL_GetWindowID(w->win), w->win, pdf_filter, 1,
+                           v->doc->path);
+}
+
+void dialog_result(Window *w, bool save, const char *path)
+{
+    if (!w || !path)
+        return; /* the window went away, or Cancel */
+    if (path[0] == '!') {
+        ui_message_long(w, 7000, "%s", path + 1);
+    } else if (save) {
+        write_copy(w, cur_view(w), path, true); /* the dialog asked about replacing already */
+    } else {
+        open_tab(w, path);
+    }
+}
+
 static void c_panel(Window *w, View *v, const char *a) { (void)v, (void)a; panel_open(w); }
 static void c_nohl(Window *w, View *v, const char *a) { (void)w, (void)a; v->match_page = -1; v->highlight_all = false; }
 
@@ -319,9 +375,11 @@ static const Command commands[] = {
     {"w!", ARG_SAVE, c_write_force, "save a copy, replacing a file of that name"},
     {"q", ARG_NONE, c_quit, "close the tab"},
     {"q!", ARG_NONE, c_quit_force, "close the tab, discarding changes"},
+    {"wg", ARG_NONE, c_write_gui, "save a copy where the file dialog says (write gui)"},
     {"wq", ARG_NONE, c_write_quit, "save and close the tab"},
     {"x", ARG_NONE, c_write_quit, "save and close the tab"},
     {"e", ARG_FILE, c_edit, "open a PDF in a new tab"},
+    {"eg", ARG_NONE, c_edit_gui, "open a PDF: the file dialog (edit gui)"},
     {"page", ARG_NUMBER, c_page, "go to a page (also :42)"},
     {"zoom", ARG_NUMBER, c_zoom, "zoom in percent, e.g. :zoom 150"},
     {"rotate", ARG_NUMBER, c_rotate, "rotate the view: :rotate 90, -90, 180"},

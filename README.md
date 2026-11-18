@@ -185,6 +185,7 @@ with every key of the mode you are in appears.
 | `\l` / `\g` | panel / all pages |
 | `\/` / `\f` | search all your PDFs / find a PDF |
 | `:w` / `:q` | save (it also saves by itself) / close; `:w name.pdf` saves a copy |
+| `:eg` / `:wg` | the file dialog: open a PDF / save a copy |
 | `Esc` | back to reading, from anywhere |
 
 ## Limits, honestly

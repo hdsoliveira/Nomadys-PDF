@@ -590,6 +590,9 @@ static void handle_event(SDL_Event *e)
             library_event(e->user.code);
         else if (e->user.code == IPC_BIBTEX)
             cite_result(window_by_id((SDL_WindowID)(uintptr_t)e->user.data2), e->user.data1);
+        else if (e->user.code == IPC_OPEN_DIALOG || e->user.code == IPC_SAVE_DIALOG)
+            dialog_result(window_by_id((SDL_WindowID)(uintptr_t)e->user.data2), e->user.code == IPC_SAVE_DIALOG,
+                          e->user.data1);
         else if (e->user.code == IPC_FILE)
             file_changed((int)(intptr_t)e->user.data2, e->user.data1);
         free(e->user.data1);

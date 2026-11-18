@@ -457,8 +457,11 @@ static void apply(Window *w)
 
 static void describe(Window *w)
 {
-    ui_message_long(w, 60000, "text %.1f pt   Ctrl-= Ctrl-- size   Enter new line   Esc done   (a box can be moved with e, i writes again)",
-                    w->tx.box.size);
+    if (w->tx.normal)
+        ui_message_long(w, 60000, "h j k l w b e 0 $ move   v select   y copy   x cut   p paste   yy dd line   i a A I write   Esc done");
+    else
+        ui_message_long(w, 60000, "text %.1f pt   Ctrl-= Ctrl-- size   Shift+arrows select   Ctrl-c Ctrl-x Ctrl-v   Esc: y p x mode, then done",
+                        w->tx.box.size);
 }
 
 void textbox_begin(Window *w, View *v)
@@ -557,9 +560,38 @@ void textbox_abort(Window *w)
     w->text_hidden = false;
 }
 
+static void erase(Window *w, int from, int to);
+
+/* The selected bytes [lo, hi). In the vim way (normal mode) the letter under
+ * the cursor is selected too. */
+static bool sel_range(const TextEd *t, int *lo, int *hi)
+{
+    if (!t->sel)
+        return false;
+    int a = SDL_min(t->anchor, t->cursor), b = SDL_max(t->anchor, t->cursor);
+    if (t->normal)
+        b = next_char(t->box.text, b);
+    if (b <= a)
+        return false;
+    *lo = a, *hi = b;
+    return true;
+}
+
+/* Writing over a selection replaces it. */
+static bool erase_sel(Window *w)
+{
+    int lo, hi;
+    bool had = sel_range(&w->tx, &lo, &hi);
+    w->tx.sel = false;
+    if (had)
+        erase(w, lo, hi);
+    return had;
+}
+
 static void insert(Window *w, const char *s)
 {
     TextEd *t = &w->tx;
+    erase_sel(w);
     size_t n = strlen(t->box.text), k = strlen(s);
     t->box.text = xrealloc(t->box.text, n + k + 1);
     memmove(t->box.text + t->cursor + k, t->box.text + t->cursor, n - (size_t)t->cursor + 1);
@@ -650,53 +682,253 @@ static void resize_font(Window *w, float factor)
     apply(w);
 }
 
+/* ---------- selecting, copying, motions ---------- */
+enum { M_LEFT, M_RIGHT, M_UP, M_DOWN, M_HOME, M_END, M_WORD, M_BACK, M_WORDEND };
+
+static bool blank(char c) { return c == ' ' || c == '\n' || c == '\t'; }
+
+/* A token that moves the cursor, and whether Shift is held (it selects). */
+static bool motion_of(const char *tok, int *m, bool *extend)
+{
+    static const struct { const char *name; int m; } names[] = {
+        {"Left", M_LEFT}, {"Right", M_RIGHT}, {"Up", M_UP}, {"Down", M_DOWN}, {"Home", M_HOME}, {"End", M_END},
+    };
+    if (tok[0] != '<')
+        return false;
+    *extend = !strncmp(tok, "<S-", 3);
+    for (size_t i = 0; i < SDL_arraysize(names); i++) {
+        size_t n = strlen(names[i].name);
+        if (!strncmp(tok + (*extend ? 3 : 1), names[i].name, n) && !strcmp(tok + (*extend ? 3 : 1) + n, ">")) {
+            *m = names[i].m;
+            return true;
+        }
+    }
+    return false;
+}
+
+static void move(Window *w, int m, bool extend)
+{
+    TextEd *t = &w->tx;
+    const char *s = t->box.text;
+    if (extend && !t->sel)
+        t->sel = true, t->anchor = t->cursor;
+    else if (!extend && !t->normal) /* in normal mode a selection (v) keeps growing */
+        t->sel = false;
+    int i = t->cursor;
+    switch (m) {
+    case M_LEFT: t->cursor = prev_char(s, i), t->want_x = -1; break;
+    case M_RIGHT: t->cursor = next_char(s, i), t->want_x = -1; break;
+    case M_UP: case M_DOWN: vertical(w, m == M_UP ? -1 : 1); break;
+    case M_HOME: case M_END: line_edge(w, m == M_END); break;
+    case M_WORD: /* the start of the next word */
+        while (s[i] && !blank(s[i]))
+            i++;
+        while (s[i] && blank(s[i]))
+            i++;
+        t->cursor = i, t->want_x = -1;
+        break;
+    case M_BACK:
+        while (i > 0 && blank(s[i - 1]))
+            i--;
+        while (i > 0 && !blank(s[i - 1]))
+            i--;
+        t->cursor = i, t->want_x = -1;
+        break;
+    case M_WORDEND: /* the last letter of the word */
+        if (s[i])
+            i = next_char(s, i);
+        while (s[i] && blank(s[i]))
+            i++;
+        while (s[i] && s[i + 1] && !blank(s[i + 1]))
+            i++;
+        t->cursor = i, t->want_x = -1;
+        break;
+    }
+    show_cursor(w, cur_view(w));
+}
+
+static void clip_put(Window *w, int lo, int hi)
+{
+    char *s = xmalloc((size_t)(hi - lo) + 1);
+    memcpy(s, w->tx.box.text + lo, (size_t)(hi - lo));
+    s[hi - lo] = 0;
+    if (!SDL_SetClipboardText(s))
+        ui_message_long(w, 4000, "the clipboard refused the text");
+    free(s);
+}
+
+/* Ctrl-c, Ctrl-x, and y, d, x on a selection. */
+static void clip_op(Window *w, bool cut)
+{
+    TextEd *t = &w->tx;
+    int lo, hi;
+    if (!sel_range(t, &lo, &hi)) {
+        ui_message_long(w, 4000, "nothing selected: Shift + arrows (v in normal mode)");
+        return;
+    }
+    clip_put(w, lo, hi);
+    t->sel = false;
+    if (cut)
+        erase(w, lo, hi);
+    else if (t->normal)
+        t->cursor = lo;
+    ui_message_long(w, 2500, cut ? "cut" : "copied");
+}
+
+static void paste(Window *w)
+{
+    char *clip = SDL_GetClipboardText();
+    if (!clip)
+        return;
+    char *o = clip;
+    for (const char *c = clip; *c; c++) { /* no carriage returns, tabs as spaces */
+        if (*c != '\r')
+            *o++ = *c == '\t' ? ' ' : *c;
+    }
+    *o = 0;
+    if (*clip)
+        insert(w, clip);
+    SDL_free(clip);
+}
+
+static void leave_normal(Window *w)
+{
+    w->tx.normal = false, w->tx.sel = false;
+    describe(w);
+}
+
+/* A key in normal mode: every key is a command, none writes. False: it is
+ * for the ordinary handling (the size). */
+static bool normal_key(Window *w, const char *tok)
+{
+    TextEd *t = &w->tx;
+    const char *s = t->box.text;
+    char pend = t->pend;
+    int m;
+    bool extend;
+    t->pend = 0;
+    if (!strcmp(tok, "<C-=>") || !strcmp(tok, "<C-+>") || !strcmp(tok, "<C-->"))
+        return false;
+    if (!strcmp(tok, "<Esc>")) {
+        if (t->sel)
+            t->sel = false;
+        else
+            textbox_finish(w);
+    } else if (!strcmp(tok, "<C-c>") || !strcmp(tok, "<C-x>")) {
+        clip_op(w, tok[3] == 'x');
+    } else if (!strcmp(tok, "<C-v>")) {
+        paste(w);
+    } else if (motion_of(tok, &m, &extend)) {
+        move(w, m, extend);
+    } else if (!strcmp(tok, "<BS>")) {
+        move(w, M_LEFT, false);
+    } else if (tok[0] && !tok[1]) {
+        int ls = t->cursor, le = t->cursor;
+        while (ls > 0 && s[ls - 1] != '\n')
+            ls--;
+        while (s[le] && s[le] != '\n')
+            le++;
+        switch (tok[0]) {
+        case 'h': move(w, M_LEFT, false); break;
+        case 'l': move(w, M_RIGHT, false); break;
+        case 'j': move(w, M_DOWN, false); break;
+        case 'k': move(w, M_UP, false); break;
+        case 'w': move(w, M_WORD, false); break;
+        case 'b': move(w, M_BACK, false); break;
+        case 'e': move(w, M_WORDEND, false); break;
+        case '0': case '^': move(w, M_HOME, false); break;
+        case '$': move(w, M_END, false); break;
+        case 'v':
+            t->sel = !t->sel, t->anchor = t->cursor;
+            break;
+        case 'i': leave_normal(w); break;
+        case 'a':
+            if (s[t->cursor] && s[t->cursor] != '\n')
+                t->cursor = next_char(s, t->cursor);
+            leave_normal(w);
+            break;
+        case 'A': move(w, M_END, false), leave_normal(w); break;
+        case 'I': move(w, M_HOME, false), leave_normal(w); break;
+        case 'y':
+            if (t->sel)
+                clip_op(w, false);
+            else if (pend == 'y' && le > ls)
+                clip_put(w, ls, le), ui_message_long(w, 2500, "line copied");
+            else
+                t->pend = 'y';
+            break;
+        case 'd':
+            if (t->sel)
+                clip_op(w, true);
+            else if (pend == 'd' && le >= ls && (le > ls || s[le])) {
+                if (le > ls)
+                    clip_put(w, ls, le);
+                erase(w, ls, le + (s[le] == '\n'));
+                ui_message_long(w, 2500, "line cut");
+            } else
+                t->pend = 'd';
+            break;
+        case 'x':
+            if (t->sel)
+                clip_op(w, true);
+            else if (s[t->cursor]) {
+                int e = next_char(s, t->cursor);
+                clip_put(w, t->cursor, e);
+                erase(w, t->cursor, e);
+            }
+            break;
+        case 'p': /* after the letter under the cursor; over a selection */
+            if (!t->sel && s[t->cursor] && s[t->cursor] != '\n')
+                t->cursor = next_char(s, t->cursor);
+            paste(w);
+            break;
+        case 'P': paste(w); break;
+        }
+    }
+    return true;
+}
+
 bool textbox_key(Window *w, const char *tok)
 {
     TextEd *t = &w->tx;
+    int m;
+    bool extend;
     w->redraw = true;
+    if (t->normal && normal_key(w, tok))
+        return true;
     if (!strcmp(tok, "<Esc>")) {
-        textbox_finish(w);
+        if (t->sel)
+            t->sel = false;
+        else if (t->box.text[0]) /* y p x and the motions: one more Esc is done */
+            t->normal = true, describe(w);
+        else
+            textbox_finish(w);
     } else if (!strcmp(tok, "<Enter>") || !strcmp(tok, "<S-Enter>")) {
         insert(w, "\n");
     } else if (!strcmp(tok, "<BS>")) {
-        erase(w, prev_char(t->box.text, t->cursor), t->cursor);
+        if (!erase_sel(w))
+            erase(w, prev_char(t->box.text, t->cursor), t->cursor);
     } else if (!strcmp(tok, "<Del>")) {
-        erase(w, t->cursor, next_char(t->box.text, t->cursor));
+        if (!erase_sel(w))
+            erase(w, t->cursor, next_char(t->box.text, t->cursor));
     } else if (!strcmp(tok, "<C-w>")) { /* the word before the cursor */
+        erase_sel(w);
         int i = t->cursor;
         while (i > 0 && (t->box.text[i - 1] == ' ' || t->box.text[i - 1] == '\n'))
             i--;
         while (i > 0 && t->box.text[i - 1] != ' ' && t->box.text[i - 1] != '\n')
             i--;
         erase(w, i, t->cursor);
-    } else if (!strcmp(tok, "<Left>")) {
-        t->cursor = prev_char(t->box.text, t->cursor), t->want_x = -1;
-        show_cursor(w, cur_view(w));
-    } else if (!strcmp(tok, "<Right>")) {
-        t->cursor = next_char(t->box.text, t->cursor), t->want_x = -1;
-        show_cursor(w, cur_view(w));
-    } else if (!strcmp(tok, "<Up>") || !strcmp(tok, "<Down>")) {
-        vertical(w, tok[1] == 'U' ? -1 : 1);
-        show_cursor(w, cur_view(w));
-    } else if (!strcmp(tok, "<Home>") || !strcmp(tok, "<End>")) {
-        line_edge(w, tok[1] == 'E');
-        show_cursor(w, cur_view(w));
+    } else if (motion_of(tok, &m, &extend)) {
+        move(w, m, extend);
     } else if (!strcmp(tok, "<C-=>") || !strcmp(tok, "<C-+>")) {
         resize_font(w, 1.1f);
     } else if (!strcmp(tok, "<C-->")) {
         resize_font(w, 1 / 1.1f);
     } else if (!strcmp(tok, "<C-v>")) {
-        char *clip = SDL_GetClipboardText();
-        if (clip) {
-            char *o = clip;
-            for (const char *c = clip; *c; c++) { /* no carriage returns, tabs as spaces */
-                if (*c != '\r')
-                    *o++ = *c == '\t' ? ' ' : *c;
-            }
-            *o = 0;
-            insert(w, clip);
-            SDL_free(clip);
-        }
+        paste(w);
+    } else if (!strcmp(tok, "<C-c>") || !strcmp(tok, "<C-x>")) {
+        clip_op(w, tok[3] == 'x');
     } else if (!strcmp(tok, "<lt>")) {
         insert(w, "<");
     } else if (tok[0] != '<' || !tok[1]) {
@@ -709,6 +941,12 @@ bool textbox_key(Window *w, const char *tok)
 
 void textbox_insert(Window *w, const char *text)
 {
+    if (w->tx.normal) { /* the letters are commands now */
+        if (text[0] && !text[1])
+            normal_key(w, text);
+        w->redraw = true;
+        return;
+    }
     char clean[1024];
     size_t n = 0;
     for (const char *s = text; *s && n + 1 < sizeof clean; s++)
@@ -736,11 +974,27 @@ void textbox_draw(Window *w, View *v, int top)
     Layout L;
     layout_run(t->box.text, t->box.size, t->box.width, &L);
     float cx;
-    int cl;
+    int cl, lo, hi;
+    bool block = false;
+    bool has_sel = sel_range(t, &lo, &hi);
+    for (int i = 0; i < L.n; i++) { /* the selection, and in normal mode a block over the letter */
+        const Glyph *g = &L.g[i];
+        bool in_sel = has_sel && g->off >= lo && g->off < hi, at = t->normal && !t->sel && g->off == t->cursor;
+        if (!in_sel && !at)
+            continue;
+        float gx = t->box.left + TEXT_PAD + g->x, gy = t->box.top - TEXT_PAD - (float)g->line * L.lh;
+        float gw = g->adv > 0 ? g->adv : 0.4f * t->box.size, sx0, sy0, sx1, sy1;
+        page_to_screen(v, t->page, gx, gy, &sx0, &sy0, top);
+        page_to_screen(v, t->page, gx + gw, gy - L.lh, &sx1, &sy1, top);
+        ui_fill(w, SDL_min(sx0, sx1), SDL_min(sy0, sy1), SDL_fabsf(sx1 - sx0), SDL_fabsf(sy1 - sy0),
+                in_sel ? th->selection : th->caret, in_sel ? 110 : 150);
+        block |= at;
+    }
     caret_at(&L, t->box.text, t->cursor, &cx, &cl);
     float py = t->box.top - TEXT_PAD - (float)cl * L.lh, px = t->box.left + TEXT_PAD + cx, ax, ay, bx, by;
     page_to_screen(v, t->page, px, py, &ax, &ay, top);
     page_to_screen(v, t->page, px, py - L.lh, &bx, &by, top);
     layout_free(&L);
-    ui_line(w, ax, ay, bx, by, 2 * line, th->caret);
+    if (!block)
+        ui_line(w, ax, ay, bx, by, 2 * line, th->caret);
 }

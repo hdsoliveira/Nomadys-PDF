@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+- **Free text, select and copy**: `Shift` + arrows select, `Ctrl-c` `Ctrl-x`
+  `Ctrl-v` copy, cut and paste. `Esc` once is a vim-like normal mode (`h j k l
+  w b e 0 $`, `v` selects, `y` `x` `p`, `yy` `dd` for a line, `i a A I` write
+  again); `Esc` again is done.
+- **`:eg` and `:wg`**: the desktop's file dialog to open a PDF, or to save a
+  copy (like `:e` and `:w name.pdf`).
+
 ## 0.7.0
 - **Back to the tab you came from**: `Backspace` (and again to return).
 - **Smooth scrolling** for `Ctrl-d` `Ctrl-u` `Ctrl-f` `Ctrl-b` and `Space`:
