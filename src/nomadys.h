@@ -33,7 +33,7 @@
  * decoded images (a 24 Mpixel photo is ~70 MB), so few, least recently used
  * first. Rendered pages stay as textures (render.c). */
 #define LOADED_PAGE_CAP 8
-#define NOMADYS_VERSION "0.7.0"
+#define NOMADYS_VERSION "0.8.0"
 #define NOMADYS_AUTHOR "Hugo Oliveira"
 #define NOMADYS_CONTACT "nomadys-pdf@mailbox.org"
 #define NOMADYS_URL "github.com/hdsoliveira/Nomadys-PDF"
@@ -910,6 +910,7 @@ void recent_add(const char *path);
 void history_add(int kind, const char *text);             /* typed after : (kind 0) or / (kind 1) */
 const char *history_get(int kind, int back);
 void recent_shutdown(void);
+bool welcome_path(char *out, size_t cap);                  /* npdf alone: a page about how to start */
 void session_save(void);
 int session_files(char ***out, int *current);             /* the last session's files */
 void session_restore(Window *w);

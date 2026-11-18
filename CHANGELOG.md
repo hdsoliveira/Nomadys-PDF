@@ -1,12 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.8.0
 - **Free text, select and copy**: `Shift` + arrows select, `Ctrl-c` `Ctrl-x`
   `Ctrl-v` copy, cut and paste. `Esc` once is a vim-like normal mode (`h j k l
   w b e 0 $`, `v` selects, `y` `x` `p`, `yy` `dd` for a line, `i a A I` write
   again); `Esc` again is done.
 - **`:eg` and `:wg`**: the desktop's file dialog to open a PDF, or to save a
   copy (like `:e` and `:w name.pdf`).
+- **`npdf` alone** with no session to bring back opens a one-page welcome that
+  says how to start, instead of printing the usage and exiting (which made the
+  AppImage look like a crash to programs that launch it with no arguments).
 
 ## 0.7.0
 - **Back to the tab you came from**: `Backspace` (and again to return).

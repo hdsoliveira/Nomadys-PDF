@@ -207,10 +207,55 @@ void recent_shutdown(void)
 /* ---------- session ---------- */
 static bool restoring;
 
+/* npdf alone, with no session to bring back, shows a one-page PDF about how to
+ * start (a window that closes at once looks like a crash, and a catalog that
+ * tests an AppImage needs a window). It is written again at every start. */
+bool welcome_path(char *out, size_t cap)
+{
+    static const char *lines[] = {
+        "Open a PDF:", "   :e file.pdf        by name or path (Tab completes)", "   :eg                the file dialog",
+        "   \\\\f                find any PDF on this computer", "   \\\\o                the recent ones", "",
+        "Move:  j k  scroll    J K  page    gg G  first / last    42G  page 42", "Read:  /  search    v  text cursor    ?  every key", NULL,
+    };
+    char body[2048], pdf[4096];
+    int n = snprintf(body, sizeof body, "BT /F1 30 Tf 72 740 Td (Nomadys-PDF) Tj ET\nBT /F1 13 Tf 72 690 Td 22 TL\n");
+    for (int i = 0; lines[i]; i++)
+        n += snprintf(body + n, sizeof body - (size_t)n, "(%s) Tj T*\n", lines[i]);
+    n += snprintf(body + n, sizeof body - (size_t)n, "ET\n");
+    size_t off[6], len = 0;
+    len += (size_t)snprintf(pdf + len, sizeof pdf - len, "%%PDF-1.4\n");
+    const char *objs[] = {
+        "<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 5 0 R /Resources << /Font << /F1 4 0 R >> >> >>",
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    };
+    for (int i = 0; i < 4; i++) {
+        off[i + 1] = len;
+        len += (size_t)snprintf(pdf + len, sizeof pdf - len, "%d 0 obj\n%s\nendobj\n", i + 1, objs[i]);
+    }
+    off[5] = len;
+    len += (size_t)snprintf(pdf + len, sizeof pdf - len, "5 0 obj\n<< /Length %d >>\nstream\n%sendstream\nendobj\n", n, body);
+    size_t xref = len;
+    len += (size_t)snprintf(pdf + len, sizeof pdf - len, "xref\n0 6\n0000000000 65535 f \n");
+    for (int i = 1; i <= 5; i++)
+        len += (size_t)snprintf(pdf + len, sizeof pdf - len, "%010zu 00000 n \n", off[i]);
+    len += (size_t)snprintf(pdf + len, sizeof pdf - len, "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n%zu\n%%%%EOF\n", xref);
+    char tmp[4300];
+    data_path("welcome.pdf", out, cap);
+    FILE *f = open_new(out, tmp, sizeof tmp);
+    if (!f)
+        return false;
+    fwrite(pdf, 1, len, f);
+    finish(f, tmp, out);
+    return access(out, R_OK) == 0;
+}
+
 void session_save(void)
 {
     if (restoring)
         return;
+    char welcome[4200];
+    data_path("welcome.pdf", welcome, sizeof welcome);
     char path[4200], tmp[4300];
     data_path("session", path, sizeof path);
     FILE *f = open_new(path, tmp, sizeof tmp);
@@ -219,7 +264,8 @@ void session_save(void)
     fprintf(f, "# nomadys-pdf session: the tabs open, * the one shown\n");
     for (int k = 0; k < nwindows; k++)
         for (int t = 0; t < windows[k]->ntabs; t++)
-            fprintf(f, "%s%s\n", t == windows[k]->cur && k == 0 ? "*" : " ", windows[k]->tabs[t]->doc->path);
+            if (strcmp(windows[k]->tabs[t]->doc->path, welcome)) /* the welcome page is not a tab to bring back */
+                fprintf(f, "%s%s\n", t == windows[k]->cur && k == 0 ? "*" : " ", windows[k]->tabs[t]->doc->path);
     finish(f, tmp, path);
 }
 

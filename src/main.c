@@ -1199,6 +1199,12 @@ int main(int argc, char **argv)
         nfiles = session_files(&session, &session_cur);
         files = session;
     }
+    char welcome[4200], *welcome_files[1] = {welcome};
+    if (argc < 2 && !nfiles && welcome_path(welcome, sizeof welcome)) { /* nothing to bring back: a page that says how to start */
+        free(session);
+        session = NULL;
+        files = welcome_files, nfiles = 1;
+    }
     if (!nfiles || (argc >= 2 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))) {
         usage();
         return argc < 2;
@@ -1255,7 +1261,8 @@ int main(int argc, char **argv)
             fprintf(stderr, "npdf: %s\n", err);
             continue;
         }
-        recent_add(files[i]);
+        if (files != welcome_files)
+            recent_add(files[i]);
         View *v = view_new(d);
         if (!w) {
             w = window_new(v);
